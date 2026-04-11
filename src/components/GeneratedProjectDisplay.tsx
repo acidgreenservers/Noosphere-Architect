@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { GeneratedProjectFiles } from '../types';
+import { sanitizeFilename } from '../utils/security';
 
 interface GeneratedProjectDisplayProps {
   files: GeneratedProjectFiles;
@@ -48,7 +49,7 @@ ${files.rulesFile}
 
   const handleExportAll = () => {
     // Sanitize the project name for use as a filename prefix to prevent path traversal or invalid filenames
-    const prefix = projectName ? projectName.replace(/[^a-z0-9\s-]/gi, '').replace(/\s+/g, '-').toLowerCase() : 'project-export';
+    const prefix = sanitizeFilename(projectName || 'project-export');
     const filesToExport = {
         [`${prefix}-overview.md`]: files.overviewFile,
         [`${prefix}-standards.md`]: files.standardsFile,

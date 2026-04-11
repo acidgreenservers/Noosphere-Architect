@@ -4,6 +4,7 @@ import { AgentConfig, GeneratedFiles, SavedAgent } from '../types';
 import { generateAgentFiles } from '../services/aiService';
 import * as db from '../services/dbService';
 import JSZip from 'jszip';
+import { sanitizeFilename } from '../utils/security';
 import AgentForm from './AgentForm';
 import GeneratedFilesDisplay from './GeneratedFilesDisplay';
 import LoadingSpinner from './LoadingSpinner';
@@ -199,7 +200,7 @@ const AgentArchitect: React.FC = () => {
 
     const zip = new JSZip();
     savedAgents.forEach(agent => {
-        const folderName = agent.name.replace(/[^a-z0-9\s-]/gi, '').replace(/\s+/g, '-').toLowerCase();
+        const folderName = sanitizeFilename(agent.name);
         const folder = zip.folder(folderName);
         if (folder) {
             folder.file('agent.md', agent.files.agentFile);

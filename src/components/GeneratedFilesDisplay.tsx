@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { GeneratedFiles } from '../types';
+import { sanitizeFilename } from '../utils/security';
 
 interface GeneratedFilesDisplayProps {
   files: GeneratedFiles;
@@ -53,7 +54,7 @@ ${files.skillFile}
 
   const handleExportAll = () => {
     // Sanitize the agent name for use as a filename prefix to prevent path traversal or invalid filenames
-    const prefix = agentName ? agentName.replace(/[^a-z0-9\s-]/gi, '').replace(/\s+/g, '-').toLowerCase() : 'agent-export';
+    const prefix = sanitizeFilename(agentName || 'agent-export');
     const filesToExport = {
         [`${prefix}-persona.md`]: files.agentFile,
         [`${prefix}-guidelines.md`]: files.projectGuidelines,

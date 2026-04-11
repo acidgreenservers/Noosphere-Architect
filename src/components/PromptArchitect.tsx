@@ -4,6 +4,7 @@ import { generateStructuredPrompt } from '../services/aiService';
 import { PromptConfig, SavedPrompt } from '../types';
 import * as db from '../services/dbService';
 import JSZip from 'jszip';
+import { sanitizeFilename } from '../utils/security';
 import LoadingSpinner from './LoadingSpinner';
 import Modal from './Modal';
 import Toast from './Toast';
@@ -221,7 +222,7 @@ const PromptArchitect: React.FC = () => {
 
         const zip = new JSZip();
         savedPrompts.forEach(p => {
-            const filename = p.name.replace(/[^a-z0-9\s-]/gi, '').replace(/\s+/g, '-').toLowerCase() + '.md';
+            const filename = sanitizeFilename(p.name) + '.md';
             zip.file(filename, p.prompt);
         });
 
@@ -251,10 +252,7 @@ const PromptArchitect: React.FC = () => {
     const handleExportPrompt = () => {
         if (!generatedPrompt) return;
         const savedPrompt = savedPrompts.find(p => p.prompt === generatedPrompt);
-        const filename = (savedPrompt?.name || promptConfig.goal || 'prompt')
-            .replace(/[^a-z0-9\s-]/gi, '')
-            .replace(/\s+/g, '-')
-            .toLowerCase() + '.md';
+        const filename = sanitizeFilename(savedPrompt?.name || promptConfig.goal || 'prompt') + '.md';
         
         const blob = new Blob([generatedPrompt], { type: 'text/markdown;charset=utf-8' });
         const url = URL.createObjectURL(blob);

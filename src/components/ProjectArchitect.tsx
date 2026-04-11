@@ -4,6 +4,7 @@ import { ProjectConfig, GeneratedProjectFiles, SavedProject } from '../types';
 import { generateProjectFiles } from '../services/aiService';
 import * as db from '../services/dbService';
 import JSZip from 'jszip';
+import { sanitizeFilename } from '../utils/security';
 import ProjectForm from './ProjectForm';
 import GeneratedProjectDisplay from './GeneratedProjectDisplay';
 import LoadingSpinner from './LoadingSpinner';
@@ -173,7 +174,7 @@ const ProjectArchitect: React.FC = () => {
     
     const zip = new JSZip();
     savedProjects.forEach(project => {
-      const folderName = project.name.replace(/[^a-z0-9\s-]/gi, '').replace(/\s+/g, '-').toLowerCase();
+      const folderName = sanitizeFilename(project.name);
       const folder = zip.folder(folderName);
       if (folder) {
         folder.file('overview.md', project.files.overviewFile);
