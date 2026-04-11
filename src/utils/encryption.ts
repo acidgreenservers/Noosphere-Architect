@@ -1,8 +1,12 @@
 import CryptoJS from 'crypto-js';
 
-// A static key for obfuscation at rest. In a real-world scenario, 
-// this should be derived from a user password or a more secure mechanism.
-const SECRET_KEY = 'noosphere-architect-secure-key-2026';
+/**
+ * A static key for obfuscation at rest.
+ * ⚠️ SECURITY WARNING: In a production environment, this key MUST be unique and
+ * stored securely in an environment variable. Using a hardcoded fallback is
+ * only intended for development/preview environments.
+ */
+const SECRET_KEY = import.meta.env.VITE_ENCRYPTION_KEY || 'noosphere-architect-fallback-dev-key-2026';
 
 export const encryptData = (data: string): string => {
   if (!data) return '';
