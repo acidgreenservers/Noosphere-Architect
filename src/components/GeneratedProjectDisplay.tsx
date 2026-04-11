@@ -47,7 +47,8 @@ ${files.rulesFile}
   };
 
   const handleExportAll = () => {
-    const prefix = projectName ? projectName.replace(/\s+/g, '-').toLowerCase() : 'project-export';
+    // Sanitize the project name for use as a filename prefix to prevent path traversal or invalid filenames
+    const prefix = projectName ? projectName.replace(/[^a-z0-9\s-]/gi, '').replace(/\s+/g, '-').toLowerCase() : 'project-export';
     const filesToExport = {
         [`${prefix}-overview.md`]: files.overviewFile,
         [`${prefix}-standards.md`]: files.standardsFile,
