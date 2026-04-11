@@ -63,7 +63,8 @@ const AgentApiSettings: React.FC = () => {
       </div>
 
       <p className="text-gray-600 dark:text-gray-400 mb-8">
-        Enter your OpenRouter API key and Model to enable optional AI functionality for the architects. 
+        Enter your OpenRouter API key and Model to enable AI generation features.{" "}
+        <strong>OpenRouter configuration is required for the architects to function.</strong>{" "}
         Your key is stored <strong>only</strong> in memory for the duration of this session.
         It is completely ephemeral and will be wiped when the page is refreshed or the tab is closed.
       </p>

@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { generateStructuredPrompt } from '../services/geminiService';
+import { generateStructuredPrompt } from '../services/aiService';
 import { PromptConfig, SavedPrompt } from '../types';
 import * as db from '../services/dbService';
 import JSZip from 'jszip';

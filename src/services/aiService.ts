@@ -1,13 +1,6 @@
 
-import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
 import { AgentConfig, GeneratedFiles, PromptConfig, ProjectConfig, GeneratedProjectFiles } from '../types';
 import { getOpenRouterKey, getOpenRouterModel } from './sessionService';
-
-if (!process.env.API_KEY) {
-  throw new Error("API_KEY environment variable is not set");
-}
-
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const getOpenRouterConfig = () => {
   const apiKey = getOpenRouterKey();
@@ -102,39 +95,14 @@ export const generateAgentFiles = async (config: AgentConfig): Promise<Generated
   try {
     const openRouterConfig = getOpenRouterConfig();
     
-    if (openRouterConfig) {
-      const responseText = await callOpenRouter(prompt, openRouterConfig.apiKey, openRouterConfig.model, true);
-      // Clean up potential markdown code blocks from OpenRouter response
-      const cleanedText = responseText.replace(/^```json\n?/, '').replace(/\n?```$/, '');
-      return JSON.parse(cleanedText);
+    if (!openRouterConfig) {
+      throw new Error("OpenRouter settings (API Key and Model) are required. Please configure them in the Agent API Settings.");
     }
 
-    const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            agentFile: { type: Type.STRING },
-            projectGuidelines: { type: Type.STRING },
-            constraintsFile: { type: Type.STRING },
-            skillFile: { type: Type.STRING },
-          },
-          required: ['agentFile', 'projectGuidelines', 'constraintsFile', 'skillFile'],
-        },
-        temperature: 0.7,
-      },
-    });
-
-    if (response.text) {
-        const jsonString = response.text;
-        const parsedResult: GeneratedFiles = JSON.parse(jsonString);
-        return parsedResult;
-    } else {
-        throw new Error("Received an empty response from the API.");
-    }
+    const responseText = await callOpenRouter(prompt, openRouterConfig.apiKey, openRouterConfig.model, true);
+    // Clean up potential markdown code blocks from OpenRouter response
+    const cleanedText = responseText.replace(/^```json\n?/, '').replace(/\n?```$/, '');
+    return JSON.parse(cleanedText);
   } catch (error: any) {
     console.error("Error generating agent files:", error);
     throw new Error(error.message || "Failed to communicate with the API.");
@@ -173,23 +141,11 @@ export const generateStructuredPrompt = async (config: PromptConfig): Promise<st
   try {
     const openRouterConfig = getOpenRouterConfig();
     
-    if (openRouterConfig) {
-      return await callOpenRouter(metaPrompt, openRouterConfig.apiKey, openRouterConfig.model, false);
+    if (!openRouterConfig) {
+      throw new Error("OpenRouter settings (API Key and Model) are required. Please configure them in the Agent API Settings.");
     }
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
-      contents: metaPrompt,
-      config: {
-        temperature: 0.6,
-      },
-    });
-
-    if (response.text) {
-      return response.text;
-    } else {
-      throw new Error("Received an empty response from the API.");
-    }
+    return await callOpenRouter(metaPrompt, openRouterConfig.apiKey, openRouterConfig.model, false);
   } catch (error: any) {
     console.error("Error generating structured prompt:", error);
     throw new Error(error.message || "Failed to communicate with the API.");
@@ -244,37 +200,14 @@ export const generateProjectFiles = async (config: ProjectConfig): Promise<Gener
   try {
     const openRouterConfig = getOpenRouterConfig();
     
-    if (openRouterConfig) {
-      const responseText = await callOpenRouter(prompt, openRouterConfig.apiKey, openRouterConfig.model, true);
-      // Clean up potential markdown code blocks from OpenRouter response
-      const cleanedText = responseText.replace(/^```json\n?/, '').replace(/\n?```$/, '');
-      return JSON.parse(cleanedText);
+    if (!openRouterConfig) {
+      throw new Error("OpenRouter settings (API Key and Model) are required. Please configure them in the Agent API Settings.");
     }
 
-    const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            overviewFile: { type: Type.STRING },
-            standardsFile: { type: Type.STRING },
-            rulesFile: { type: Type.STRING },
-          },
-          required: ['overviewFile', 'standardsFile', 'rulesFile'],
-        },
-        temperature: 0.7,
-      },
-    });
-
-    if (response.text) {
-        const jsonString = response.text;
-        return JSON.parse(jsonString);
-    } else {
-        throw new Error("Received an empty response from the API.");
-    }
+    const responseText = await callOpenRouter(prompt, openRouterConfig.apiKey, openRouterConfig.model, true);
+    // Clean up potential markdown code blocks from OpenRouter response
+    const cleanedText = responseText.replace(/^```json\n?/, '').replace(/\n?```$/, '');
+    return JSON.parse(cleanedText);
   } catch (error: any) {
     console.error("Error generating project files:", error);
     throw new Error(error.message || "Failed to communicate with the API.");

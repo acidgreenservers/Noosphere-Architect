@@ -1,7 +1,7 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { AgentConfig, GeneratedFiles, SavedAgent } from '../types';
-import { generateAgentFiles } from '../services/geminiService';
+import { generateAgentFiles } from '../services/aiService';
 import * as db from '../services/dbService';
 import JSZip from 'jszip';
 import AgentForm from './AgentForm';
