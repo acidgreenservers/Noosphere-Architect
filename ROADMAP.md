@@ -30,3 +30,11 @@ This document outlines the potential future direction for AI Agent Architect. Ou
 -   **[ ] Marketplace for Agents:** A platform where developers can share and discover pre-built agent configurations and templates.
 
 We welcome contributions and suggestions from the community. If you have an idea you'd like to see on this roadmap, please open an issue on GitHub to start a discussion.
+
+# Ideas ONLY Do not implement without explicitly being asked by the user
+
+Expand the agent creation tool to include a personality matrix. The user should be able to select or input a range of personality traits (e.g., tone, communication style, emotional disposition) that will define the agent's behavior and responses.
+
+Integrate a memory system for the AI agents. Agents should be able to recall previous conversation topics, user details, and stated preferences to maintain context and provide more personalized interactions. Define how this memory will be stored and accessed.
+
+Create a feature for the AI agent creator that offers a library of predefined agent templates. Each template should come with a suggested role, personality traits, and a brief description of its intended use. Allow users to select a template and then customize it further.
