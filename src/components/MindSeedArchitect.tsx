@@ -116,14 +116,11 @@ const MindSeedArchitect: React.FC = () => {
   const formatAsMarkdown = (seed: GeneratedMindSeed, type: MindSeedType) => {
     return `> "${seed.seed}"
 
-# ${type.charAt(0).toUpperCase() + type.slice(1)}Seed Invariants Table
+# ${type.charAt(0).toUpperCase() + type.slice(1)}Seed Deployment Table
 
-| Invariant | Structural Integrity Check |
-|---|---|
-| **Compression** | ${seed.invariants.compression} |
-| **Generative** | ${seed.invariants.generative} |
-| **Falsifiable** | ${seed.invariants.falsifiable} |
-| **Decompressible** | ${seed.invariants.decompressible} |
+| Seed | Pattern | Deploy When |
+|---|---|---|
+| *"${seed.seed}"* | ${seed.pattern} | ${seed.deployWhen} |
 `;
   };
 
@@ -276,26 +273,16 @@ const MindSeedArchitect: React.FC = () => {
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead className="bg-gray-50 dark:bg-gray-900/50">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invariant</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Structural Integrity Check</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Seed</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pattern</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deploy When</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                         <tr>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-gray-100">Compression</td>
-                            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{result.invariants.compression}</td>
-                        </tr>
-                        <tr>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-gray-100">Generative</td>
-                            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{result.invariants.generative}</td>
-                        </tr>
-                        <tr>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-gray-100">Falsifiable</td>
-                            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{result.invariants.falsifiable}</td>
-                        </tr>
-                        <tr>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-gray-100">Decompressible</td>
-                            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{result.invariants.decompressible}</td>
+                            <td className="px-6 py-4 text-sm italic text-gray-900 dark:text-gray-100">"{result.seed}"</td>
+                            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400" dangerouslySetInnerHTML={{ __html: result.pattern.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }}></td>
+                            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{result.deployWhen}</td>
                         </tr>
                     </tbody>
                 </table>

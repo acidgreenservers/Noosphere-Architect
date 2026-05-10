@@ -76,12 +76,8 @@ export interface MindSeedConfig {
 
 export interface GeneratedMindSeed {
   seed: string;
-  invariants: {
-    compression: string;
-    generative: string;
-    falsifiable: string;
-    decompressible: string;
-  };
+  pattern: string;
+  deployWhen: string;
 }
 
 export interface SavedMindSeed {
@@ -89,5 +85,24 @@ export interface SavedMindSeed {
   name: string;
   config: MindSeedConfig;
   result: GeneratedMindSeed;
+  createdAt: string;
+}
+
+export interface SignalConfig {
+  messyPrompt: string;
+}
+
+export interface ExtractedSignal {
+  promptSignal: string;
+  signalConstraints: string;
+}
+
+export interface SavedSignal {
+  id?: number;
+  name: string;
+  config: SignalConfig;
+  extractedSignal: string;
+  promptSignal: string;
+  signalConstraints: string;
   createdAt: string;
 }

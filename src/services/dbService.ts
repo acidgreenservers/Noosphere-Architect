@@ -1,15 +1,17 @@
 
-import { SavedAgent, SavedPrompt, AgentConfig, PromptConfig, SavedProject, ProjectConfig, SavedMindSeed, MindSeedConfig } from '../types';
+import { SavedAgent, SavedPrompt, AgentConfig, PromptConfig, SavedProject, ProjectConfig, SavedSignal, SignalConfig, SavedMindSeed, MindSeedConfig } from '../types';
 
 const DB_NAME = 'NoosphereArchitectDB';
-const DB_VERSION = 5; // Incremented to trigger onupgradeneeded
+const DB_VERSION = 6; // Incremented for MindSeed stores
 const AGENT_STORE = 'savedAgents';
 const PROMPT_STORE = 'savedPrompts';
 const PROJECT_STORE = 'savedProjects';
+const SIGNAL_STORE = 'savedSignals';
 const MINDSEED_STORE = 'savedMindSeeds';
 const AGENT_DRAFT_STORE = 'agentDraft';
 const PROMPT_DRAFT_STORE = 'promptDraft';
 const PROJECT_DRAFT_STORE = 'projectDraft';
+const SIGNAL_DRAFT_STORE = 'signalDraft';
 const MINDSEED_DRAFT_STORE = 'mindSeedDraft';
 
 
@@ -51,11 +53,6 @@ const initDB = (): Promise<IDBDatabase> => {
         projectStore.createIndex('name', 'name', { unique: false });
         projectStore.createIndex('createdAt', 'createdAt', { unique: false });
       }
-      if (!db.objectStoreNames.contains(MINDSEED_STORE)) {
-        const mindSeedStore = db.createObjectStore(MINDSEED_STORE, { keyPath: 'id', autoIncrement: true });
-        mindSeedStore.createIndex('name', 'name', { unique: false });
-        mindSeedStore.createIndex('createdAt', 'createdAt', { unique: false });
-      }
       if (!db.objectStoreNames.contains(AGENT_DRAFT_STORE)) {
         db.createObjectStore(AGENT_DRAFT_STORE, { keyPath: 'id' });
       }
@@ -64,6 +61,19 @@ const initDB = (): Promise<IDBDatabase> => {
       }
       if (!db.objectStoreNames.contains(PROJECT_DRAFT_STORE)) {
         db.createObjectStore(PROJECT_DRAFT_STORE, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(SIGNAL_STORE)) {
+        const signalStore = db.createObjectStore(SIGNAL_STORE, { keyPath: 'id', autoIncrement: true });
+        signalStore.createIndex('name', 'name', { unique: false });
+        signalStore.createIndex('createdAt', 'createdAt', { unique: false });
+      }
+      if (!db.objectStoreNames.contains(SIGNAL_DRAFT_STORE)) {
+        db.createObjectStore(SIGNAL_DRAFT_STORE, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(MINDSEED_STORE)) {
+        const mindSeedStore = db.createObjectStore(MINDSEED_STORE, { keyPath: 'id', autoIncrement: true });
+        mindSeedStore.createIndex('name', 'name', { unique: false });
+        mindSeedStore.createIndex('createdAt', 'createdAt', { unique: false });
       }
       if (!db.objectStoreNames.contains(MINDSEED_DRAFT_STORE)) {
         db.createObjectStore(MINDSEED_DRAFT_STORE, { keyPath: 'id' });
@@ -236,6 +246,34 @@ export const clearProjectDraft = (id: number): Promise<void> => {
     });
 };
 
+// Signal Draft Functions
+export const saveSignalDraft = (draft: {id: number, config: SignalConfig}): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(SIGNAL_DRAFT_STORE, 'readwrite');
+        const request = store.put(draft);
+        request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const getSignalDraft = (id: number): Promise<{id: number, config: SignalConfig} | undefined> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(SIGNAL_DRAFT_STORE, 'readonly');
+        const request = store.get(id);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const clearSignalDraft = (id: number): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(SIGNAL_DRAFT_STORE, 'readwrite');
+        const request = store.delete(id);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
 
 // Agent Functions
 export const addAgent = (agent: SavedAgent): Promise<number> => {
@@ -243,6 +281,52 @@ export const addAgent = (agent: SavedAgent): Promise<number> => {
         const store = await getStore(AGENT_STORE, 'readwrite');
         const request = store.add(agent);
         request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+// Signal Functions
+export const addSignal = (signal: SavedSignal): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(SIGNAL_STORE, 'readwrite');
+        const request = store.add(signal);
+        request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const getAllSignals = (): Promise<SavedSignal[]> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(SIGNAL_STORE, 'readonly');
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const updateSignal = (signal: SavedSignal): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(SIGNAL_STORE, 'readwrite');
+        const request = store.put(signal);
+        request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const deleteSignal = (id: number): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(SIGNAL_STORE, 'readwrite');
+        const request = store.delete(id);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const clearAllSignals = (): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(SIGNAL_STORE, 'readwrite');
+        const request = store.clear();
+        request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
     });
 };

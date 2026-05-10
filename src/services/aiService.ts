@@ -1,5 +1,5 @@
 
-import { AgentConfig, GeneratedFiles, PromptConfig, ProjectConfig, GeneratedProjectFiles, MindSeedConfig, GeneratedMindSeed } from '../types';
+import { AgentConfig, GeneratedFiles, PromptConfig, ProjectConfig, GeneratedProjectFiles, SignalConfig, ExtractedSignal, MindSeedConfig, GeneratedMindSeed } from '../types';
 import { getOpenRouterKey, getOpenRouterModel } from './sessionService';
 
 const getOpenRouterConfig = () => {
@@ -170,7 +170,8 @@ Every seed across every family must pass these four invariants. If it fails any 
 The final output MUST be a single, raw JSON object with no surrounding text or markdown code blocks.
 The JSON object must have the following keys:
 - "seed": The compressed seed string (under 12 words, in quotation marks).
-- "invariants": An object with four keys ("compression", "generative", "falsifiable", "decompressible"), each containing a brief explanation of how the seed meets that specific invariant.
+- "pattern": A brief, bolded name for the pattern (e.g., **Alignment Verification**) followed by a one-sentence explanation of the core logic.
+- "deployWhen": A comma-separated list of 3-4 specific scenarios where this seed is the optimal tool to use.
 
 **Input Text to Parse:**
 ${config.text}
@@ -194,6 +195,61 @@ export const generateMindSeed = async (config: MindSeedConfig): Promise<Generate
     return JSON.parse(cleanedText);
   } catch (error: any) {
     console.error("Error generating MindSeed:", error);
+    throw new Error(error.message || "Failed to communicate with the API.");
+  }
+};
+
+const createSignalExtractorMetaPrompt = (config: SignalConfig): string => {
+  return `
+You are an expert Signal Extractor. Your task is to take a "messy prompt" (raw thoughts, disorganized instructions, or poorly formatted ideas) and extract the core signal.
+
+Your goal is NOT to make a perfect final prompt, but to extract and amplify the hidden or poorly laid out signal into a coherent, actionable systemic prompt that an agent can follow.
+
+**Output Constraints:**
+- Text ONLY.
+- NO markdown syntax (no bolding, no headings like # or ##).
+- Use ONLY "-" or "*" bullet points for clarity and step-by-step processes.
+- MAXIMUM of 1000 characters for the total output.
+- The output MUST be a JSON object with two keys: "promptSignal" and "signalConstraints".
+
+**Instructions for "promptSignal":**
+- Extract the primary goal and task from the messy input.
+- Reorganize it into coherent, detailed prose.
+- Make it actionable for an AI agent.
+
+**Instructions for "signalConstraints":**
+- Extract any specific rules, limitations, steps, or constraints from the messy input.
+- List them clearly using bullet points.
+
+**User's Messy Prompt:**
+---
+${config.messyPrompt}
+---
+
+Generate ONLY the raw JSON object with "promptSignal" and "signalConstraints" keys.
+`;
+};
+
+export const extractSignal = async (config: SignalConfig): Promise<ExtractedSignal> => {
+  if (!config.messyPrompt.trim()) {
+    throw new Error("Input prompt cannot be empty.");
+  }
+
+  const prompt = createSignalExtractorMetaPrompt(config);
+
+  try {
+    const openRouterConfig = getOpenRouterConfig();
+
+    if (!openRouterConfig) {
+      throw new Error("OpenRouter settings (API Key and Model) are required. Please configure them in the Agent API Settings.");
+    }
+
+    const responseText = await callOpenRouter(prompt, openRouterConfig.apiKey, openRouterConfig.model, true);
+    // Clean up potential markdown code blocks from OpenRouter response
+    const cleanedText = responseText.replace(/^```json\n?/, '').replace(/\n?```$/, '');
+    return JSON.parse(cleanedText);
+  } catch (error: any) {
+    console.error("Error extracting signal:", error);
     throw new Error(error.message || "Failed to communicate with the API.");
   }
 };

@@ -7,24 +7,34 @@ import PromptArchitect from './components/PromptArchitect';
 import ProjectArchitect from './components/ProjectArchitect';
 import MindSeedArchitect from './components/MindSeedArchitect';
 import AgentApiSettings from './components/AgentApiSettings';
+import SignalExtractor from './components/SignalExtractor';
+import { PromptConfig } from './types';
 
-export type View = 'landing' | 'agentArchitect' | 'promptArchitect' | 'projectArchitect' | 'mindSeedArchitect' | 'agentApiSettings';
+export type View = 'landing' | 'agentArchitect' | 'promptArchitect' | 'projectArchitect' | 'mindSeedArchitect' | 'agentApiSettings' | 'signalExtractor';
 
 const App: React.FC = () => {
   const [view, setView] = useState<View>('landing');
+  const [promptArchitectInitialConfig, setPromptArchitectInitialConfig] = useState<PromptConfig | undefined>(undefined);
+
+  const handleTransferToPromptArchitect = (config: PromptConfig) => {
+    setPromptArchitectInitialConfig(config);
+    setView('promptArchitect');
+  };
 
   const renderView = () => {
     switch (view) {
       case 'agentArchitect':
         return <AgentArchitect />;
       case 'promptArchitect':
-        return <PromptArchitect />;
+        return <PromptArchitect initialConfig={promptArchitectInitialConfig} onClearInitialConfig={() => setPromptArchitectInitialConfig(undefined)} />;
       case 'projectArchitect':
         return <ProjectArchitect />;
       case 'mindSeedArchitect':
         return <MindSeedArchitect />;
       case 'agentApiSettings':
         return <AgentApiSettings />;
+      case 'signalExtractor':
+        return <SignalExtractor onTransfer={handleTransferToPromptArchitect} />;
       case 'landing':
       default:
         return <LandingPage onSelectView={setView} />;
@@ -39,6 +49,7 @@ const App: React.FC = () => {
         onProjectArchitectClick={() => setView('projectArchitect')}
         onMindSeedArchitectClick={() => setView('mindSeedArchitect')}
         onAgentApiSettingsClick={() => setView('agentApiSettings')}
+        onSignalExtractorClick={() => setView('signalExtractor')}
         showHomeButton={view !== 'landing'}
       />
       <main className="container mx-auto p-4 md:p-8">
@@ -53,7 +64,7 @@ const App: React.FC = () => {
             acidgreenservers
           </a>
         </div>
-        <p className="mt-4">Powered by Gemini. Built with React & Tailwind CSS.</p>
+        <p className="mt-4">Built with React & Tailwind CSS.</p>
       </footer>
     </div>
   );
