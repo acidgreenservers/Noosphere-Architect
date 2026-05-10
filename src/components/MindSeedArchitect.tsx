@@ -7,6 +7,7 @@ import { sanitizeFilename } from '../utils/security';
 import LoadingSpinner from './LoadingSpinner';
 import Toast from './Toast';
 import Modal from './Modal';
+import styles from './Button.module.css';
 
 const MAX_CHARS = 20000;
 
@@ -14,20 +15,26 @@ const MindSeedArchitect: React.FC = () => {
   const [activeTab, setActiveTab] = useState<MindSeedType>('cogni');
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
   const [result, setResult] = useState<GeneratedMindSeed | null>(null);
   const [savedSeeds, setSavedSeeds] = useState<SavedMindSeed[]>([]);
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [previewSeed, setPreviewSeed] = useState<SavedMindSeed | null>(null);
+  const [seedToDelete, setSeedToDelete] = useState<number | null>(null);
 
   useEffect(() => {
     loadSavedSeeds();
+  }, [activeTab]);
+
+  useEffect(() => {
     loadDraft();
   }, []);
 
   const loadSavedSeeds = async () => {
     try {
-      const seeds = await getAllMindSeeds();
+      const seeds = await getAllMindSeeds(activeTab);
       setSavedSeeds(seeds);
     } catch (error) {
       console.error("Failed to load seeds", error);
@@ -65,6 +72,15 @@ const MindSeedArchitect: React.FC = () => {
 
     setLoading(true);
     setResult(null);
+
+    const messages = ['Parsing text structure...', 'Mapping bridges...', 'Synthesizing seed...'];
+    let messageIndex = 0;
+    setLoadingMessage(messages[0]);
+    const interval = setInterval(() => {
+        messageIndex = (messageIndex + 1) % messages.length;
+        setLoadingMessage(messages[messageIndex]);
+    }, 2000);
+
     try {
       const config: MindSeedConfig = { type: activeTab, text };
       const generatedResult = await generateMindSeed(config);
@@ -73,7 +89,9 @@ const MindSeedArchitect: React.FC = () => {
     } catch (error: any) {
       setToast({ message: error.message || "Failed to generate MindSeed", type: 'error' });
     } finally {
+      clearInterval(interval);
       setLoading(false);
+      setLoadingMessage('');
     }
   };
 
@@ -97,13 +115,20 @@ const MindSeedArchitect: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = (id: number) => {
+    setSeedToDelete(id);
+  };
+
+  const confirmDelete = async () => {
+    if (seedToDelete === null) return;
     try {
-      await deleteMindSeed(id);
+      await deleteMindSeed(seedToDelete, activeTab);
       await loadSavedSeeds();
       setToast({ message: "MindSeed deleted.", type: 'success' });
     } catch (error) {
       setToast({ message: "Failed to delete MindSeed", type: 'error' });
+    } finally {
+      setSeedToDelete(null);
     }
   };
 
@@ -161,11 +186,11 @@ const MindSeedArchitect: React.FC = () => {
     }
   };
 
-  const getButtonColor = () => {
+  const getButtonColorClass = () => {
     switch (activeTab) {
-        case 'cogni': return 'bg-orange-600 hover:bg-orange-700 focus:ring-orange-500';
-        case 'lingua': return 'bg-green-600 hover:bg-green-700 focus:ring-green-500';
-        case 'arch': return 'bg-violet-600 hover:bg-violet-700 focus:ring-violet-500';
+        case 'cogni': return 'bg-orange-600 hover:bg-orange-700';
+        case 'lingua': return 'bg-green-600 hover:bg-green-700';
+        case 'arch': return 'bg-violet-600 hover:bg-violet-700';
     }
   };
 
@@ -180,10 +205,12 @@ const MindSeedArchitect: React.FC = () => {
 
       {/* Tabs */}
       <div className="border-b border-gray-200 dark:border-gray-700 mb-8">
-        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+        <nav className="-mb-px flex space-x-8" aria-label="MindSeed Type Tabs" role="tablist">
           {(['cogni', 'lingua', 'arch'] as MindSeedType[]).map((tab) => (
             <button
               key={tab}
+              role="tab"
+              aria-selected={activeTab === tab}
               onClick={() => {
                 setActiveTab(tab);
                 saveMindSeedDraft({ id: 1, config: { type: tab, text } });
@@ -227,12 +254,15 @@ const MindSeedArchitect: React.FC = () => {
             <button
               onClick={handleGenerate}
               disabled={loading || !text.trim()}
-              className={`flex items-center px-6 py-2 rounded-lg text-white font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${getButtonColor()}`}
+              data-testid="generate-button"
+              className={`${styles.base} ${getButtonColorClass()} text-white ${loading ? styles.loading : ''}`}
             >
-              {loading ? <LoadingSpinner size="sm" color="white" /> : 'Generate Seed'}
+              {loading ? 'Architecting...' : 'Generate Seed'}
             </button>
           </div>
         </div>
+
+        {loading && <LoadingSpinner message={loadingMessage || 'Architecting your MindSeed...'} />}
 
         {/* Result Display */}
         {result && (
@@ -312,6 +342,12 @@ const MindSeedArchitect: React.FC = () => {
                       <p className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4 italic">"{seed.result.seed}"</p>
                       <div className="flex flex-wrap gap-4 mt-2">
                         <button
+                            onClick={() => setPreviewSeed(seed)}
+                            className="text-sm text-gray-600 dark:text-gray-400 hover:underline flex items-center"
+                        >
+                            <span className="material-icons text-xs mr-1">visibility</span> Preview
+                        </button>
+                        <button
                             onClick={() => {
                                 setText(seed.config.text);
                                 setActiveTab(seed.config.type);
@@ -351,6 +387,91 @@ const MindSeedArchitect: React.FC = () => {
       </div>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
+      {/* Preview Modal */}
+      <Modal
+        isOpen={!!previewSeed}
+        onClose={() => setPreviewSeed(null)}
+        title={`${previewSeed?.config.type.charAt(0).toUpperCase()}${previewSeed?.config.type.slice(1)}Seed Preview`}
+      >
+        {previewSeed && (
+          <div className="space-y-6">
+            <div className="mb-4">
+                <blockquote className="border-l-4 border-blue-500 pl-4 py-2 italic text-xl text-gray-800 dark:text-gray-200">
+                    "{previewSeed.result.seed}"
+                </blockquote>
+            </div>
+
+            <div className="overflow-hidden border border-gray-200 dark:border-gray-700 rounded-lg">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-900/50">
+                        <tr>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Seed</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pattern</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deploy When</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        <tr>
+                            <td className="px-4 py-3 text-sm italic text-gray-900 dark:text-gray-100">"{previewSeed.result.seed}"</td>
+                            <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400" dangerouslySetInnerHTML={{ __html: previewSeed.result.pattern.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }}></td>
+                            <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{previewSeed.result.deployWhen}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+                <button
+                    onClick={() => handleCopy(previewSeed.result, previewSeed.config.type)}
+                    className="flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                    <span className="material-icons text-sm mr-1">content_copy</span> Copy
+                </button>
+                <button
+                    onClick={() => handleExport(previewSeed.result, previewSeed.config.type)}
+                    className="flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                    <span className="material-icons text-sm mr-1">download</span> Export
+                </button>
+                <button
+                    onClick={() => setPreviewSeed(null)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                    Close
+                </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={seedToDelete !== null}
+        onClose={() => setSeedToDelete(null)}
+        title="Confirm Deletion"
+      >
+        <div className="space-y-4">
+            <p className="text-gray-600 dark:text-gray-400">
+                Are you sure you want to delete this MindSeed? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3 mt-6">
+                <button
+                    onClick={() => setSeedToDelete(null)}
+                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                    Cancel
+                </button>
+                <button
+                    onClick={confirmDelete}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm"
+                >
+                    Delete Permanently
+                </button>
+            </div>
+        </div>
+      </Modal>
+
       <Modal
         isOpen={showErrorModal}
         onClose={() => setShowErrorModal(false)}

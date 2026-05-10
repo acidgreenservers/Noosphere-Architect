@@ -1,0 +1,36 @@
+
+.base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 180px;
+  height: 44px;
+  padding: 0 24px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: background-color 0.2s, opacity 0.2s;
+  cursor: pointer;
+  border: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.base:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.loading {
+  opacity: 0.8;
+  cursor: wait;
+}
+
+.spinnerContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
