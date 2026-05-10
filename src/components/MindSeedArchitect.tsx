@@ -21,6 +21,7 @@ const MindSeedArchitect: React.FC = () => {
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [previewSeed, setPreviewSeed] = useState<SavedMindSeed | null>(null);
 
   useEffect(() => {
     loadSavedSeeds();
@@ -114,12 +115,14 @@ const MindSeedArchitect: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    try {
-      await deleteMindSeed(id, activeTab);
-      await loadSavedSeeds();
-      setToast({ message: "MindSeed deleted.", type: 'success' });
-    } catch (error) {
-      setToast({ message: "Failed to delete MindSeed", type: 'error' });
+    if (window.confirm('Are you sure you want to delete this MindSeed?')) {
+      try {
+        await deleteMindSeed(id, activeTab);
+        await loadSavedSeeds();
+        setToast({ message: "MindSeed deleted.", type: 'success' });
+      } catch (error) {
+        setToast({ message: "Failed to delete MindSeed", type: 'error' });
+      }
     }
   };
 
@@ -333,6 +336,12 @@ const MindSeedArchitect: React.FC = () => {
                       <p className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4 italic">"{seed.result.seed}"</p>
                       <div className="flex flex-wrap gap-4 mt-2">
                         <button
+                            onClick={() => setPreviewSeed(seed)}
+                            className="text-sm text-gray-600 dark:text-gray-400 hover:underline flex items-center"
+                        >
+                            <span className="material-icons text-xs mr-1">visibility</span> Preview
+                        </button>
+                        <button
                             onClick={() => {
                                 setText(seed.config.text);
                                 setActiveTab(seed.config.type);
@@ -372,6 +381,63 @@ const MindSeedArchitect: React.FC = () => {
       </div>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
+      {/* Preview Modal */}
+      <Modal
+        isOpen={!!previewSeed}
+        onClose={() => setPreviewSeed(null)}
+        title={`${previewSeed?.config.type.charAt(0).toUpperCase()}${previewSeed?.config.type.slice(1)}Seed Preview`}
+      >
+        {previewSeed && (
+          <div className="space-y-6">
+            <div className="mb-4">
+                <blockquote className="border-l-4 border-blue-500 pl-4 py-2 italic text-xl text-gray-800 dark:text-gray-200">
+                    "{previewSeed.result.seed}"
+                </blockquote>
+            </div>
+
+            <div className="overflow-hidden border border-gray-200 dark:border-gray-700 rounded-lg">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-900/50">
+                        <tr>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Seed</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pattern</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deploy When</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        <tr>
+                            <td className="px-4 py-3 text-sm italic text-gray-900 dark:text-gray-100">"{previewSeed.result.seed}"</td>
+                            <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400" dangerouslySetInnerHTML={{ __html: previewSeed.result.pattern.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }}></td>
+                            <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{previewSeed.result.deployWhen}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+                <button
+                    onClick={() => handleCopy(previewSeed.result, previewSeed.config.type)}
+                    className="flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                    <span className="material-icons text-sm mr-1">content_copy</span> Copy
+                </button>
+                <button
+                    onClick={() => handleExport(previewSeed.result, previewSeed.config.type)}
+                    className="flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                    <span className="material-icons text-sm mr-1">download</span> Export
+                </button>
+                <button
+                    onClick={() => setPreviewSeed(null)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                    Close
+                </button>
+            </div>
+          </div>
+        )}
+      </Modal>
       <Modal
         isOpen={showErrorModal}
         onClose={() => setShowErrorModal(false)}
