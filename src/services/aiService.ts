@@ -169,7 +169,7 @@ Every seed across every family must pass these four invariants. If it fails any 
 **Output Format:**
 The final output MUST be a single, raw JSON object with no surrounding text or markdown code blocks.
 The JSON object must have the following keys:
-- "seed": The compressed seed string (under 12 words, in quotation marks).
+- "seed": The compressed seed string (under 12 words, NO quotation marks in the string).
 - "pattern": A brief, bolded name for the pattern (e.g., **Alignment Verification**) followed by a one-sentence explanation of the core logic.
 - "deployWhen": A comma-separated list of 3-4 specific scenarios where this seed is the optimal tool to use.
 
