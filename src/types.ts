@@ -66,3 +66,22 @@ export interface SavedProject {
     files: GeneratedProjectFiles;
     createdAt: string;
 }
+
+export interface SignalConfig {
+  messyPrompt: string;
+}
+
+export interface ExtractedSignal {
+  promptSignal: string;
+  signalConstraints: string;
+}
+
+export interface SavedSignal {
+  id?: number;
+  name: string;
+  config: SignalConfig;
+  extractedSignal: string;
+  promptSignal: string;
+  signalConstraints: string;
+  createdAt: string;
+}

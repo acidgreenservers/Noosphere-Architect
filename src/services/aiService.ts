@@ -1,5 +1,5 @@
 
-import { AgentConfig, GeneratedFiles, PromptConfig, ProjectConfig, GeneratedProjectFiles } from '../types';
+import { AgentConfig, GeneratedFiles, PromptConfig, ProjectConfig, GeneratedProjectFiles, SignalConfig, ExtractedSignal } from '../types';
 import { getOpenRouterKey, getOpenRouterModel } from './sessionService';
 
 const getOpenRouterConfig = () => {
@@ -105,6 +105,61 @@ export const generateAgentFiles = async (config: AgentConfig): Promise<Generated
     return JSON.parse(cleanedText);
   } catch (error: any) {
     console.error("Error generating agent files:", error);
+    throw new Error(error.message || "Failed to communicate with the API.");
+  }
+};
+
+const createSignalExtractorMetaPrompt = (config: SignalConfig): string => {
+  return `
+You are an expert Signal Extractor. Your task is to take a "messy prompt" (raw thoughts, disorganized instructions, or poorly formatted ideas) and extract the core signal.
+
+Your goal is NOT to make a perfect final prompt, but to extract and amplify the hidden or poorly laid out signal into a coherent, actionable systemic prompt that an agent can follow.
+
+**Output Constraints:**
+- Text ONLY.
+- NO markdown syntax (no bolding, no headings like # or ##).
+- Use ONLY "-" or "*" bullet points for clarity and step-by-step processes.
+- MAXIMUM of 1000 characters for the total output.
+- The output MUST be a JSON object with two keys: "promptSignal" and "signalConstraints".
+
+**Instructions for "promptSignal":**
+- Extract the primary goal and task from the messy input.
+- Reorganize it into coherent, detailed prose.
+- Make it actionable for an AI agent.
+
+**Instructions for "signalConstraints":**
+- Extract any specific rules, limitations, steps, or constraints from the messy input.
+- List them clearly using bullet points.
+
+**User's Messy Prompt:**
+---
+${config.messyPrompt}
+---
+
+Generate ONLY the raw JSON object with "promptSignal" and "signalConstraints" keys.
+`;
+};
+
+export const extractSignal = async (config: SignalConfig): Promise<ExtractedSignal> => {
+  if (!config.messyPrompt.trim()) {
+    throw new Error("Input prompt cannot be empty.");
+  }
+
+  const prompt = createSignalExtractorMetaPrompt(config);
+
+  try {
+    const openRouterConfig = getOpenRouterConfig();
+
+    if (!openRouterConfig) {
+      throw new Error("OpenRouter settings (API Key and Model) are required. Please configure them in the Agent API Settings.");
+    }
+
+    const responseText = await callOpenRouter(prompt, openRouterConfig.apiKey, openRouterConfig.model, true);
+    // Clean up potential markdown code blocks from OpenRouter response
+    const cleanedText = responseText.replace(/^```json\n?/, '').replace(/\n?```$/, '');
+    return JSON.parse(cleanedText);
+  } catch (error: any) {
+    console.error("Error extracting signal:", error);
     throw new Error(error.message || "Failed to communicate with the API.");
   }
 };

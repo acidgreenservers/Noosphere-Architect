@@ -44,7 +44,12 @@ const PROMPT_TEMPLATES = [
     },
 ];
 
-const PromptArchitect: React.FC = () => {
+interface PromptArchitectProps {
+    initialConfig?: PromptConfig;
+    onClearInitialConfig?: () => void;
+}
+
+const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClearInitialConfig }) => {
     const [promptConfig, setPromptConfig] = useState<PromptConfig>({ goal: '', instructions: '' });
     const [generatedPrompt, setGeneratedPrompt] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -66,6 +71,14 @@ const PromptArchitect: React.FC = () => {
         const prompts = await db.getAllPrompts();
         setSavedPrompts(prompts);
     }, []);
+
+    useEffect(() => {
+        if (initialConfig) {
+            setPromptConfig(initialConfig);
+            if (onClearInitialConfig) onClearInitialConfig();
+            setDraftStatus('none'); // Prevent draft from overwriting initial config
+        }
+    }, [initialConfig, onClearInitialConfig]);
 
     useEffect(() => {
         loadSavedPrompts();
