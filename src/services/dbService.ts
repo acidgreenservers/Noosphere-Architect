@@ -1,16 +1,18 @@
 
-import { SavedAgent, SavedPrompt, AgentConfig, PromptConfig, SavedProject, ProjectConfig, SavedSignal, SignalConfig } from '../types';
+import { SavedAgent, SavedPrompt, AgentConfig, PromptConfig, SavedProject, ProjectConfig, SavedSignal, SignalConfig, SavedMindSeed, MindSeedConfig } from '../types';
 
 const DB_NAME = 'NoosphereArchitectDB';
-const DB_VERSION = 5; // Incremented for Signal Extractor stores
+const DB_VERSION = 6; // Incremented for MindSeed stores
 const AGENT_STORE = 'savedAgents';
 const PROMPT_STORE = 'savedPrompts';
 const PROJECT_STORE = 'savedProjects';
 const SIGNAL_STORE = 'savedSignals';
+const MINDSEED_STORE = 'savedMindSeeds';
 const AGENT_DRAFT_STORE = 'agentDraft';
 const PROMPT_DRAFT_STORE = 'promptDraft';
 const PROJECT_DRAFT_STORE = 'projectDraft';
 const SIGNAL_DRAFT_STORE = 'signalDraft';
+const MINDSEED_DRAFT_STORE = 'mindSeedDraft';
 
 
 let dbInstance: IDBDatabase | null = null;
@@ -67,6 +69,14 @@ const initDB = (): Promise<IDBDatabase> => {
       }
       if (!db.objectStoreNames.contains(SIGNAL_DRAFT_STORE)) {
         db.createObjectStore(SIGNAL_DRAFT_STORE, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(MINDSEED_STORE)) {
+        const mindSeedStore = db.createObjectStore(MINDSEED_STORE, { keyPath: 'id', autoIncrement: true });
+        mindSeedStore.createIndex('name', 'name', { unique: false });
+        mindSeedStore.createIndex('createdAt', 'createdAt', { unique: false });
+      }
+      if (!db.objectStoreNames.contains(MINDSEED_DRAFT_STORE)) {
+        db.createObjectStore(MINDSEED_DRAFT_STORE, { keyPath: 'id' });
       }
     };
   });
@@ -190,6 +200,34 @@ export const clearSignalDraft = (id: number): Promise<void> => {
     });
 };
 
+// MindSeed Draft Functions
+export const saveMindSeedDraft = (draft: {id: number, config: MindSeedConfig}): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(MINDSEED_DRAFT_STORE, 'readwrite');
+        const request = store.put(draft);
+        request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const getMindSeedDraft = (id: number): Promise<{id: number, config: MindSeedConfig} | undefined> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(MINDSEED_DRAFT_STORE, 'readonly');
+        const request = store.get(id);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const clearMindSeedDraft = (id: number): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(MINDSEED_DRAFT_STORE, 'readwrite');
+        const request = store.delete(id);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
 
 // Agent Functions
 export const addAgent = (agent: SavedAgent): Promise<number> => {
@@ -241,6 +279,43 @@ export const deleteSignal = (id: number): Promise<void> => {
 export const clearAllSignals = (): Promise<void> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(SIGNAL_STORE, 'readwrite');
+        const request = store.clear();
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+// MindSeed Functions
+export const addMindSeed = (mindSeed: SavedMindSeed): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(MINDSEED_STORE, 'readwrite');
+        const request = store.add(mindSeed);
+        request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const getAllMindSeeds = (): Promise<SavedMindSeed[]> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(MINDSEED_STORE, 'readonly');
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const deleteMindSeed = (id: number): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(MINDSEED_STORE, 'readwrite');
+        const request = store.delete(id);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const clearAllMindSeeds = (): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(MINDSEED_STORE, 'readwrite');
         const request = store.clear();
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);

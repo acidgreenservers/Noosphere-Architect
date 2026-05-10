@@ -85,3 +85,30 @@ export interface SavedSignal {
   signalConstraints: string;
   createdAt: string;
 }
+
+export interface MindSeedConfig {
+  sourceContent: string;
+}
+
+export interface Seed {
+  type: 'CogniSeed' | 'LinguaSeed' | 'ArchSeed';
+  content: string;
+  reasoning: string;
+}
+
+export interface MindSeedResult {
+  seeds: Seed[];
+  structuralIntegrity: {
+    invariant: string;
+    check: string;
+    status: 'Pass' | 'Fail' | 'Partial';
+  }[];
+}
+
+export interface SavedMindSeed {
+  id?: number;
+  name: string;
+  config: MindSeedConfig;
+  result: MindSeedResult;
+  createdAt: string;
+}

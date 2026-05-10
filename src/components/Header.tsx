@@ -6,7 +6,7 @@ interface HeaderProps {
   onPromptArchitectClick: () => void;
   onProjectArchitectClick: () => void;
   onAgentApiSettingsClick: () => void;
-  onSignalExtractorClick: () => void;
+  onSignalExtractorClick: () => void; // Keeping name for compatibility in interface but it will link to MindSeeds
   showHomeButton: boolean;
 }
 
@@ -34,10 +34,10 @@ const Header: React.FC<HeaderProps> = ({
            <button
             onClick={onSignalExtractorClick}
             className="flex items-center text-gray-600 dark:text-gray-300 hover:text-blue-500 dark:hover:text-blue-400 transition-colors p-2 rounded-full mr-2"
-            aria-label="Go to Signal Extractor"
-            title="Signal Extractor"
+            aria-label="Go to MindSeeds"
+            title="MindSeeds"
            >
-            <span className="material-icons">unarchive</span>
+            <span className="material-icons">spa</span>
           </button>
            <button 
             onClick={onProjectArchitectClick}

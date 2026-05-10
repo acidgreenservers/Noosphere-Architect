@@ -6,10 +6,10 @@ import AgentArchitect from './components/AgentArchitect';
 import PromptArchitect from './components/PromptArchitect';
 import ProjectArchitect from './components/ProjectArchitect';
 import AgentApiSettings from './components/AgentApiSettings';
-import SignalExtractor from './components/SignalExtractor';
+import MindSeeds from './components/MindSeeds';
 import { PromptConfig } from './types';
 
-export type View = 'landing' | 'agentArchitect' | 'promptArchitect' | 'projectArchitect' | 'agentApiSettings' | 'signalExtractor';
+export type View = 'landing' | 'agentArchitect' | 'promptArchitect' | 'projectArchitect' | 'agentApiSettings' | 'mindSeeds';
 
 const App: React.FC = () => {
   const [view, setView] = useState<View>('landing');
@@ -30,8 +30,8 @@ const App: React.FC = () => {
         return <ProjectArchitect />;
       case 'agentApiSettings':
         return <AgentApiSettings />;
-      case 'signalExtractor':
-        return <SignalExtractor onTransfer={handleTransferToPromptArchitect} />;
+      case 'mindSeeds':
+        return <MindSeeds onTransfer={handleTransferToPromptArchitect} />;
       case 'landing':
       default:
         return <LandingPage onSelectView={setView} />;
@@ -45,7 +45,7 @@ const App: React.FC = () => {
         onPromptArchitectClick={() => setView('promptArchitect')}
         onProjectArchitectClick={() => setView('projectArchitect')}
         onAgentApiSettingsClick={() => setView('agentApiSettings')}
-        onSignalExtractorClick={() => setView('signalExtractor')}
+        onSignalExtractorClick={() => setView('mindSeeds')}
         showHomeButton={view !== 'landing'}
       />
       <main className="container mx-auto p-4 md:p-8">

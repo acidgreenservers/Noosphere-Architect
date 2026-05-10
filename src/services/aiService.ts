@@ -1,5 +1,5 @@
 
-import { AgentConfig, GeneratedFiles, PromptConfig, ProjectConfig, GeneratedProjectFiles, SignalConfig, ExtractedSignal } from '../types';
+import { AgentConfig, GeneratedFiles, PromptConfig, ProjectConfig, GeneratedProjectFiles, SignalConfig, ExtractedSignal, MindSeedConfig, MindSeedResult } from '../types';
 import { getOpenRouterKey, getOpenRouterModel } from './sessionService';
 
 const getOpenRouterConfig = () => {
@@ -105,6 +105,58 @@ export const generateAgentFiles = async (config: AgentConfig): Promise<Generated
     return JSON.parse(cleanedText);
   } catch (error: any) {
     console.error("Error generating agent files:", error);
+    throw new Error(error.message || "Failed to communicate with the API.");
+  }
+};
+
+const createMindSeedMetaPrompt = (config: MindSeedConfig): string => {
+  return `
+You are an expert at creating "MindSeeds" - hyper-compressed, generative units of intelligence. Your task is to distill a large amount of source content (up to 20,000 characters) into three distinct types of "Seeds of Wisdom".
+
+**The Four Invariants of a Seed:**
+1. **Compression:** Must be under 12 words. No filler. Pure semantic density.
+2. **Generative:** Must contain enough "genetic" information to grow back into the original concept when de-compressed by an intelligent agent.
+3. **Falsifiable:** Must make a clear claim that can be tested or proven wrong.
+4. **Decompressible:** An intelligent agent should be able to derive specific, actionable steps from it.
+
+**The Three Seed Types:**
+1. **CogniSeed (Orange):** Focuses on the "Why" and the underlying mental models/philosophy.
+2. **LinguaSeed (Green):** Focuses on the "What" - the core terminology and language of the domain.
+3. **ArchSeed (Violet):** Focuses on the "How" - the structural and architectural patterns.
+
+**Output Format:**
+The output MUST be a single, raw JSON object with two keys: "seeds" and "structuralIntegrity".
+- "seeds": An array of 3 objects, each with "type" (CogniSeed, LinguaSeed, ArchSeed), "content" (the 12-word seed), and "reasoning" (a brief explanation of how it satisfies the invariants).
+- "structuralIntegrity": An array of 4 objects, each with "invariant" (Compression, Generative, Falsifiable, Decompressible), "check" (a specific check performed), and "status" (Pass, Fail, Partial).
+
+**Source Content:**
+---
+${config.sourceContent}
+---
+
+Generate ONLY the raw JSON object.
+`;
+};
+
+export const generateMindSeeds = async (config: MindSeedConfig): Promise<MindSeedResult> => {
+  if (!config.sourceContent.trim()) {
+    throw new Error("Source content cannot be empty.");
+  }
+
+  const prompt = createMindSeedMetaPrompt(config);
+
+  try {
+    const openRouterConfig = getOpenRouterConfig();
+
+    if (!openRouterConfig) {
+      throw new Error("OpenRouter settings (API Key and Model) are required. Please configure them in the Agent API Settings.");
+    }
+
+    const responseText = await callOpenRouter(prompt, openRouterConfig.apiKey, openRouterConfig.model, true);
+    const cleanedText = responseText.replace(/^```json\n?/, '').replace(/\n?```$/, '');
+    return JSON.parse(cleanedText);
+  } catch (error: any) {
+    console.error("Error generating mind seeds:", error);
     throw new Error(error.message || "Failed to communicate with the API.");
   }
 };

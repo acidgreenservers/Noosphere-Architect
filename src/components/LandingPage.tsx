@@ -66,10 +66,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectView }) => {
                 <h2 className="text-3xl font-bold text-center mb-12 text-gray-900 dark:text-gray-100">Our Tools</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
                     <ToolCard
-                        icon="unarchive"
-                        title="Signal Extractor"
-                        description="Extract and amplify the core signal from messy thoughts or rough notes to create actionable systemic prompts."
-                        onClick={() => onSelectView('signalExtractor')}
+                        icon="spa"
+                        title="MindSeeds Creation Tool"
+                        description="Distill massive source material into generative 'Seeds of Wisdom' and extract clean signals from messy input."
+                        onClick={() => onSelectView('mindSeeds')}
                     />
                     {/* Placeholder for future tool above Agent Architect */}
                     <div className="hidden md:block"></div>
