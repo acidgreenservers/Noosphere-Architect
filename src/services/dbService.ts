@@ -1,13 +1,15 @@
 
-import { SavedAgent, SavedPrompt, AgentConfig, PromptConfig, SavedProject, ProjectConfig, SavedSignal, SignalConfig, SavedMindSeed, MindSeedConfig } from '../types';
+import { SavedAgent, SavedPrompt, AgentConfig, PromptConfig, SavedProject, ProjectConfig, SavedSignal, SignalConfig, SavedMindSeed, MindSeedConfig, MindSeedType } from '../types';
 
 const DB_NAME = 'NoosphereArchitectDB';
-const DB_VERSION = 6; // Incremented for MindSeed stores
+const DB_VERSION = 7; // Incremented for separate MindSeed stores
 const AGENT_STORE = 'savedAgents';
 const PROMPT_STORE = 'savedPrompts';
 const PROJECT_STORE = 'savedProjects';
 const SIGNAL_STORE = 'savedSignals';
-const MINDSEED_STORE = 'savedMindSeeds';
+const COGNISEED_STORE = 'cogniseeds';
+const LINGUASEED_STORE = 'linguaseeds';
+const ARCHSEED_STORE = 'archseeds';
 const AGENT_DRAFT_STORE = 'agentDraft';
 const PROMPT_DRAFT_STORE = 'promptDraft';
 const PROJECT_DRAFT_STORE = 'projectDraft';
@@ -70,10 +72,20 @@ const initDB = (): Promise<IDBDatabase> => {
       if (!db.objectStoreNames.contains(SIGNAL_DRAFT_STORE)) {
         db.createObjectStore(SIGNAL_DRAFT_STORE, { keyPath: 'id' });
       }
-      if (!db.objectStoreNames.contains(MINDSEED_STORE)) {
-        const mindSeedStore = db.createObjectStore(MINDSEED_STORE, { keyPath: 'id', autoIncrement: true });
-        mindSeedStore.createIndex('name', 'name', { unique: false });
-        mindSeedStore.createIndex('createdAt', 'createdAt', { unique: false });
+      if (!db.objectStoreNames.contains(COGNISEED_STORE)) {
+        const store = db.createObjectStore(COGNISEED_STORE, { keyPath: 'id', autoIncrement: true });
+        store.createIndex('name', 'name', { unique: false });
+        store.createIndex('createdAt', 'createdAt', { unique: false });
+      }
+      if (!db.objectStoreNames.contains(LINGUASEED_STORE)) {
+        const store = db.createObjectStore(LINGUASEED_STORE, { keyPath: 'id', autoIncrement: true });
+        store.createIndex('name', 'name', { unique: false });
+        store.createIndex('createdAt', 'createdAt', { unique: false });
+      }
+      if (!db.objectStoreNames.contains(ARCHSEED_STORE)) {
+        const store = db.createObjectStore(ARCHSEED_STORE, { keyPath: 'id', autoIncrement: true });
+        store.createIndex('name', 'name', { unique: false });
+        store.createIndex('createdAt', 'createdAt', { unique: false });
       }
       if (!db.objectStoreNames.contains(MINDSEED_DRAFT_STORE)) {
         db.createObjectStore(MINDSEED_DRAFT_STORE, { keyPath: 'id' });
@@ -127,48 +139,87 @@ export const clearMindSeedDraft = (id: number): Promise<void> => {
 };
 
 // MindSeed Functions
+const getMindSeedStoreName = (type: MindSeedType) => {
+    switch (type) {
+        case 'cogni': return COGNISEED_STORE;
+        case 'lingua': return LINGUASEED_STORE;
+        case 'arch': return ARCHSEED_STORE;
+    }
+};
+
 export const addMindSeed = (mindSeed: SavedMindSeed): Promise<number> => {
     return new Promise(async (resolve, reject) => {
-        const store = await getStore(MINDSEED_STORE, 'readwrite');
-        const request = store.add(mindSeed);
-        request.onsuccess = () => resolve(request.result as number);
-        request.onerror = () => reject(request.error);
+        try {
+            const storeName = getMindSeedStoreName(mindSeed.config.type);
+            const store = await getStore(storeName, 'readwrite');
+            const request = store.add(mindSeed);
+            request.onsuccess = async () => {
+                const id = request.result as number;
+                // Atomic verification: check if it was correctly written
+                const getRequest = store.get(id);
+                getRequest.onsuccess = () => resolve(id);
+                getRequest.onerror = () => reject(new Error("Verification failed after write."));
+            };
+            request.onerror = () => reject(request.error);
+        } catch (error) {
+            reject(error);
+        }
     });
 };
 
-export const getAllMindSeeds = (): Promise<SavedMindSeed[]> => {
+export const getAllMindSeeds = (type: MindSeedType): Promise<SavedMindSeed[]> => {
     return new Promise(async (resolve, reject) => {
-        const store = await getStore(MINDSEED_STORE, 'readonly');
-        const request = store.getAll();
-        request.onsuccess = () => resolve(request.result.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-        request.onerror = () => reject(request.error);
+        try {
+            const storeName = getMindSeedStoreName(type);
+            const store = await getStore(storeName, 'readonly');
+            const request = store.getAll();
+            request.onsuccess = () => resolve(request.result.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+            request.onerror = () => reject(request.error);
+        } catch (error) {
+            reject(error);
+        }
     });
 };
 
 export const updateMindSeed = (mindSeed: SavedMindSeed): Promise<number> => {
     return new Promise(async (resolve, reject) => {
-        const store = await getStore(MINDSEED_STORE, 'readwrite');
-        const request = store.put(mindSeed);
-        request.onsuccess = () => resolve(request.result as number);
-        request.onerror = () => reject(request.error);
+        try {
+            const storeName = getMindSeedStoreName(mindSeed.config.type);
+            const store = await getStore(storeName, 'readwrite');
+            const request = store.put(mindSeed);
+            request.onsuccess = () => resolve(request.result as number);
+            request.onerror = () => reject(request.error);
+        } catch (error) {
+            reject(error);
+        }
     });
 };
 
-export const deleteMindSeed = (id: number): Promise<void> => {
+export const deleteMindSeed = (id: number, type: MindSeedType): Promise<void> => {
     return new Promise(async (resolve, reject) => {
-        const store = await getStore(MINDSEED_STORE, 'readwrite');
-        const request = store.delete(id);
-        request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error);
+        try {
+            const storeName = getMindSeedStoreName(type);
+            const store = await getStore(storeName, 'readwrite');
+            const request = store.delete(id);
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        } catch (error) {
+            reject(error);
+        }
     });
 };
 
-export const clearAllMindSeeds = (): Promise<void> => {
+export const clearAllMindSeeds = (type: MindSeedType): Promise<void> => {
     return new Promise(async (resolve, reject) => {
-        const store = await getStore(MINDSEED_STORE, 'readwrite');
-        const request = store.clear();
-        request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error);
+        try {
+            const storeName = getMindSeedStoreName(type);
+            const store = await getStore(storeName, 'readwrite');
+            const request = store.clear();
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        } catch (error) {
+            reject(error);
+        }
     });
 };
 

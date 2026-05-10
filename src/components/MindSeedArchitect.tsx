@@ -7,6 +7,7 @@ import { sanitizeFilename } from '../utils/security';
 import LoadingSpinner from './LoadingSpinner';
 import Toast from './Toast';
 import Modal from './Modal';
+import styles from './Button.module.css';
 
 const MAX_CHARS = 20000;
 
@@ -22,12 +23,15 @@ const MindSeedArchitect: React.FC = () => {
 
   useEffect(() => {
     loadSavedSeeds();
+  }, [activeTab]);
+
+  useEffect(() => {
     loadDraft();
   }, []);
 
   const loadSavedSeeds = async () => {
     try {
-      const seeds = await getAllMindSeeds();
+      const seeds = await getAllMindSeeds(activeTab);
       setSavedSeeds(seeds);
     } catch (error) {
       console.error("Failed to load seeds", error);
@@ -99,7 +103,7 @@ const MindSeedArchitect: React.FC = () => {
 
   const handleDelete = async (id: number) => {
     try {
-      await deleteMindSeed(id);
+      await deleteMindSeed(id, activeTab);
       await loadSavedSeeds();
       setToast({ message: "MindSeed deleted.", type: 'success' });
     } catch (error) {
@@ -161,11 +165,11 @@ const MindSeedArchitect: React.FC = () => {
     }
   };
 
-  const getButtonColor = () => {
+  const getButtonColorClass = () => {
     switch (activeTab) {
-        case 'cogni': return 'bg-orange-600 hover:bg-orange-700 focus:ring-orange-500';
-        case 'lingua': return 'bg-green-600 hover:bg-green-700 focus:ring-green-500';
-        case 'arch': return 'bg-violet-600 hover:bg-violet-700 focus:ring-violet-500';
+        case 'cogni': return 'bg-orange-600 hover:bg-orange-700';
+        case 'lingua': return 'bg-green-600 hover:bg-green-700';
+        case 'arch': return 'bg-violet-600 hover:bg-violet-700';
     }
   };
 
@@ -227,9 +231,16 @@ const MindSeedArchitect: React.FC = () => {
             <button
               onClick={handleGenerate}
               disabled={loading || !text.trim()}
-              className={`flex items-center px-6 py-2 rounded-lg text-white font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${getButtonColor()}`}
+              data-testid="generate-button"
+              className={`${styles.base} ${getButtonColorClass()} text-white ${loading ? styles.loading : ''}`}
             >
-              {loading ? <LoadingSpinner size="sm" color="white" /> : 'Generate Seed'}
+              {loading ? (
+                <div className={styles.spinnerContainer}>
+                  <LoadingSpinner size="sm" color="white" />
+                </div>
+              ) : (
+                'Generate Seed'
+              )}
             </button>
           </div>
         </div>
