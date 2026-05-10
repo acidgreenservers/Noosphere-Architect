@@ -148,14 +148,16 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
 
     const handleCopy = () => {
         if (!result) return;
-        const textToCopy = `${result.promptSignal}\n\n${result.signalConstraints}`;
+        const quotedOriginal = config.messyPrompt.split('\n').map(line => `> ${line}`).join('\n');
+        const textToCopy = `## User Prompt\n\n${quotedOriginal}\n>\n>\n\n## Prompt Signal\n\n${result.promptSignal}\n\n## Signal Constraints\n\n${result.signalConstraints}`;
         navigator.clipboard.writeText(textToCopy);
         setSuccessMessage('Signal copied to clipboard!');
     };
 
     const handleExport = () => {
         if (!result) return;
-        const content = `${result.promptSignal}\n\n${result.signalConstraints}`;
+        const quotedOriginal = config.messyPrompt.split('\n').map(line => `> ${line}`).join('\n');
+        const content = `## User Prompt\n\n${quotedOriginal}\n>\n>\n\n## Prompt Signal\n\n${result.promptSignal}\n\n## Signal Constraints\n\n${result.signalConstraints}`;
         const filename = sanitizeFilename(saveName || 'extracted-signal') + '.md';
 
         const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
