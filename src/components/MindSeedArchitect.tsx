@@ -22,6 +22,7 @@ const MindSeedArchitect: React.FC = () => {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [previewSeed, setPreviewSeed] = useState<SavedMindSeed | null>(null);
+  const [seedToDelete, setSeedToDelete] = useState<number | null>(null);
 
   useEffect(() => {
     loadSavedSeeds();
@@ -114,15 +115,20 @@ const MindSeedArchitect: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm('Are you sure you want to delete this MindSeed?')) {
-      try {
-        await deleteMindSeed(id, activeTab);
-        await loadSavedSeeds();
-        setToast({ message: "MindSeed deleted.", type: 'success' });
-      } catch (error) {
-        setToast({ message: "Failed to delete MindSeed", type: 'error' });
-      }
+  const handleDelete = (id: number) => {
+    setSeedToDelete(id);
+  };
+
+  const confirmDelete = async () => {
+    if (seedToDelete === null) return;
+    try {
+      await deleteMindSeed(seedToDelete, activeTab);
+      await loadSavedSeeds();
+      setToast({ message: "MindSeed deleted.", type: 'success' });
+    } catch (error) {
+      setToast({ message: "Failed to delete MindSeed", type: 'error' });
+    } finally {
+      setSeedToDelete(null);
     }
   };
 
@@ -438,6 +444,34 @@ const MindSeedArchitect: React.FC = () => {
           </div>
         )}
       </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={seedToDelete !== null}
+        onClose={() => setSeedToDelete(null)}
+        title="Confirm Deletion"
+      >
+        <div className="space-y-4">
+            <p className="text-gray-600 dark:text-gray-400">
+                Are you sure you want to delete this MindSeed? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3 mt-6">
+                <button
+                    onClick={() => setSeedToDelete(null)}
+                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                    Cancel
+                </button>
+                <button
+                    onClick={confirmDelete}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm"
+                >
+                    Delete Permanently
+                </button>
+            </div>
+        </div>
+      </Modal>
+
       <Modal
         isOpen={showErrorModal}
         onClose={() => setShowErrorModal(false)}
