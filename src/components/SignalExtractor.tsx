@@ -225,8 +225,8 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
                            <span className={`text-xs font-mono px-2 py-1 rounded ${totalChars > 1000 ? 'bg-red-100 text-red-700' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}>
                                 {totalChars} / 1000 characters
                            </span>
-                           <button onClick={handleCopy} className="flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition" title="Copy signal">
-                                <span className="material-icons text-base mr-1.5">content_copy</span>Copy
+                           <button onClick={handleCopy} className="flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition" title="Copy to clipboard">
+                                <span className="material-icons text-base mr-1.5">content_copy</span>Copy to clipboard
                             </button>
                            <button onClick={handleExport} className="flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition" title="Export signal">
                                 <span className="material-icons text-base mr-1.5">download</span>Export
