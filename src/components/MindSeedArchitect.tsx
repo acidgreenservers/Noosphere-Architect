@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { MindSeedConfig, GeneratedMindSeed, SavedMindSeed, MindSeedType } from '../types';
 import { generateMindSeed } from '../services/aiService';
 import { addMindSeed, getAllMindSeeds, deleteMindSeed, saveMindSeedDraft, getMindSeedDraft, clearMindSeedDraft } from '../services/dbService';
+import { sanitizeFilename } from '../utils/security';
 import LoadingSpinner from './LoadingSpinner';
 import Toast from './Toast';
 import Modal from './Modal';
@@ -112,6 +113,44 @@ const MindSeedArchitect: React.FC = () => {
     await clearMindSeedDraft(1);
   };
 
+  const formatAsMarkdown = (seed: GeneratedMindSeed, type: MindSeedType) => {
+    return `> "${seed.seed}"
+
+# ${type.charAt(0).toUpperCase() + type.slice(1)}Seed Invariants Table
+
+| Invariant | Structural Integrity Check |
+|---|---|
+| **Compression** | ${seed.invariants.compression} |
+| **Generative** | ${seed.invariants.generative} |
+| **Falsifiable** | ${seed.invariants.falsifiable} |
+| **Decompressible** | ${seed.invariants.decompressible} |
+`;
+  };
+
+  const handleCopy = async (seed: GeneratedMindSeed, type: MindSeedType) => {
+    const markdown = formatAsMarkdown(seed, type);
+    try {
+      await navigator.clipboard.writeText(markdown);
+      setToast({ message: "Markdown copied to clipboard!", type: 'success' });
+    } catch (err) {
+      setToast({ message: "Failed to copy to clipboard", type: 'error' });
+    }
+  };
+
+  const handleExport = (seed: GeneratedMindSeed, type: MindSeedType) => {
+    const markdown = formatAsMarkdown(seed, type);
+    const blob = new Blob([markdown], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${sanitizeFilename(seed.seed)}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setToast({ message: "MindSeed exported as Markdown!", type: 'success' });
+  };
+
   const charCount = text.length;
   const isNearLimit = charCount > MAX_CHARS * 0.9;
   const charCountColor = charCount > MAX_CHARS ? 'text-red-600' : isNearLimit ? 'text-orange-500' : 'text-gray-500';
@@ -201,14 +240,30 @@ const MindSeedArchitect: React.FC = () => {
         {/* Result Display */}
         {result && (
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex justify-between items-start mb-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
               <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">Generated MindSeed</h3>
-              <button
-                onClick={handleSave}
-                className="flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-700 font-medium"
-              >
-                <span className="material-icons mr-1">save</span> Save to Library
-              </button>
+              <div className="flex flex-wrap gap-4">
+                <button
+                    onClick={() => handleCopy(result, activeTab)}
+                    className="flex items-center text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
+                    title="Copy to Clipboard"
+                >
+                    <span className="material-icons mr-1">content_copy</span> Copy
+                </button>
+                <button
+                    onClick={() => handleExport(result, activeTab)}
+                    className="flex items-center text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 font-medium transition-colors"
+                    title="Export as Markdown"
+                >
+                    <span className="material-icons mr-1">download</span> Export
+                </button>
+                <button
+                    onClick={handleSave}
+                    className="flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-700 font-medium transition-colors"
+                >
+                    <span className="material-icons mr-1">save</span> Save to Library
+                </button>
+              </div>
             </div>
 
             <div className="mb-8">
@@ -268,7 +323,7 @@ const MindSeedArchitect: React.FC = () => {
                         <span className="text-sm text-gray-500">{new Date(seed.createdAt).toLocaleDateString()}</span>
                       </div>
                       <p className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4 italic">"{seed.result.seed}"</p>
-                      <div className="flex space-x-4">
+                      <div className="flex flex-wrap gap-4 mt-2">
                         <button
                             onClick={() => {
                                 setText(seed.config.text);
@@ -276,15 +331,27 @@ const MindSeedArchitect: React.FC = () => {
                                 setResult(seed.result);
                                 window.scrollTo({ top: 0, behavior: 'smooth' });
                             }}
-                            className="text-sm text-blue-600 hover:underline"
+                            className="text-sm text-blue-600 hover:underline flex items-center"
                         >
-                            Load Data
+                            <span className="material-icons text-xs mr-1">refresh</span> Load
+                        </button>
+                        <button
+                            onClick={() => handleCopy(seed.result, seed.config.type)}
+                            className="text-sm text-gray-600 dark:text-gray-400 hover:underline flex items-center"
+                        >
+                            <span className="material-icons text-xs mr-1">content_copy</span> Copy
+                        </button>
+                        <button
+                            onClick={() => handleExport(seed.result, seed.config.type)}
+                            className="text-sm text-gray-600 dark:text-gray-400 hover:underline flex items-center"
+                        >
+                            <span className="material-icons text-xs mr-1">download</span> Export
                         </button>
                         <button
                             onClick={() => handleDelete(seed.id!)}
-                            className="text-sm text-red-600 hover:underline"
+                            className="text-sm text-red-600 hover:underline flex items-center"
                         >
-                            Delete
+                            <span className="material-icons text-xs mr-1">delete</span> Delete
                         </button>
                       </div>
                     </div>
