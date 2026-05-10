@@ -15,6 +15,7 @@ const MindSeedArchitect: React.FC = () => {
   const [activeTab, setActiveTab] = useState<MindSeedType>('cogni');
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
   const [result, setResult] = useState<GeneratedMindSeed | null>(null);
   const [savedSeeds, setSavedSeeds] = useState<SavedMindSeed[]>([]);
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
@@ -69,6 +70,15 @@ const MindSeedArchitect: React.FC = () => {
 
     setLoading(true);
     setResult(null);
+
+    const messages = ['Parsing text structure...', 'Mapping bridges...', 'Synthesizing seed...'];
+    let messageIndex = 0;
+    setLoadingMessage(messages[0]);
+    const interval = setInterval(() => {
+        messageIndex = (messageIndex + 1) % messages.length;
+        setLoadingMessage(messages[messageIndex]);
+    }, 2000);
+
     try {
       const config: MindSeedConfig = { type: activeTab, text };
       const generatedResult = await generateMindSeed(config);
@@ -77,7 +87,9 @@ const MindSeedArchitect: React.FC = () => {
     } catch (error: any) {
       setToast({ message: error.message || "Failed to generate MindSeed", type: 'error' });
     } finally {
+      clearInterval(interval);
       setLoading(false);
+      setLoadingMessage('');
     }
   };
 
@@ -184,10 +196,12 @@ const MindSeedArchitect: React.FC = () => {
 
       {/* Tabs */}
       <div className="border-b border-gray-200 dark:border-gray-700 mb-8">
-        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+        <nav className="-mb-px flex space-x-8" aria-label="MindSeed Type Tabs" role="tablist">
           {(['cogni', 'lingua', 'arch'] as MindSeedType[]).map((tab) => (
             <button
               key={tab}
+              role="tab"
+              aria-selected={activeTab === tab}
               onClick={() => {
                 setActiveTab(tab);
                 saveMindSeedDraft({ id: 1, config: { type: tab, text } });
@@ -234,16 +248,12 @@ const MindSeedArchitect: React.FC = () => {
               data-testid="generate-button"
               className={`${styles.base} ${getButtonColorClass()} text-white ${loading ? styles.loading : ''}`}
             >
-              {loading ? (
-                <div className={styles.spinnerContainer}>
-                  <LoadingSpinner size="sm" color="white" />
-                </div>
-              ) : (
-                'Generate Seed'
-              )}
+              {loading ? 'Architecting...' : 'Generate Seed'}
             </button>
           </div>
         </div>
+
+        {loading && <LoadingSpinner message={loadingMessage || 'Architecting your MindSeed...'} />}
 
         {/* Result Display */}
         {result && (
