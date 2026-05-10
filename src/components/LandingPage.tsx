@@ -65,6 +65,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectView }) => {
             <section className="my-24">
                 <h2 className="text-3xl font-bold text-center mb-12 text-gray-900 dark:text-gray-100">Our Tools</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+                    <ToolCard
+                        icon="spa"
+                        title="MindSeed Creation Tool"
+                        description="Compress text into generative seeds of wisdom using strict structural integrity checks."
+                        onClick={() => onSelectView('mindSeedArchitect')}
+                    />
                      <ToolCard 
                         icon="architecture"
                         title="Project Architect" 

@@ -5,9 +5,10 @@ import LandingPage from './components/LandingPage';
 import AgentArchitect from './components/AgentArchitect';
 import PromptArchitect from './components/PromptArchitect';
 import ProjectArchitect from './components/ProjectArchitect';
+import MindSeedArchitect from './components/MindSeedArchitect';
 import AgentApiSettings from './components/AgentApiSettings';
 
-export type View = 'landing' | 'agentArchitect' | 'promptArchitect' | 'projectArchitect' | 'agentApiSettings';
+export type View = 'landing' | 'agentArchitect' | 'promptArchitect' | 'projectArchitect' | 'mindSeedArchitect' | 'agentApiSettings';
 
 const App: React.FC = () => {
   const [view, setView] = useState<View>('landing');
@@ -20,6 +21,8 @@ const App: React.FC = () => {
         return <PromptArchitect />;
       case 'projectArchitect':
         return <ProjectArchitect />;
+      case 'mindSeedArchitect':
+        return <MindSeedArchitect />;
       case 'agentApiSettings':
         return <AgentApiSettings />;
       case 'landing':
@@ -34,6 +37,7 @@ const App: React.FC = () => {
         onHomeClick={() => setView('landing')} 
         onPromptArchitectClick={() => setView('promptArchitect')}
         onProjectArchitectClick={() => setView('projectArchitect')}
+        onMindSeedArchitectClick={() => setView('mindSeedArchitect')}
         onAgentApiSettingsClick={() => setView('agentApiSettings')}
         showHomeButton={view !== 'landing'}
       />

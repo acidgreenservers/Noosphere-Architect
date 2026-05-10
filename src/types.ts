@@ -66,3 +66,28 @@ export interface SavedProject {
     files: GeneratedProjectFiles;
     createdAt: string;
 }
+
+export type MindSeedType = 'cogni' | 'lingua' | 'arch';
+
+export interface MindSeedConfig {
+  type: MindSeedType;
+  text: string;
+}
+
+export interface GeneratedMindSeed {
+  seed: string;
+  invariants: {
+    compression: string;
+    generative: string;
+    falsifiable: string;
+    decompressible: string;
+  };
+}
+
+export interface SavedMindSeed {
+  id?: number;
+  name: string;
+  config: MindSeedConfig;
+  result: GeneratedMindSeed;
+  createdAt: string;
+}

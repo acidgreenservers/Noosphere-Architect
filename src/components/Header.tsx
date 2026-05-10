@@ -5,11 +5,12 @@ interface HeaderProps {
   onHomeClick: () => void;
   onPromptArchitectClick: () => void;
   onProjectArchitectClick: () => void;
+  onMindSeedArchitectClick: () => void;
   onAgentApiSettingsClick: () => void;
   showHomeButton: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ onHomeClick, onPromptArchitectClick, onProjectArchitectClick, onAgentApiSettingsClick, showHomeButton }) => {
+const Header: React.FC<HeaderProps> = ({ onHomeClick, onPromptArchitectClick, onProjectArchitectClick, onMindSeedArchitectClick, onAgentApiSettingsClick, showHomeButton }) => {
   return (
     <header className="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-40">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
@@ -30,6 +31,14 @@ const Header: React.FC<HeaderProps> = ({ onHomeClick, onPromptArchitectClick, on
             title="Project Architect"
            >
             <span className="material-icons">architecture</span>
+          </button>
+          <button
+            onClick={onMindSeedArchitectClick}
+            className="flex items-center text-gray-600 dark:text-gray-300 hover:text-orange-500 dark:hover:text-orange-400 transition-colors p-2 rounded-full mr-2"
+            aria-label="Go to MindSeed Architect"
+            title="MindSeed Architect"
+           >
+            <span className="material-icons">spa</span>
           </button>
            <button 
             onClick={onPromptArchitectClick} 
