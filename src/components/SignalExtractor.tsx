@@ -3,6 +3,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { extractSignal } from '../services/aiService';
 import { SignalConfig, ExtractedSignal, SavedSignal, PromptConfig } from '../types';
 import * as db from '../services/dbService';
+import { sanitizeFilename } from '../utils/security';
 import LoadingSpinner from './LoadingSpinner';
 import Modal from './Modal';
 import Toast from './Toast';
@@ -145,6 +146,29 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
         });
     };
 
+    const handleCopy = () => {
+        if (!result) return;
+        const textToCopy = `${result.promptSignal}\n\n${result.signalConstraints}`;
+        navigator.clipboard.writeText(textToCopy);
+        setSuccessMessage('Signal copied to clipboard!');
+    };
+
+    const handleExport = () => {
+        if (!result) return;
+        const content = `${result.promptSignal}\n\n${result.signalConstraints}`;
+        const filename = sanitizeFilename(saveName || 'extracted-signal') + '.md';
+
+        const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
     const totalChars = result ? (result.promptSignal.length + result.signalConstraints.length) : 0;
 
     return (
@@ -197,10 +221,16 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
                 <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
                     <div className="flex flex-col md:flex-row justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
                         <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Extracted Signal</h3>
-                        <div className="flex items-center space-x-3 mt-3 md:mt-0">
+                        <div className="flex flex-wrap items-center justify-center md:justify-end gap-3 mt-3 md:mt-0">
                            <span className={`text-xs font-mono px-2 py-1 rounded ${totalChars > 1000 ? 'bg-red-100 text-red-700' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}>
                                 {totalChars} / 1000 characters
                            </span>
+                           <button onClick={handleCopy} className="flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition" title="Copy signal">
+                                <span className="material-icons text-base mr-1.5">content_copy</span>Copy
+                            </button>
+                           <button onClick={handleExport} className="flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition" title="Export signal">
+                                <span className="material-icons text-base mr-1.5">download</span>Export
+                           </button>
                            <button onClick={() => setIsSaveModalOpen(true)} className="flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm transition" title="Save signal">
                                 <span className="material-icons text-base mr-1.5">save</span>Save
                             </button>
