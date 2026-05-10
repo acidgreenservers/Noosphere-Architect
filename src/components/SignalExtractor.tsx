@@ -151,11 +151,11 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
         <div className="max-w-4xl mx-auto">
             <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
 
-            <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8">
+            <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8 border border-gray-200 dark:border-gray-700/50">
                 <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="space-y-6">
                     <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
                         <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200 flex items-center">
-                            <span className="material-icons mr-2 text-blue-500">unarchive</span>
+                            <span className="material-icons mr-2 text-blue-500 dark:text-blue-400">unarchive</span>
                             Signal Extractor
                         </h2>
                     </div>
@@ -170,14 +170,14 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
                             value={config.messyPrompt}
                             onChange={(e) => setConfig({ messyPrompt: e.target.value })}
                             placeholder="Paste your messy thoughts, rough notes, or disorganized instructions here..."
-                            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20 text-gray-900 dark:text-gray-100"
                             required
                         />
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-center justify-end space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
                         <button type="button" onClick={handleReset} disabled={isLoading} className="w-full sm:w-auto px-6 py-2 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 transition">Reset</button>
-                        <button type="submit" disabled={!config.messyPrompt.trim() || isLoading} className="w-full sm:w-auto flex items-center justify-center px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-300 dark:disabled:bg-blue-800 disabled:cursor-not-allowed transition">
+                        <button type="submit" disabled={!config.messyPrompt.trim() || isLoading} className="w-full sm:w-auto flex items-center justify-center px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-300 dark:disabled:bg-blue-800 disabled:cursor-not-allowed transition">
                             {isLoading ? 'Extracting...' : 'Extract Signal'}
                         </button>
                     </div>
@@ -185,51 +185,44 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
             </div>
 
             {error && (
-                <div className="mt-8 bg-red-100 dark:bg-red-900/50 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg" role="alert">
+                <div className="mt-8 bg-red-100 dark:bg-red-900/50 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg relative" role="alert">
                     <strong className="font-bold">Error: </strong>
-                    <span>{error}</span>
+                    <span className="block sm:inline">{error}</span>
                 </div>
             )}
 
             {isLoading && <LoadingSpinner message={loadingMessage || 'Extracting signal...'} />}
 
             {result && !isLoading && (
-                <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
-                    <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                        <h3 className="text-xl font-semibold">Extracted Signal</h3>
-                        <div className="flex items-center space-x-2">
+                <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                    <div className="flex flex-col md:flex-row justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+                        <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Extracted Signal</h3>
+                        <div className="flex items-center space-x-3 mt-3 md:mt-0">
                            <span className={`text-xs font-mono px-2 py-1 rounded ${totalChars > 1000 ? 'bg-red-100 text-red-700' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}>
                                 {totalChars} / 1000 characters
                            </span>
-                           <button onClick={() => setIsSaveModalOpen(true)} className="flex items-center px-3 py-1.5 border rounded-md text-sm bg-blue-500 text-white hover:bg-blue-600" title="Save signal">
+                           <button onClick={() => setIsSaveModalOpen(true)} className="flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm transition" title="Save signal">
                                 <span className="material-icons text-base mr-1.5">save</span>Save
+                            </button>
+                           <button onClick={handleTransfer} className="flex items-center px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-md text-sm transition" title="Transfer to Prompt Architect">
+                                <span className="material-icons text-base mr-1.5">psychology</span>Transfer
                             </button>
                         </div>
                     </div>
 
-                    <div className="p-6 space-y-6">
+                    <div className="p-6 space-y-8 bg-white dark:bg-gray-800">
                         <div>
-                            <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Prompt Signal</h4>
-                            <div className="p-4 bg-gray-50 dark:bg-gray-900/70 rounded-lg whitespace-pre-wrap text-gray-800 dark:text-gray-200 border border-gray-100 dark:border-gray-700">
+                            <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Prompt Signal</h4>
+                            <div className="p-4 bg-gray-50 dark:bg-gray-900/70 rounded-lg whitespace-pre-wrap text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700 font-mono text-sm">
                                 {result.promptSignal}
                             </div>
                         </div>
 
                         <div>
-                            <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Signal Constraints</h4>
-                            <div className="p-4 bg-gray-50 dark:bg-gray-900/70 rounded-lg whitespace-pre-wrap text-gray-800 dark:text-gray-200 border border-gray-100 dark:border-gray-700">
+                            <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Signal Constraints</h4>
+                            <div className="p-4 bg-gray-50 dark:bg-gray-900/70 rounded-lg whitespace-pre-wrap text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700 font-mono text-sm">
                                 {result.signalConstraints}
                             </div>
-                        </div>
-
-                        <div className="pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-center">
-                            <button
-                                onClick={handleTransfer}
-                                className="flex items-center px-8 py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl shadow-lg transform transition hover:-translate-y-1"
-                            >
-                                <span className="material-icons mr-2">psychology</span>
-                                Transfer to Prompt Architect
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -237,17 +230,22 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
 
             {savedSignals.length > 0 && (
                 <div className="mt-12">
-                    <h2 className="text-2xl font-bold mb-6">Saved Signals</h2>
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Saved Signals</h2>
+                        <button onClick={async () => { if(window.confirm('Clear all signals?')){ await db.clearAllSignals(); loadSavedSignals(); } }} className="text-sm text-red-500 hover:text-red-600 flex items-center">
+                            <span className="material-icons text-sm mr-1">delete_sweep</span> Clear All
+                        </button>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {savedSignals.map(s => (
-                            <div key={s.id} className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow border border-gray-100 dark:border-gray-700 flex justify-between items-center group hover:border-blue-400 transition-colors">
+                            <div key={s.id} className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow border border-gray-200 dark:border-gray-700 flex justify-between items-center group hover:border-blue-500 dark:hover:border-blue-400 transition-colors">
                                 <div className="flex-grow cursor-pointer" onClick={() => handleLoadSaved(s)}>
                                     <p className="font-semibold text-gray-800 dark:text-gray-200">{s.name}</p>
                                     <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(s.createdAt).toLocaleDateString()}</p>
                                 </div>
-                                <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={() => handleLoadSaved(s)} className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-full" title="Load"><span className="material-icons">visibility</span></button>
-                                    <button onClick={() => handleDelete(s.id!)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-full" title="Delete"><span className="material-icons">delete</span></button>
+                                <div className="flex items-center space-x-1">
+                                    <button onClick={() => handleLoadSaved(s)} className="p-2 text-gray-500 hover:text-blue-500 transition-colors" title="Load"><span className="material-icons">visibility</span></button>
+                                    <button onClick={() => handleDelete(s.id!)} className="p-2 text-gray-500 hover:text-red-500 transition-colors" title="Delete"><span className="material-icons">delete</span></button>
                                 </div>
                             </div>
                         ))}
@@ -264,17 +262,17 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
                             id="saveName"
                             value={saveName}
                             onChange={(e) => setSaveName(e.target.value)}
-                            placeholder="e.g., Technical Writing Signal"
-                            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
+                            placeholder="e.g., Email Marketing Signal"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-900 dark:text-gray-100"
                             autoFocus
                         />
                     </div>
                     <div className="flex justify-end space-x-3 mt-6">
-                        <button onClick={() => setIsSaveModalOpen(false)} className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
+                        <button onClick={() => setIsSaveModalOpen(false)} className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition">Cancel</button>
                         <button
                             onClick={handleSaveSignal}
                             disabled={!saveName.trim()}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition"
                         >
                             Save Signal
                         </button>
