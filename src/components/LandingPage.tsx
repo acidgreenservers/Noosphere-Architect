@@ -71,23 +71,26 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectView }) => {
                         description="Extract and amplify the core signal from messy thoughts or rough notes to create actionable systemic prompts."
                         onClick={() => onSelectView('signalExtractor')}
                     />
-                     <ToolCard 
-                        icon="architecture"
-                        title="Project Architect" 
-                        description="Establish a high-level vision, standards, and rules to ensure all project components are consistent and aligned."
-                        onClick={() => onSelectView('projectArchitect')}
-                    />
-                    <ToolCard 
-                        icon="group_work" 
-                        title="AI Agent Architect" 
-                        description="Define an AI agent's role, scope, and goals to generate foundational project documents and guardrails."
-                        onClick={() => onSelectView('agentArchitect')}
-                    />
+                    {/* Placeholder for future tool above Agent Architect */}
+                    <div className="hidden md:block"></div>
+
                     <ToolCard 
                         icon="psychology" 
                         title="Prompt Architect" 
                         description="Transform your raw ideas into powerful, well-structured prompts that you can use with any AI model."
                         onClick={() => onSelectView('promptArchitect')}
+                    />
+                    <ToolCard
+                        icon="group_work"
+                        title="AI Agent Architect"
+                        description="Define an AI agent's role, scope, and goals to generate foundational project documents and guardrails."
+                        onClick={() => onSelectView('agentArchitect')}
+                    />
+                     <ToolCard
+                        icon="architecture"
+                        title="Project Architect"
+                        description="Establish a high-level vision, standards, and rules to ensure all project components are consistent and aligned."
+                        onClick={() => onSelectView('projectArchitect')}
                     />
                     <ToolCard 
                         icon="settings_input_component" 

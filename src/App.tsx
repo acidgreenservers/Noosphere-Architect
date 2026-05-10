@@ -60,7 +60,7 @@ const App: React.FC = () => {
             acidgreenservers
           </a>
         </div>
-        <p className="mt-4">Powered by Gemini. Built with React & Tailwind CSS.</p>
+        <p className="mt-4">Built with React & Tailwind CSS.</p>
       </footer>
     </div>
   );
