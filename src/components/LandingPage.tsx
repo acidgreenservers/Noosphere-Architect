@@ -73,7 +73,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectView }) => {
                     />
                     <ToolCard
                         icon="spa"
-                        title="MindSeed Creation Tool"
+                        title="MindSeed Architect Tool"
                         description="Compress text into generative seeds of wisdom using strict structural integrity checks."
                         onClick={() => onSelectView('mindSeedArchitect')}
                     />

@@ -3,7 +3,7 @@ import { PromptConfig } from '../../types';
 import { handleAiCall } from './openRouter';
 
 const createStructuredPromptMetaPrompt = (config: PromptConfig) => `
-You are an expert Prompt Engineering Assistant. Your task is to take a user's raw goal and key instructions and transform them into a well-structured, clear, and highly effective system prompt.
+Your task is to take a user's raw goal and key instructions and transform them into a well-structured, clear, and highly effective system prompt.
 
 The final prompt you generate should be detailed, unambiguous, and ready for another AI to use. Structure the output using clear headings in Markdown format (e.g., ### ROLE, ### TASK).
 
@@ -19,6 +19,19 @@ A good structure often includes:
 - **### STEP-BY-STEP INSTRUCTIONS:** A clear sequence of actions for the AI to follow.
 - **### CONSTRAINTS:** Rules, limitations, and things to avoid.
 - **### OUTPUT FORMAT:** Specify how the final output should be formatted (e.g., JSON, Markdown, a list).
+
+Things to consider when you pattern match the user prompts raw goal:
+- Map both sides of the bridge before crossing.
+- Build the floor before the ceiling.
+- A reasoning model listens for invariants.
+- A stable model holds shape under pressure.
+- If you immediately know the candle light is fire, Than the mean was cooked a long time ago.
+- The artifact is not the theory.
+- A path is made by walking it.
+- Move at the speed of understanding. 
+- Assumption is a silent fork.
+- Confidence tracks evidence.
+- Clarity is compression under truth
 
 Generate ONLY the final, structured prompt. Do not include any conversational text or explanations about what you did.
 `;
