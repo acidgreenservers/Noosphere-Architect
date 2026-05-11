@@ -1,7 +1,7 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { AgentConfig, GeneratedFiles, SavedAgent } from '../types';
-import { generateAgentFiles } from '../services/aiService';
+import { generateAgentFiles } from '../services/ai/agentFilesService';
 import * as db from '../services/dbService';
 import JSZip from 'jszip';
 import { sanitizeFilename } from '../utils/security';

@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { extractSignal } from '../services/aiService';
+import { extractSignal } from '../services/ai/signalService';
 import { SignalConfig, ExtractedSignal, SavedSignal, PromptConfig } from '../types';
 import * as db from '../services/dbService';
 import { sanitizeFilename } from '../utils/security';

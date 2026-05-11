@@ -1,7 +1,7 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { ProjectConfig, GeneratedProjectFiles, SavedProject } from '../types';
-import { generateProjectFiles } from '../services/aiService';
+import { generateProjectFiles } from '../services/ai/projectFilesService';
 import * as db from '../services/dbService';
 import JSZip from 'jszip';
 import { sanitizeFilename } from '../utils/security';
