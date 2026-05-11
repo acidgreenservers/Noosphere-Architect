@@ -102,7 +102,7 @@ export const generateStructuredSystemPrompt = async (config: PromptConfig): Prom
     throw new Error("Prompt goal cannot be empty.");
   }
 
-  const customContext = await getCustomContext('promptContext');
+  const customContext = await getCustomContext('systemPromptContext');
   const metaPrompt = createSystemPromptMetaPrompt(config, customContext);
   return handleAiCall<string>(metaPrompt, false, "generating system prompt");
 };

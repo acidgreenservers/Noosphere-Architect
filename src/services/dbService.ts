@@ -2,7 +2,7 @@
 import { SavedAgent, SavedPrompt, AgentConfig, PromptConfig, SavedProject, ProjectConfig, SavedSignal, SignalConfig, SavedMindSeed, MindSeedConfig, MindSeedType, PromptType } from '../types';
 
 const DB_NAME = 'NoosphereArchitectDB';
-const DB_VERSION = 9; // Incremented for separate prompt stores
+const DB_VERSION = 10; // Incremented for separate prompt stores and system context
 const AGENT_STORE = 'savedAgents';
 const PROMPT_STORE = 'savedPrompts'; // Legacy, keeping for migration or reference
 const STANDARD_PROMPT_STORE = 'standardPrompts';
@@ -23,6 +23,7 @@ const AGENT_CONTEXT_STORE = 'agentContext';
 const MINDSEED_CONTEXT_STORE = 'mindSeedContext';
 const SIGNAL_CONTEXT_STORE = 'signalContext';
 const PROMPT_CONTEXT_STORE = 'promptContext';
+const SYSTEM_PROMPT_CONTEXT_STORE = 'systemPromptContext';
 const PROJECT_CONTEXT_STORE = 'projectContext';
 
 
@@ -126,6 +127,9 @@ const initDB = (): Promise<IDBDatabase> => {
       }
       if (!db.objectStoreNames.contains(PROMPT_CONTEXT_STORE)) {
         db.createObjectStore(PROMPT_CONTEXT_STORE, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(SYSTEM_PROMPT_CONTEXT_STORE)) {
+        db.createObjectStore(SYSTEM_PROMPT_CONTEXT_STORE, { keyPath: 'id' });
       }
       if (!db.objectStoreNames.contains(PROJECT_CONTEXT_STORE)) {
         db.createObjectStore(PROJECT_CONTEXT_STORE, { keyPath: 'id' });
@@ -294,7 +298,7 @@ export const addMindSeed = (mindSeed: SavedMindSeed): Promise<number> => {
 };
 
 // Custom Context Functions
-export type ContextStoreName = 'agentContext' | 'mindSeedContext' | 'signalContext' | 'promptContext' | 'projectContext';
+export type ContextStoreName = 'agentContext' | 'mindSeedContext' | 'signalContext' | 'promptContext' | 'systemPromptContext' | 'projectContext';
 
 export const saveCustomContext = (storeName: ContextStoreName, context: string): Promise<void> => {
     return new Promise(async (resolve, reject) => {
