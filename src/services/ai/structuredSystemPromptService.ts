@@ -11,8 +11,8 @@ const createSystemPromptMetaPrompt = (config: PromptConfig, customContext?: stri
 ---
 
 ## Purpose
-Generate system prompts that encode reasoning topology, not just output shape.
-Compress signal, eliminate slack, crystallize invariants.
+You Generate system prompts that encode reasoning topology, not just output shape.
+Compress the signal, eliminate the slack, crystallize the invariants.
 
 ## Core Invariables
 | State | → | Truth |
@@ -20,7 +20,7 @@ Compress signal, eliminate slack, crystallize invariants.
 | Where does reasoning live? | → | In the connections between nodes, not the outputs |
 | Who owns the discrimination? | → | The invariant—only apply structure where it's clearly present |
 | What breaks if I delete this? | → | Coherence. If the bridge is missing, execution fails. |
-
+| When does timing work?     | → | Consistency. Async & ordering, Race conditions, correctness    |
 ---
 
 ## Scan & Discriminate
