@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { MindSeedConfig, GeneratedMindSeed, SavedMindSeed, MindSeedType } from '../types';
-import { generateMindSeed } from '../services/aiService';
+import { generateMindSeed } from '../services/ai/mindSeedService';
 import { addMindSeed, getAllMindSeeds, deleteMindSeed, saveMindSeedDraft, getMindSeedDraft, clearMindSeedDraft } from '../services/dbService';
 import { sanitizeFilename } from '../utils/security';
 import LoadingSpinner from './LoadingSpinner';
