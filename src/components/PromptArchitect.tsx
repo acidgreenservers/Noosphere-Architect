@@ -1,7 +1,8 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { generateStructuredPrompt } from '../services/ai/structuredPromptService';
-import { PromptConfig, SavedPrompt } from '../types';
+import { generateBasicPrompt } from '../services/ai/basicPromptService';
+import { generateStructuredSystemPrompt } from '../services/ai/structuredSystemPromptService';
+import { PromptConfig, SavedPrompt, PromptType } from '../types';
 import * as db from '../services/dbService';
 import JSZip from 'jszip';
 import { sanitizeFilename } from '../utils/security';
@@ -45,6 +46,7 @@ const PROMPT_TEMPLATES = [
 ];
 
 const PromptArchitect: React.FC = () => {
+    const [activeTab, setActiveTab] = useState<PromptType>('standard');
     const [promptConfig, setPromptConfig] = useState<PromptConfig>({ goal: '', instructions: '' });
     const [generatedPrompt, setGeneratedPrompt] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -63,45 +65,52 @@ const PromptArchitect: React.FC = () => {
 
 
     const loadSavedPrompts = useCallback(async () => {
-        const prompts = await db.getAllPrompts();
+        const prompts = await db.getAllTypedPrompts(activeTab);
         setSavedPrompts(prompts);
-    }, []);
+    }, [activeTab]);
 
     useEffect(() => {
         loadSavedPrompts();
         const loadDraft = async () => {
-            const draft = await db.getPromptDraft(1);
+            const draft = await db.getTypedPromptDraft(activeTab, 1);
             if (draft?.config && Object.values(draft.config).some(v => v)) {
-                if (window.confirm("An unsaved prompt draft was found. Do you want to load it?")) {
+                if (window.confirm(`An unsaved ${activeTab} prompt draft was found. Do you want to load it?`)) {
                     setPromptConfig(draft.config);
                     setDraftStatus('loaded');
                 } else {
-                    await db.clearPromptDraft(1);
+                    await db.clearTypedPromptDraft(activeTab, 1);
+                    setPromptConfig({ goal: '', instructions: '' });
+                    setGeneratedPrompt('');
                     setDraftStatus('none');
                 }
             } else {
+                setPromptConfig({ goal: '', instructions: '' });
+                setGeneratedPrompt('');
                 setDraftStatus('none');
             }
         };
         loadDraft();
-    }, [loadSavedPrompts]);
+    }, [loadSavedPrompts, activeTab]);
 
     useEffect(() => {
         if (draftStatus === 'unloaded') return;
         const handler = setTimeout(() => {
             if (Object.values(promptConfig).some(v => v)) {
-                db.savePromptDraft({ id: 1, config: promptConfig });
+                db.saveTypedPromptDraft(activeTab, { id: 1, config: promptConfig });
             }
         }, 1500);
         return () => clearTimeout(handler);
-    }, [promptConfig, draftStatus]);
+    }, [promptConfig, draftStatus, activeTab]);
 
     const handleGenerate = useCallback(async () => {
         setIsLoading(true);
         setError(null);
         setGeneratedPrompt('');
 
-        const messages = ['Structuring prompt goal...', 'Defining key instructions...', 'Generating final prompt...'];
+        const messages = activeTab === 'standard'
+            ? ['Extracting signal...', 'Compressing structure...', 'Finalizing prompt...']
+            : ['Scanning topology...', 'Crystallizing invariants...', 'Encoding reasoning...'];
+
         let messageIndex = 0;
         setLoadingMessage(messages[0]);
         loadingIntervalRef.current = window.setInterval(() => {
@@ -112,13 +121,17 @@ const PromptArchitect: React.FC = () => {
         try {
             if (!promptConfig.goal.trim()) {
                 setError("Please enter a goal for your prompt.");
-                setIsLoading(false); // Stop loading on validation error
+                setIsLoading(false);
                 if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
                 return;
             }
-            const result = await generateStructuredPrompt(promptConfig);
+
+            const result = activeTab === 'standard'
+                ? await generateBasicPrompt(promptConfig)
+                : await generateStructuredSystemPrompt(promptConfig);
+
             setGeneratedPrompt(result);
-            await db.clearPromptDraft(1);
+            await db.clearTypedPromptDraft(activeTab, 1);
         } catch (e) {
             setError('Failed to generate prompt. Please check your API key and try again.');
         } finally {
@@ -128,14 +141,14 @@ const PromptArchitect: React.FC = () => {
             }
             setLoadingMessage('');
         }
-    }, [promptConfig]);
+    }, [promptConfig, activeTab]);
 
     const handleReset = () => {
         setPromptConfig({ goal: '', instructions: '' });
         setGeneratedPrompt('');
         setError(null);
         setIsLoading(false);
-        db.clearPromptDraft(1);
+        db.clearTypedPromptDraft(activeTab, 1);
     };
 
     const handleOpenSaveModal = () => {
@@ -161,7 +174,7 @@ const PromptArchitect: React.FC = () => {
                 createdAt: new Date().toISOString(),
                 history: []
             };
-            await db.addPrompt(newPrompt);
+            await db.addTypedPrompt(activeTab, newPrompt);
             setSuccessMessage('Prompt saved successfully!');
         } else if (modalState.mode === 'edit' && modalState.prompt) {
             const isPromptChanged = modalState.prompt.prompt !== modalInput.prompt;
@@ -183,7 +196,7 @@ const PromptArchitect: React.FC = () => {
                 prompt: modalInput.prompt,
                 history: updatedHistory
             };
-            await db.updatePrompt(updatedPrompt);
+            await db.updateTypedPrompt(activeTab, updatedPrompt);
             setSuccessMessage('Prompt updated successfully!');
         }
 
@@ -194,7 +207,7 @@ const PromptArchitect: React.FC = () => {
     const handleDelete = async (id: number) => {
         if (window.confirm('Are you sure you want to delete this prompt?')) {
             try {
-                await db.deletePrompt(id);
+                await db.deleteTypedPrompt(activeTab, id);
                 setSavedPrompts(prevPrompts => prevPrompts.filter(p => p.id !== id));
                 setSuccessMessage('Prompt deleted successfully!');
             } catch (err) {
@@ -205,11 +218,11 @@ const PromptArchitect: React.FC = () => {
     };
 
     const handleClearAll = async () => {
-        if (window.confirm('Are you sure you want to delete ALL saved prompts? This action cannot be undone.')) {
+        if (window.confirm('Are you sure you want to delete ALL saved prompts in this tab? This action cannot be undone.')) {
             try {
-                await db.clearAllPrompts();
+                await db.clearAllTypedPrompts(activeTab);
                 setSavedPrompts([]);
-                setSuccessMessage('All prompts have been deleted.');
+                setSuccessMessage('All prompts in this tab have been deleted.');
             } catch (err) {
                 setError('Failed to clear all prompts.');
                 console.error(err);
@@ -221,16 +234,18 @@ const PromptArchitect: React.FC = () => {
         if (savedPrompts.length === 0) return;
 
         const zip = new JSZip();
+        const exportFilename = activeTab === 'standard' ? 'PROMPT.md' : 'AGENTS.md';
+
         savedPrompts.forEach(p => {
-            const filename = sanitizeFilename(p.name) + '.md';
-            zip.file(filename, p.prompt);
+            const folderName = sanitizeFilename(p.name);
+            zip.file(`${folderName}/${exportFilename}`, p.prompt);
         });
 
         const content = await zip.generateAsync({ type: 'blob' });
         const url = URL.createObjectURL(content);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `noosphere-prompts-${new Date().toISOString().split('T')[0]}.zip`;
+        link.download = `noosphere-${activeTab}-prompts-${new Date().toISOString().split('T')[0]}.zip`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -251,14 +266,13 @@ const PromptArchitect: React.FC = () => {
 
     const handleExportPrompt = () => {
         if (!generatedPrompt) return;
-        const savedPrompt = savedPrompts.find(p => p.prompt === generatedPrompt);
-        const filename = sanitizeFilename(savedPrompt?.name || promptConfig.goal || 'prompt') + '.md';
+        const exportFilename = activeTab === 'standard' ? 'PROMPT.md' : 'AGENTS.md';
         
         const blob = new Blob([generatedPrompt], { type: 'text/markdown;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = filename;
+        link.download = exportFilename;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -277,10 +291,62 @@ const PromptArchitect: React.FC = () => {
     return (
         <div className="max-w-4xl mx-auto">
             <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
-            <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8">
+
+            <div className="flex justify-between items-center mb-8">
+                <div>
+                    <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                        {activeTab === 'standard' ? 'Prompt Architect' : 'System Prompt Architect'}
+                    </h2>
+                    <p className="text-gray-600 dark:text-gray-400">
+                        {activeTab === 'standard'
+                            ? 'Extract signal from messy thoughts and refine into high-quality standard prompts.'
+                            : 'Crystallize reasoning topology and encode invariants into powerful system prompts.'}
+                    </p>
+                </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="border-b border-gray-200 dark:border-gray-700 mb-8">
+                <nav className="-mb-px flex space-x-8" aria-label="Prompt Type Tabs" role="tablist">
+                    <button
+                        role="tab"
+                        aria-selected={activeTab === 'standard'}
+                        onClick={() => {
+                            setActiveTab('standard');
+                            setDraftStatus('unloaded');
+                        }}
+                        className={`
+                            whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200
+                            ${activeTab === 'standard'
+                                ? 'text-blue-500 border-blue-500'
+                                : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}
+                        `}
+                    >
+                        Prompt Architect
+                    </button>
+                    <button
+                        role="tab"
+                        aria-selected={activeTab === 'system'}
+                        onClick={() => {
+                            setActiveTab('system');
+                            setDraftStatus('unloaded');
+                        }}
+                        className={`
+                            whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200
+                            ${activeTab === 'system'
+                                ? 'text-purple-500 border-purple-500'
+                                : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}
+                        `}
+                    >
+                        System Prompt Architect
+                    </button>
+                </nav>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8">
                 <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="space-y-6">
                     <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-                        <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">Define Your Prompt</h2>
+                        <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Define Your Prompt</h3>
                         <button type="button" onClick={() => setIsTemplateModalOpen(true)} className="w-full sm:w-auto flex items-center justify-center px-4 py-2 border border-blue-500 text-blue-500 dark:text-blue-400 dark:border-blue-400 rounded-md text-sm font-medium hover:bg-blue-50 dark:hover:bg-blue-900/40 transition">
                             <span className="material-icons mr-2 text-base">model_training</span>
                             Load Template
@@ -308,7 +374,7 @@ const PromptArchitect: React.FC = () => {
                     </div>
                     <div className="flex flex-col sm:flex-row items-center justify-end space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
                         <button type="button" onClick={handleReset} disabled={isLoading} className="w-full sm:w-auto px-6 py-2 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 transition">Reset</button>
-                        <button type="submit" disabled={!promptConfig.goal.trim() || isLoading} className="w-full sm:w-auto flex items-center justify-center px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-300 dark:disabled:bg-blue-800 disabled:cursor-not-allowed transition">
+                        <button type="submit" disabled={!promptConfig.goal.trim() || isLoading} className={`w-full sm:w-auto flex items-center justify-center px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${activeTab === 'standard' ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500' : 'bg-purple-600 hover:bg-purple-700 focus:ring-purple-500'} focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition`}>
                             {isLoading ? 'Architecting...' : 'Generate Prompt'}
                         </button>
                     </div>
@@ -325,9 +391,9 @@ const PromptArchitect: React.FC = () => {
             {isLoading && <LoadingSpinner message={loadingMessage || 'Architecting your prompt...'} />}
 
             {generatedPrompt && !isLoading && (
-                <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg">
+                <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-500">
                      <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
-                        <h3 className="text-xl font-semibold">Generated Prompt</h3>
+                        <h3 className="text-xl font-semibold">Generated {activeTab === 'standard' ? 'Prompt' : 'System Prompt'}</h3>
                         <div className="flex items-center space-x-2">
                            <button onClick={() => navigator.clipboard.writeText(generatedPrompt)} className="flex items-center px-3 py-1.5 border rounded-md text-sm" title="Copy prompt">
                                 <span className="material-icons text-base mr-1.5">content_copy</span>Copy
@@ -335,7 +401,7 @@ const PromptArchitect: React.FC = () => {
                            <button onClick={handleExportPrompt} className="flex items-center px-3 py-1.5 border rounded-md text-sm" title="Export prompt">
                                 <span className="material-icons text-base mr-1.5">download</span>Export
                            </button>
-                           <button onClick={handleOpenSaveModal} className="flex items-center px-3 py-1.5 border rounded-md text-sm bg-blue-500 text-white hover:bg-blue-600" title="Save prompt">
+                           <button onClick={handleOpenSaveModal} className={`flex items-center px-3 py-1.5 border rounded-md text-sm text-white ${activeTab === 'standard' ? 'bg-blue-500 hover:bg-blue-600' : 'bg-purple-500 hover:bg-purple-600'}`} title="Save prompt">
                                 <span className="material-icons text-base mr-1.5">save</span>Save
                             </button>
                         </div>
@@ -349,7 +415,7 @@ const PromptArchitect: React.FC = () => {
             {savedPrompts.length > 0 && (
                 <div className="mt-12">
                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-2xl font-bold">Saved Prompts</h2>
+                        <h3 className="text-2xl font-bold">Saved {activeTab === 'standard' ? 'Prompts' : 'System Prompts'}</h3>
                         <div className="flex space-x-2">
                             <button onClick={handleExportAll} className="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/60 flex items-center">
                                 <span className="material-icons text-sm mr-1">download</span>
@@ -363,9 +429,9 @@ const PromptArchitect: React.FC = () => {
                     </div>
                     <div className="space-y-4">
                         {savedPrompts.map(p => (
-                            <div key={p.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md flex justify-between items-center">
+                            <div key={p.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border border-gray-100 dark:border-gray-700 flex justify-between items-center hover:shadow-lg transition-shadow">
                                 <div>
-                                    <p className="font-semibold">{p.name}</p>
+                                    <p className="font-semibold text-gray-900 dark:text-gray-100">{p.name}</p>
                                     <p className="text-sm text-gray-500 dark:text-gray-400">Saved on {new Date(p.createdAt).toLocaleDateString()}</p>
                                 </div>
                                 <div className="flex items-center space-x-2">
@@ -444,7 +510,7 @@ const PromptArchitect: React.FC = () => {
                         
                         <div className="flex justify-end space-x-2 pt-2">
                             <button onClick={() => { setModalState(null); setShowHistory(false); }} className="px-4 py-2 rounded-md border dark:border-gray-600">Cancel</button>
-                            <button onClick={handleModalSave} className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700">{modalState.mode === 'edit' ? 'Update' : 'Save'}</button>
+                            <button onClick={handleModalSave} className={`px-4 py-2 rounded-md text-white ${activeTab === 'standard' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-purple-600 hover:bg-purple-700'}`}>{modalState.mode === 'edit' ? 'Update' : 'Save'}</button>
                         </div>
                     </div>
                 )}

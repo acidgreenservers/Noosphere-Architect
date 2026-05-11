@@ -13,9 +13,12 @@ export interface GeneratedFiles {
   skillFile: string;
 }
 
+export type PromptType = 'standard' | 'system';
+
 export interface PromptConfig {
   goal: string;
   instructions: string;
+  type?: PromptType;
 }
 
 export interface SavedAgent {

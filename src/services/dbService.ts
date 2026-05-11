@@ -1,17 +1,21 @@
 
-import { SavedAgent, SavedPrompt, AgentConfig, PromptConfig, SavedProject, ProjectConfig, SavedSignal, SignalConfig, SavedMindSeed, MindSeedConfig, MindSeedType } from '../types';
+import { SavedAgent, SavedPrompt, AgentConfig, PromptConfig, SavedProject, ProjectConfig, SavedSignal, SignalConfig, SavedMindSeed, MindSeedConfig, MindSeedType, PromptType } from '../types';
 
 const DB_NAME = 'NoosphereArchitectDB';
-const DB_VERSION = 8; // Incremented for custom context stores
+const DB_VERSION = 9; // Incremented for separate prompt stores
 const AGENT_STORE = 'savedAgents';
-const PROMPT_STORE = 'savedPrompts';
+const PROMPT_STORE = 'savedPrompts'; // Legacy, keeping for migration or reference
+const STANDARD_PROMPT_STORE = 'standardPrompts';
+const SYSTEM_PROMPT_STORE = 'systemPrompts';
 const PROJECT_STORE = 'savedProjects';
 const SIGNAL_STORE = 'savedSignals';
 const COGNISEED_STORE = 'cogniseeds';
 const LINGUASEED_STORE = 'linguaseeds';
 const ARCHSEED_STORE = 'archseeds';
 const AGENT_DRAFT_STORE = 'agentDraft';
-const PROMPT_DRAFT_STORE = 'promptDraft';
+const PROMPT_DRAFT_STORE = 'promptDraft'; // Legacy
+const STANDARD_PROMPT_DRAFT_STORE = 'standardPromptDraft';
+const SYSTEM_PROMPT_DRAFT_STORE = 'systemPromptDraft';
 const PROJECT_DRAFT_STORE = 'projectDraft';
 const SIGNAL_DRAFT_STORE = 'signalDraft';
 const MINDSEED_DRAFT_STORE = 'mindSeedDraft';
@@ -55,6 +59,16 @@ const initDB = (): Promise<IDBDatabase> => {
         promptStore.createIndex('name', 'name', { unique: false });
         promptStore.createIndex('createdAt', 'createdAt', { unique: false });
       }
+      if (!db.objectStoreNames.contains(STANDARD_PROMPT_STORE)) {
+        const store = db.createObjectStore(STANDARD_PROMPT_STORE, { keyPath: 'id', autoIncrement: true });
+        store.createIndex('name', 'name', { unique: false });
+        store.createIndex('createdAt', 'createdAt', { unique: false });
+      }
+      if (!db.objectStoreNames.contains(SYSTEM_PROMPT_STORE)) {
+        const store = db.createObjectStore(SYSTEM_PROMPT_STORE, { keyPath: 'id', autoIncrement: true });
+        store.createIndex('name', 'name', { unique: false });
+        store.createIndex('createdAt', 'createdAt', { unique: false });
+      }
        if (!db.objectStoreNames.contains(PROJECT_STORE)) {
         const projectStore = db.createObjectStore(PROJECT_STORE, { keyPath: 'id', autoIncrement: true });
         projectStore.createIndex('name', 'name', { unique: false });
@@ -65,6 +79,12 @@ const initDB = (): Promise<IDBDatabase> => {
       }
       if (!db.objectStoreNames.contains(PROMPT_DRAFT_STORE)) {
         db.createObjectStore(PROMPT_DRAFT_STORE, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(STANDARD_PROMPT_DRAFT_STORE)) {
+        db.createObjectStore(STANDARD_PROMPT_DRAFT_STORE, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(SYSTEM_PROMPT_DRAFT_STORE)) {
+        db.createObjectStore(SYSTEM_PROMPT_DRAFT_STORE, { keyPath: 'id' });
       }
       if (!db.objectStoreNames.contains(PROJECT_DRAFT_STORE)) {
         db.createObjectStore(PROJECT_DRAFT_STORE, { keyPath: 'id' });
@@ -130,12 +150,98 @@ export const saveDraft = (draft: {id: number, config: AgentConfig}): Promise<num
     });
 };
 
+// Generic Prompt Draft Functions
+export const saveTypedPromptDraft = (type: PromptType, draft: {id: number, config: PromptConfig}): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const storeName = type === 'standard' ? STANDARD_PROMPT_DRAFT_STORE : SYSTEM_PROMPT_DRAFT_STORE;
+        const store = await getStore(storeName, 'readwrite');
+        const request = store.put(draft);
+        request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const getTypedPromptDraft = (type: PromptType, id: number): Promise<{id: number, config: PromptConfig} | undefined> => {
+    return new Promise(async (resolve, reject) => {
+        const storeName = type === 'standard' ? STANDARD_PROMPT_DRAFT_STORE : SYSTEM_PROMPT_DRAFT_STORE;
+        const store = await getStore(storeName, 'readonly');
+        const request = store.get(id);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const clearTypedPromptDraft = (type: PromptType, id: number): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const storeName = type === 'standard' ? STANDARD_PROMPT_DRAFT_STORE : SYSTEM_PROMPT_DRAFT_STORE;
+        const store = await getStore(storeName, 'readwrite');
+        const request = store.delete(id);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
 // MindSeed Draft Functions
 export const saveMindSeedDraft = (draft: {id: number, config: MindSeedConfig}): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(MINDSEED_DRAFT_STORE, 'readwrite');
         const request = store.put(draft);
         request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+// Typed Prompt Functions
+const getPromptStoreName = (type: PromptType) => {
+    return type === 'standard' ? STANDARD_PROMPT_STORE : SYSTEM_PROMPT_STORE;
+};
+
+export const addTypedPrompt = (type: PromptType, prompt: SavedPrompt): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const storeName = getPromptStoreName(type);
+        const store = await getStore(storeName, 'readwrite');
+        const request = store.add(prompt);
+        request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const getAllTypedPrompts = (type: PromptType): Promise<SavedPrompt[]> => {
+    return new Promise(async (resolve, reject) => {
+        const storeName = getPromptStoreName(type);
+        const store = await getStore(storeName, 'readonly');
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const updateTypedPrompt = (type: PromptType, prompt: SavedPrompt): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const storeName = getPromptStoreName(type);
+        const store = await getStore(storeName, 'readwrite');
+        const request = store.put(prompt);
+        request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const deleteTypedPrompt = (type: PromptType, id: number): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const storeName = getPromptStoreName(type);
+        const store = await getStore(storeName, 'readwrite');
+        const request = store.delete(id);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const clearAllTypedPrompts = (type: PromptType): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const storeName = getPromptStoreName(type);
+        const store = await getStore(storeName, 'readwrite');
+        const request = store.clear();
+        request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
     });
 };
