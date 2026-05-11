@@ -1,9 +1,17 @@
 
 import { PromptConfig } from '../../types';
 import { handleAiCall } from './openRouter';
+import { getCustomContext } from '../dbService';
 
+<<<<<<< HEAD
 const createStructuredPromptMetaPrompt = (config: PromptConfig) => `
 Your task is to take a user's raw goal and key instructions and transform them into a well-structured, clear, and highly effective system prompt.
+=======
+const createStructuredPromptMetaPrompt = (config: PromptConfig, customContext?: string) => {
+  const contextPrefix = customContext ? `### CUSTOM SYSTEM CONTEXT\n${customContext}\n\n---\n\n` : "";
+  const basePrompt = `
+You are an expert Prompt Engineering Assistant. Your task is to take a user's raw goal and key instructions and transform them into a well-structured, clear, and highly effective system prompt.
+>>>>>>> 7add6bac37d2061090a21ff193a673672af78c1d
 
 The final prompt you generate should be detailed, unambiguous, and ready for another AI to use. Structure the output using clear headings in Markdown format (e.g., ### ROLE, ### TASK).
 
@@ -36,11 +44,15 @@ Things to consider when you pattern match the user prompts raw goal:
 Generate ONLY the final, structured prompt. Do not include any conversational text or explanations about what you did.
 `;
 
+  return contextPrefix + basePrompt;
+};
+
 export const generateStructuredPrompt = async (config: PromptConfig): Promise<string> => {
   if (!config.goal.trim()) {
     throw new Error("Prompt goal cannot be empty.");
   }
 
-  const metaPrompt = createStructuredPromptMetaPrompt(config);
+  const customContext = await getCustomContext('promptContext');
+  const metaPrompt = createStructuredPromptMetaPrompt(config, customContext);
   return handleAiCall<string>(metaPrompt, false, "generating structured prompt");
 };
