@@ -2,7 +2,7 @@
 import { SavedAgent, SavedPrompt, AgentConfig, PromptConfig, SavedProject, ProjectConfig, SavedSignal, SignalConfig, SavedMindSeed, MindSeedConfig, MindSeedType } from '../types';
 
 const DB_NAME = 'NoosphereArchitectDB';
-const DB_VERSION = 7; // Incremented for separate MindSeed stores
+const DB_VERSION = 8; // Incremented for custom context stores
 const AGENT_STORE = 'savedAgents';
 const PROMPT_STORE = 'savedPrompts';
 const PROJECT_STORE = 'savedProjects';
@@ -15,6 +15,11 @@ const PROMPT_DRAFT_STORE = 'promptDraft';
 const PROJECT_DRAFT_STORE = 'projectDraft';
 const SIGNAL_DRAFT_STORE = 'signalDraft';
 const MINDSEED_DRAFT_STORE = 'mindSeedDraft';
+const AGENT_CONTEXT_STORE = 'agentContext';
+const MINDSEED_CONTEXT_STORE = 'mindSeedContext';
+const SIGNAL_CONTEXT_STORE = 'signalContext';
+const PROMPT_CONTEXT_STORE = 'promptContext';
+const PROJECT_CONTEXT_STORE = 'projectContext';
 
 
 let dbInstance: IDBDatabase | null = null;
@@ -90,6 +95,21 @@ const initDB = (): Promise<IDBDatabase> => {
       if (!db.objectStoreNames.contains(MINDSEED_DRAFT_STORE)) {
         db.createObjectStore(MINDSEED_DRAFT_STORE, { keyPath: 'id' });
       }
+      if (!db.objectStoreNames.contains(AGENT_CONTEXT_STORE)) {
+        db.createObjectStore(AGENT_CONTEXT_STORE, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(MINDSEED_CONTEXT_STORE)) {
+        db.createObjectStore(MINDSEED_CONTEXT_STORE, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(SIGNAL_CONTEXT_STORE)) {
+        db.createObjectStore(SIGNAL_CONTEXT_STORE, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(PROMPT_CONTEXT_STORE)) {
+        db.createObjectStore(PROMPT_CONTEXT_STORE, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(PROJECT_CONTEXT_STORE)) {
+        db.createObjectStore(PROJECT_CONTEXT_STORE, { keyPath: 'id' });
+      }
     };
   });
 };
@@ -164,6 +184,36 @@ export const addMindSeed = (mindSeed: SavedMindSeed): Promise<number> => {
         } catch (error) {
             reject(error);
         }
+    });
+};
+
+// Custom Context Functions
+export type ContextStoreName = 'agentContext' | 'mindSeedContext' | 'signalContext' | 'promptContext' | 'projectContext';
+
+export const saveCustomContext = (storeName: ContextStoreName, context: string): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(storeName, 'readwrite');
+        const request = store.put({ id: 'current', context });
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const getCustomContext = (storeName: ContextStoreName): Promise<string | undefined> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(storeName, 'readonly');
+        const request = store.get('current');
+        request.onsuccess = () => resolve(request.result?.context);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const deleteCustomContext = (storeName: ContextStoreName): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(storeName, 'readwrite');
+        const request = store.delete('current');
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
     });
 };
 

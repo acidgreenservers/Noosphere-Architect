@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { setOpenRouterKey, getOpenRouterKey, setOpenRouterModel, getOpenRouterModel, clearSession } from '../services/sessionService';
+import CustomContextSettings from './CustomContextSettings';
 
 const AgentApiSettings: React.FC = () => {
   const [apiKey, setApiKey] = useState('');
@@ -130,6 +131,8 @@ const AgentApiSettings: React.FC = () => {
           </div>
         )}
       </div>
+
+      <CustomContextSettings />
     </div>
   );
 };
