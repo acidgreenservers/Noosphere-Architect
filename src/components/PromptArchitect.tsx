@@ -8,6 +8,7 @@ import JSZip from 'jszip';
 import { sanitizeFilename } from '../utils/security';
 import LoadingSpinner from './LoadingSpinner';
 import Modal from './Modal';
+import PreviewModal from './PreviewModal';
 import Toast from './Toast';
 
 const Tooltip: React.FC<{ text: string }> = ({ text }) => (
@@ -62,6 +63,7 @@ const PromptArchitect: React.FC = () => {
 
     const [modalState, setModalState] = useState<{ mode: 'save' | 'edit'; prompt?: SavedPrompt } | null>(null);
     const [modalInput, setModalInput] = useState<{ name: string; prompt: string }>({ name: '', prompt: '' });
+    const [previewPrompt, setPreviewPrompt] = useState<SavedPrompt | null>(null);
 
 
     const loadSavedPrompts = useCallback(async () => {
@@ -264,11 +266,11 @@ const PromptArchitect: React.FC = () => {
         setIsTemplateModalOpen(false);
     };
 
-    const handleExportPrompt = () => {
-        if (!generatedPrompt) return;
+    const handleExportPrompt = (content: string) => {
+        if (!content) return;
         const exportFilename = activeTab === 'standard' ? 'PROMPT.md' : 'AGENTS.md';
         
-        const blob = new Blob([generatedPrompt], { type: 'text/markdown;charset=utf-8' });
+        const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -430,12 +432,12 @@ const PromptArchitect: React.FC = () => {
                     <div className="space-y-4">
                         {savedPrompts.map(p => (
                             <div key={p.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border border-gray-100 dark:border-gray-700 flex justify-between items-center hover:shadow-lg transition-shadow">
-                                <div>
+                                <div className="flex-grow cursor-pointer" onClick={() => handleLoadSavedPrompt(p)}>
                                     <p className="font-semibold text-gray-900 dark:text-gray-100">{p.name}</p>
                                     <p className="text-sm text-gray-500 dark:text-gray-400">Saved on {new Date(p.createdAt).toLocaleDateString()}</p>
                                 </div>
                                 <div className="flex items-center space-x-2">
-                                    <button onClick={() => handleLoadSavedPrompt(p)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-500" title="Load"><span className="material-icons">visibility</span></button>
+                                    <button onClick={() => setPreviewPrompt(p)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-500" title="Preview"><span className="material-icons">visibility</span></button>
                                     <button onClick={() => { handleOpenEditModal(p); setShowHistory(false); }} className="p-2 text-gray-600 dark:text-gray-300 hover:text-green-500" title="Edit"><span className="material-icons">edit</span></button>
                                     <button onClick={() => handleDelete(p.id!)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-red-500" title="Delete"><span className="material-icons">delete</span></button>
                                 </div>
@@ -459,6 +461,26 @@ const PromptArchitect: React.FC = () => {
                     ))}
                 </div>
             </Modal>
+
+            <PreviewModal
+                isOpen={!!previewPrompt}
+                onClose={() => setPreviewPrompt(null)}
+                title={`Preview: ${previewPrompt?.name}`}
+                content={previewPrompt?.prompt}
+                onCopy={() => {
+                    if (previewPrompt) {
+                        navigator.clipboard.writeText(previewPrompt.prompt);
+                        setSuccessMessage('Copied to clipboard!');
+                    }
+                }}
+                onExport={() => previewPrompt && handleExportPrompt(previewPrompt.prompt)}
+                onDelete={() => {
+                    if (previewPrompt?.id) {
+                        handleDelete(previewPrompt.id);
+                        setPreviewPrompt(null);
+                    }
+                }}
+            />
 
             <Modal isOpen={!!modalState} onClose={() => { setModalState(null); setShowHistory(false); }} title={modalState?.mode === 'edit' ? 'Edit Prompt' : 'Save Prompt'}>
                 {modalState && (

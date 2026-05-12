@@ -9,6 +9,7 @@ import ProjectForm from './ProjectForm';
 import GeneratedProjectDisplay from './GeneratedProjectDisplay';
 import LoadingSpinner from './LoadingSpinner';
 import Modal from './Modal';
+import PreviewModal from './PreviewModal';
 import Toast from './Toast';
 
 const ProjectArchitect: React.FC = () => {
@@ -29,6 +30,7 @@ const ProjectArchitect: React.FC = () => {
 
   const [modalState, setModalState] = useState<{ mode: 'save' | 'edit'; project?: SavedProject } | null>(null);
   const [modalInput, setModalInput] = useState<{ name: string; files: GeneratedProjectFiles | null }>({ name: '', files: null });
+  const [previewProject, setPreviewProject] = useState<SavedProject | null>(null);
 
   const loadSavedProjects = useCallback(async () => {
     const projects = await db.getAllProjects();
@@ -169,6 +171,24 @@ const ProjectArchitect: React.FC = () => {
     }
   };
 
+  const handleExportProject = async (name: string, files: GeneratedProjectFiles) => {
+    const zip = new JSZip();
+    zip.file('overview.md', files.overviewFile);
+    zip.file('standards.md', files.standardsFile);
+    zip.file('rules.md', files.rulesFile);
+
+    const content = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(content);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${sanitizeFilename(name)}.zip`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setSuccessMessage('Project exported as ZIP!');
+  };
+
   const handleExportAll = async () => {
     if (savedProjects.length === 0) return;
     
@@ -247,13 +267,13 @@ const ProjectArchitect: React.FC = () => {
             </div>
             <div className="space-y-4">
                 {savedProjects.map(project => (
-                    <div key={project.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md flex justify-between items-center">
-                        <div>
+                    <div key={project.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md flex justify-between items-center group hover:border-blue-500 dark:hover:border-blue-400 transition-colors border border-transparent">
+                        <div className="flex-grow cursor-pointer" onClick={() => handleLoadSavedProject(project)}>
                             <p className="font-semibold">{project.name}</p>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Saved on {new Date(project.createdAt).toLocaleDateString()}</p>
                         </div>
                         <div className="flex items-center space-x-2">
-                            <button onClick={() => handleLoadSavedProject(project)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-500 transition-colors" title="Load"><span className="material-icons">visibility</span></button>
+                            <button onClick={() => setPreviewProject(project)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-500 transition-colors" title="Preview"><span className="material-icons">visibility</span></button>
                             <button onClick={() => handleOpenEditModal(project)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-green-500 transition-colors" title="Edit"><span className="material-icons">edit</span></button>
                             <button onClick={() => handleDelete(project.id!)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-red-500 transition-colors" title="Delete"><span className="material-icons">delete</span></button>
                         </div>
@@ -262,6 +282,35 @@ const ProjectArchitect: React.FC = () => {
             </div>
         </div>
       )}
+
+      <PreviewModal
+        isOpen={!!previewProject}
+        onClose={() => setPreviewProject(null)}
+        title={`Preview: ${previewProject?.name}`}
+        content={previewProject ? {
+            'overview.md': previewProject.files.overviewFile,
+            'standards.md': previewProject.files.standardsFile,
+            'rules.md': previewProject.files.rulesFile
+        } : undefined}
+        onCopy={() => {
+            if (previewProject) {
+                const allContent = Object.entries(previewProject.files).map(([name, content]) => `### ${name}\n\n${content}`).join('\n\n');
+                navigator.clipboard.writeText(allContent);
+                setSuccessMessage('All files copied to clipboard!');
+            }
+        }}
+        onExport={() => {
+            if (previewProject) {
+                handleExportProject(previewProject.name, previewProject.files);
+            }
+        }}
+        onDelete={() => {
+            if (previewProject?.id) {
+                handleDelete(previewProject.id);
+                setPreviewProject(null);
+            }
+        }}
+      />
 
       <Modal isOpen={!!modalState} onClose={() => setModalState(null)} title={modalState?.mode === 'edit' ? 'Edit Project' : 'Save Project Blueprint'}>
           {modalState && <div className="space-y-4">
