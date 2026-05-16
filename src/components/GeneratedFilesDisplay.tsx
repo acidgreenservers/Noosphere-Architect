@@ -1,5 +1,7 @@
 
 import React, { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { GeneratedFiles } from '../types';
 import { sanitizeFilename } from '../utils/security';
 
@@ -12,8 +14,8 @@ interface GeneratedFilesDisplayProps {
 type Tab = 'agentFile' | 'projectGuidelines' | 'constraintsFile' | 'skillFile';
 
 const FileContent: React.FC<{ content: string }> = ({ content }) => (
-    <div className="prose prose-sm sm:prose-base dark:prose-dark max-w-none p-4 md:p-6 bg-gray-50 dark:bg-gray-900/70 rounded-b-lg whitespace-pre-wrap font-mono">
-        <pre><code className="text-sm">{content}</code></pre>
+    <div className="prose prose-sm sm:prose-base dark:prose-invert max-w-none p-6 md:p-10 bg-white dark:bg-gray-900/50 rounded-b-2xl border-x border-b border-gray-200 dark:border-gray-700/50 shadow-inner overflow-y-auto max-h-[70vh] prose-pre:bg-gray-900 prose-pre:text-gray-100">
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
     </div>
 );
 

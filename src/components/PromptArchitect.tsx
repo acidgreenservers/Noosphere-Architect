@@ -1,5 +1,7 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { generateBasicPrompt } from '../services/ai/basicPromptService';
 import { generateStructuredSystemPrompt } from '../services/ai/structuredSystemPromptService';
 import { PromptConfig, SavedPrompt, PromptType } from '../types';
@@ -397,23 +399,23 @@ const PromptArchitect: React.FC = () => {
             {isLoading && <LoadingSpinner message={loadingMessage || 'Architecting your prompt...'} />}
 
             {generatedPrompt && !isLoading && (
-                <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-500">
-                     <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
+                <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-hidden">
+                     <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
                         <h3 className="text-xl font-semibold">Generated {activeTab === 'standard' ? 'Prompt' : 'System Prompt'}</h3>
                         <div className="flex items-center space-x-2">
-                           <button onClick={() => navigator.clipboard.writeText(generatedPrompt)} className="flex items-center px-3 py-1.5 border rounded-md text-sm" title="Copy prompt">
+                           <button onClick={() => navigator.clipboard.writeText(generatedPrompt)} className="flex items-center px-3 py-1.5 border rounded-md text-sm hover:bg-white dark:hover:bg-gray-700 transition-colors" title="Copy prompt">
                                 <span className="material-icons text-base mr-1.5">content_copy</span>Copy
                             </button>
-                           <button onClick={handleExportPrompt} className="flex items-center px-3 py-1.5 border rounded-md text-sm" title="Export prompt">
+                           <button onClick={handleExportPrompt} className="flex items-center px-3 py-1.5 border rounded-md text-sm hover:bg-white dark:hover:bg-gray-700 transition-colors" title="Export prompt">
                                 <span className="material-icons text-base mr-1.5">download</span>Export
                            </button>
-                           <button onClick={handleOpenSaveModal} className={`flex items-center px-3 py-1.5 border rounded-md text-sm text-white ${activeTab === 'standard' ? 'bg-blue-500 hover:bg-blue-600' : 'bg-purple-500 hover:bg-purple-600'}`} title="Save prompt">
+                           <button onClick={handleOpenSaveModal} className={`flex items-center px-3 py-1.5 border rounded-md text-sm text-white ${activeTab === 'standard' ? 'bg-blue-500 hover:bg-blue-600 shadow-blue-500/20' : 'bg-purple-500 hover:bg-purple-600 shadow-purple-500/20'} shadow-lg transition-all`} title="Save prompt">
                                 <span className="material-icons text-base mr-1.5">save</span>Save
                             </button>
                         </div>
                     </div>
-                    <div className="prose prose-sm sm:prose-base dark:prose-dark max-w-none p-4 md:p-6 bg-gray-50 dark:bg-gray-900/70 rounded-b-lg whitespace-pre-wrap font-mono">
-                        <pre><code className="text-sm">{generatedPrompt}</code></pre>
+                    <div className="prose prose-sm sm:prose-base dark:prose-invert max-w-none p-6 md:p-10 bg-white dark:bg-gray-900/40 prose-pre:bg-gray-900 prose-pre:text-gray-100">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{generatedPrompt}</ReactMarkdown>
                     </div>
                 </div>
             )}

@@ -1,5 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { MindSeedConfig, GeneratedMindSeed, SavedMindSeed, MindSeedType } from '../types';
 import { generateMindSeed } from '../services/ai/mindSeedService';
 import { addMindSeed, getAllMindSeeds, deleteMindSeed, saveMindSeedDraft, getMindSeedDraft, clearMindSeedDraft } from '../services/dbService';
@@ -311,9 +313,13 @@ const MindSeedArchitect: React.FC = () => {
                     </thead>
                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                         <tr>
-                            <td className="px-6 py-4 text-sm italic text-gray-900 dark:text-gray-100">"{result.seed}"</td>
-                            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400" dangerouslySetInnerHTML={{ __html: result.pattern.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }}></td>
-                            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{result.deployWhen}</td>
+                            <td className="px-6 py-4 text-sm italic text-gray-900 dark:text-gray-100 font-medium">"{result.seed}"</td>
+                            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
+                                <div className="prose prose-sm dark:prose-invert">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{result.pattern}</ReactMarkdown>
+                                </div>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{result.deployWhen}</td>
                         </tr>
                     </tbody>
                 </table>

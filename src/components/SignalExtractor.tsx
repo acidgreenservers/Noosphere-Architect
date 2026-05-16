@@ -1,5 +1,7 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { extractSignal } from '../services/ai/signalService';
 import { SignalConfig, ExtractedSignal, SavedSignal, PromptConfig } from '../types';
 import * as db from '../services/dbService';
@@ -249,15 +251,15 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
                     <div className="p-6 space-y-8 bg-white dark:bg-gray-800">
                         <div>
                             <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Prompt Signal</h4>
-                            <div className="p-4 bg-gray-50 dark:bg-gray-900/70 rounded-lg whitespace-pre-wrap text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700 font-mono text-sm">
-                                {result.promptSignal}
+                            <div className="p-4 bg-gray-50 dark:bg-gray-900/70 rounded-lg prose prose-sm dark:prose-invert max-w-none border border-gray-200 dark:border-gray-700">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>{result.promptSignal}</ReactMarkdown>
                             </div>
                         </div>
 
                         <div>
                             <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Signal Constraints</h4>
-                            <div className="p-4 bg-gray-50 dark:bg-gray-900/70 rounded-lg whitespace-pre-wrap text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700 font-mono text-sm">
-                                {result.signalConstraints}
+                            <div className="p-4 bg-gray-50 dark:bg-gray-900/70 rounded-lg prose prose-sm dark:prose-invert max-w-none border border-gray-200 dark:border-gray-700">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>{result.signalConstraints}</ReactMarkdown>
                             </div>
                         </div>
                     </div>
