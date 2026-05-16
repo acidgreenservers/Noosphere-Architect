@@ -60,6 +60,7 @@ const PromptArchitect: React.FC = () => {
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
     const [draftStatus, setDraftStatus] = useState<'unloaded' | 'loaded' | 'none'>('unloaded');
+    const checkingDraftRef = useRef<Record<PromptType, boolean>>({ standard: false, system: false });
 
     const [modalState, setModalState] = useState<{ mode: 'save' | 'edit'; prompt?: SavedPrompt } | null>(null);
     const [modalInput, setModalInput] = useState<{ name: string; prompt: string }>({ name: '', prompt: '' });
@@ -74,6 +75,9 @@ const PromptArchitect: React.FC = () => {
     useEffect(() => {
         loadSavedPrompts();
         const loadDraft = async () => {
+            if (checkingDraftRef.current[activeTab]) return;
+            checkingDraftRef.current[activeTab] = true;
+
             const draft = await db.getTypedPromptDraft(activeTab, 1);
             if (draft?.config && Object.values(draft.config).some(v => v)) {
                 if (window.confirm(`An unsaved ${activeTab} prompt draft was found. Do you want to load it?`)) {

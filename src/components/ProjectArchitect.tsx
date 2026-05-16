@@ -27,6 +27,7 @@ const ProjectArchitect: React.FC = () => {
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
   const [successMessage, setSuccessMessage] = useState('');
   const [draftStatus, setDraftStatus] = useState<'unloaded' | 'loaded' | 'none'>('unloaded');
+  const isCheckingDraft = useRef(false);
 
   const [modalState, setModalState] = useState<{ mode: 'save' | 'edit'; project?: SavedProject } | null>(null);
   const [modalInput, setModalInput] = useState<{ name: string; files: GeneratedProjectFiles | null }>({ name: '', files: null });
@@ -40,6 +41,9 @@ const ProjectArchitect: React.FC = () => {
   useEffect(() => {
     loadSavedProjects();
     const loadDraft = async () => {
+      if (isCheckingDraft.current) return;
+      isCheckingDraft.current = true;
+
       const draft = await db.getProjectDraft(1);
       if (draft?.config && Object.values(draft.config).some(v => v)) {
         if (window.confirm("An unsaved project draft was found. Do you want to load it?")) {

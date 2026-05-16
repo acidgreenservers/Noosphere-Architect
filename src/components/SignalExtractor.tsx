@@ -24,6 +24,7 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
     const [savedSignals, setSavedSignals] = useState<SavedSignal[]>([]);
     const [successMessage, setSuccessMessage] = useState('');
     const [draftStatus, setDraftStatus] = useState<'unloaded' | 'loaded' | 'none'>('unloaded');
+    const isCheckingDraft = useRef(false);
 
     const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
     const [previewSignal, setPreviewSignal] = useState<SavedSignal | null>(null);
@@ -37,6 +38,9 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
     useEffect(() => {
         loadSavedSignals();
         const loadDraft = async () => {
+            if (isCheckingDraft.current) return;
+            isCheckingDraft.current = true;
+
             const draft = await db.getSignalDraft(1);
             if (draft?.config && draft.config.messyPrompt) {
                 if (window.confirm("An unsaved signal draft was found. Do you want to load it?")) {
