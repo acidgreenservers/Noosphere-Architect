@@ -48,7 +48,12 @@ const PROMPT_TEMPLATES = [
     },
 ];
 
-const PromptArchitect: React.FC = () => {
+interface PromptArchitectProps {
+    initialConfig?: PromptConfig;
+    onClearInitialConfig?: () => void;
+}
+
+const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClearInitialConfig }) => {
     const [activeTab, setActiveTab] = useState<PromptType>('standard');
     const [promptConfig, setPromptConfig] = useState<PromptConfig>({ goal: '', instructions: '' });
     const [generatedPrompt, setGeneratedPrompt] = useState('');
@@ -75,6 +80,12 @@ const PromptArchitect: React.FC = () => {
     }, [activeTab]);
 
     useEffect(() => {
+        if (initialConfig) {
+            setPromptConfig(initialConfig);
+            if (onClearInitialConfig) onClearInitialConfig();
+            return;
+        }
+
         loadSavedPrompts();
         const loadDraft = async () => {
             if (checkingDraftRef.current[activeTab]) return;
@@ -98,7 +109,7 @@ const PromptArchitect: React.FC = () => {
             }
         };
         loadDraft();
-    }, [loadSavedPrompts, activeTab]);
+    }, [loadSavedPrompts, activeTab, initialConfig, onClearInitialConfig]);
 
     useEffect(() => {
         if (draftStatus === 'unloaded') return;
@@ -403,10 +414,10 @@ const PromptArchitect: React.FC = () => {
                      <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
                         <h3 className="text-xl font-semibold">Generated {activeTab === 'standard' ? 'Prompt' : 'System Prompt'}</h3>
                         <div className="flex items-center space-x-2">
-                           <button onClick={() => navigator.clipboard.writeText(generatedPrompt)} className="flex items-center px-3 py-1.5 border rounded-md text-sm hover:bg-white dark:hover:bg-gray-700 transition-colors" title="Copy prompt">
+                           <button onClick={() => { navigator.clipboard.writeText(generatedPrompt); setSuccessMessage('Prompt copied to clipboard!'); }} className="flex items-center px-3 py-1.5 border rounded-md text-sm hover:bg-white dark:hover:bg-gray-700 transition-colors" title="Copy prompt">
                                 <span className="material-icons text-base mr-1.5">content_copy</span>Copy
                             </button>
-                           <button onClick={handleExportPrompt} className="flex items-center px-3 py-1.5 border rounded-md text-sm hover:bg-white dark:hover:bg-gray-700 transition-colors" title="Export prompt">
+                           <button onClick={() => { handleExportPrompt(generatedPrompt); setSuccessMessage('Prompt exported successfully!'); }} className="flex items-center px-3 py-1.5 border rounded-md text-sm hover:bg-white dark:hover:bg-gray-700 transition-colors" title="Export prompt">
                                 <span className="material-icons text-base mr-1.5">download</span>Export
                            </button>
                            <button onClick={handleOpenSaveModal} className={`flex items-center px-3 py-1.5 border rounded-md text-sm text-white ${activeTab === 'standard' ? 'bg-blue-500 hover:bg-blue-600 shadow-blue-500/20' : 'bg-purple-500 hover:bg-purple-600 shadow-purple-500/20'} shadow-lg transition-all`} title="Save prompt">
