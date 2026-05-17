@@ -13,12 +13,6 @@ import PreviewModal from './PreviewModal';
 import Toast from './Toast';
 import GeneratedFilesDisplay from './GeneratedFilesDisplay';
 
-const Tooltip: React.FC<{ text: string }> = ({ text }) => (
-  <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-max max-w-xs p-2 bg-gray-800 text-white text-xs rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
-    {text}
-  </span>
-);
-
 const PROMPT_TEMPLATES = [
     {
       name: 'Creative Content Generator',
@@ -115,6 +109,8 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                     setDraftStatus('none');
                 }
             } else {
+                setPromptConfig({ goal: '', instructions: '' });
+                setGeneratedPrompt(null);
                 setDraftStatus('none');
             }
         };
@@ -268,6 +264,7 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
         if (savedPrompts.length === 0) return;
 
         const zip = new JSZip();
+
         savedPrompts.forEach(p => {
             const folderName = sanitizeFilename(p.name);
             if (p.prompt) {

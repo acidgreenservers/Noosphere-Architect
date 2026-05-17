@@ -48,6 +48,7 @@ const AgentArchitect: React.FC = () => {
   const [savedAgents, setSavedAgents] = useState<SavedAgent[]>([]);
   const [successMessage, setSuccessMessage] = useState('');
   const [draftStatus, setDraftStatus] = useState<'unloaded' | 'loaded' | 'none'>('unloaded');
+  const isCheckingDraft = useRef(false);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
 
   const [modalState, setModalState] = useState<{ mode: 'save' | 'edit'; agent?: SavedAgent } | null>(null);
@@ -63,6 +64,9 @@ const AgentArchitect: React.FC = () => {
   useEffect(() => {
     loadSavedAgents();
     const loadDraft = async () => {
+        if (isCheckingDraft.current) return;
+        isCheckingDraft.current = true;
+
         const draft = await db.getDraft(1);
         if (draft?.config && Object.values(draft.config).some(v => v)) {
             if (window.confirm("An unsaved draft was found. Do you want to load it?")) {

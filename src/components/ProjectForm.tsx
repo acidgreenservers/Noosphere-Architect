@@ -50,7 +50,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ projectConfig, setProjectConf
         <h2 className="text-3xl font-bold text-center text-gray-800 dark:text-gray-200">Architect a New Project</h2>
         
         <Fieldset legend="Core Concepts">
-            <FormField id="title" label="Name / Title" tooltip="A clear, concise name for your project." required>
+            <FormField id="title" label="Name / Title" tooltip="A clear, concise name for your project." required={true}>
                  <input
                     type="text"
                     id="title"
@@ -62,7 +62,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ projectConfig, setProjectConf
                     className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20"
                 />
             </FormField>
-             <FormField id="goal" label="Project Goal" tooltip="The primary, measurable objective of this project." required>
+             <FormField id="goal" label="Project Goal" tooltip="The primary, measurable objective of this project." required={true}>
                  <input
                     type="text"
                     id="goal"
