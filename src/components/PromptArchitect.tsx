@@ -9,6 +9,7 @@ import JSZip from 'jszip';
 import { sanitizeFilename } from '../utils/security';
 import LoadingSpinner from './LoadingSpinner';
 import Modal from './Modal';
+import PreviewModal from './PreviewModal';
 import Toast from './Toast';
 import GeneratedFilesDisplay from './GeneratedFilesDisplay';
 
@@ -76,6 +77,7 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
     const [modalState, setModalState] = useState<{ mode: 'save' | 'edit'; prompt?: SavedPrompt } | null>(null);
     const [modalInput, setModalInput] = useState<{ name: string; prompt?: string; files?: GeneratedFiles }>({ name: '' });
     const [previewPrompt, setPreviewPrompt] = useState<SavedPrompt | null>(null);
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
 
     const loadSavedPrompts = useCallback(async () => {
@@ -225,15 +227,28 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
         setModalState(null);
     };
     
-    const handleDelete = async (id: number) => {
-        if (window.confirm('Are you sure you want to delete this?')) {
-            try {
-                await db.deleteTypedPrompt(activeTab, id);
-                setSavedPrompts(prevPrompts => prevPrompts.filter(p => p.id !== id));
-                setSuccessMessage('Deleted successfully!');
-            } catch (err) {
-                setError('Failed to delete.');
-            }
+    const handleDelete = async () => {
+        if (!previewPrompt || !previewPrompt.id) return;
+        try {
+            await db.deleteTypedPrompt(activeTab, previewPrompt.id);
+            setSavedPrompts(prevPrompts => prevPrompts.filter(p => p.id !== previewPrompt.id));
+            setSuccessMessage('Deleted successfully!');
+            setPreviewPrompt(null);
+            setIsDeleteConfirmOpen(false);
+        } catch (err) {
+            setError('Failed to delete.');
+        }
+    };
+
+    const handleLegacyDelete = async (id: number) => {
+        try {
+            await db.deletePrompt(id);
+            setLegacyPrompts(prev => prev.filter(p => p.id !== id));
+            setSuccessMessage('Deleted successfully!');
+            setPreviewPrompt(null);
+            setIsDeleteConfirmOpen(false);
+        } catch (err) {
+            setError('Failed to delete.');
         }
     };
 
@@ -458,9 +473,9 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                                     <p className="text-sm text-gray-500 dark:text-gray-400">Saved on {new Date(p.createdAt).toLocaleDateString()}</p>
                                 </div>
                                 <div className="flex items-center space-x-2">
-                                    <button onClick={() => handleLoadSavedPrompt(p)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-500" title="Load"><span className="material-icons">visibility</span></button>
+                                    <button onClick={() => setPreviewPrompt(p)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-500" title="Preview"><span className="material-icons">visibility</span></button>
                                     <button onClick={() => { handleOpenEditModal(p); }} className="p-2 text-gray-600 dark:text-gray-300 hover:text-green-500" title="Edit"><span className="material-icons">edit</span></button>
-                                    <button onClick={() => handleDelete(p.id!)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-red-500" title="Delete"><span className="material-icons">delete</span></button>
+                                    <button onClick={() => { setPreviewPrompt(p); setIsDeleteConfirmOpen(true); }} className="p-2 text-gray-600 dark:text-gray-300 hover:text-red-500" title="Delete"><span className="material-icons">delete</span></button>
                                 </div>
                             </div>
                         ))}
@@ -484,13 +499,8 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                                     )}
                                 </div>
                                 <div className="flex items-center space-x-2">
-                                    <button onClick={() => handleLoadSavedPrompt(p)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-500" title="Load"><span className="material-icons">visibility</span></button>
-                                    <button onClick={async () => {
-                                        if (window.confirm('Delete legacy prompt?')) {
-                                            await db.deletePrompt(p.id!);
-                                            loadSavedPrompts();
-                                        }
-                                    }} className="p-2 text-gray-600 dark:text-gray-300 hover:text-red-500" title="Delete"><span className="material-icons">delete</span></button>
+                                    <button onClick={() => setPreviewPrompt(p)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-500" title="Preview"><span className="material-icons">visibility</span></button>
+                                    <button onClick={() => { setPreviewPrompt(p); setIsDeleteConfirmOpen(true); }} className="p-2 text-gray-600 dark:text-gray-300 hover:text-red-500" title="Delete"><span className="material-icons">delete</span></button>
                                 </div>
                             </div>
                         ))}
@@ -514,6 +524,56 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{template.goal || template.role}</p>
                         </button>
                     ))}
+                </div>
+            </Modal>
+
+            <PreviewModal
+                isOpen={!!previewPrompt && !isDeleteConfirmOpen}
+                onClose={() => setPreviewPrompt(null)}
+                title={previewPrompt?.name || ''}
+                content={previewPrompt?.prompt || (previewPrompt?.files ? {
+                    'agent.md': previewPrompt.files.agentFile,
+                    'guidelines.md': previewPrompt.files.projectGuidelines,
+                    'constraints.md': previewPrompt.files.constraintsFile,
+                    'SKILL.md': previewPrompt.files.skillFile
+                } : undefined)}
+                onCopy={() => {
+                    const text = previewPrompt?.prompt || (previewPrompt?.files ? Object.values(previewPrompt.files).join('\n\n---\n\n') : '');
+                    navigator.clipboard.writeText(text);
+                    setSuccessMessage('Copied to clipboard!');
+                }}
+                onExport={() => {
+                    if (previewPrompt?.prompt) handleExportLegacyMd(previewPrompt.prompt, previewPrompt.name);
+                    else if (previewPrompt?.files) {
+                        const zip = new JSZip();
+                        zip.file('agent.md', previewPrompt.files.agentFile);
+                        zip.file('guidelines.md', previewPrompt.files.projectGuidelines);
+                        zip.file('constraints.md', previewPrompt.files.constraintsFile);
+                        zip.file('SKILL.md', previewPrompt.files.skillFile);
+                        zip.generateAsync({ type: 'blob' }).then(content => {
+                            const url = URL.createObjectURL(content);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.download = `${sanitizeFilename(previewPrompt.name)}.zip`;
+                            link.click();
+                            URL.revokeObjectURL(url);
+                        });
+                    }
+                }}
+                onDelete={() => setIsDeleteConfirmOpen(true)}
+            />
+
+            <Modal isOpen={isDeleteConfirmOpen} onClose={() => setIsDeleteConfirmOpen(false)} title="Confirm Deletion">
+                <div className="space-y-4">
+                    <p className="text-gray-600 dark:text-gray-400">Are you sure you want to delete <strong>{previewPrompt?.name}</strong>? This action cannot be undone.</p>
+                    <div className="flex justify-end space-x-2">
+                        <button onClick={() => setIsDeleteConfirmOpen(false)} className="px-4 py-2 border dark:border-gray-600 rounded-lg">Cancel</button>
+                        <button onClick={() => {
+                            const isLegacy = legacyPrompts.some(lp => lp.id === previewPrompt?.id);
+                            if (isLegacy) handleLegacyDelete(previewPrompt!.id!);
+                            else handleDelete();
+                        }} className="px-4 py-2 bg-red-600 text-white rounded-lg">Delete</button>
+                    </div>
                 </div>
             </Modal>
 

@@ -9,6 +9,7 @@ import { sanitizeFilename } from '../utils/security';
 import AgentForm from './AgentForm';
 import LoadingSpinner from './LoadingSpinner';
 import Modal from './Modal';
+import PreviewModal from './PreviewModal';
 import Toast from './Toast';
 
 const AGENT_TEMPLATES = [
@@ -51,6 +52,8 @@ const AgentArchitect: React.FC = () => {
 
   const [modalState, setModalState] = useState<{ mode: 'save' | 'edit'; agent?: SavedAgent } | null>(null);
   const [modalInput, setModalInput] = useState<{ name: string; prompt: string }>({ name: '', prompt: '' });
+  const [previewAgent, setPreviewAgent] = useState<SavedAgent | null>(null);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   const loadSavedAgents = useCallback(async () => {
     const agents = await db.getAllAgents();
@@ -166,16 +169,16 @@ const AgentArchitect: React.FC = () => {
     setModalState(null);
   };
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm('Are you sure you want to delete this agent?')) {
-        try {
-            await db.deleteAgent(id);
-            setSavedAgents(prevAgents => prevAgents.filter(agent => agent.id !== id));
-            setSuccessMessage('Agent deleted successfully!');
-        } catch (err) {
-            setError('Failed to delete agent.');
-            console.error(err);
-        }
+  const handleDelete = async () => {
+    if (!previewAgent || !previewAgent.id) return;
+    try {
+        await db.deleteAgent(previewAgent.id);
+        setSavedAgents(prevAgents => prevAgents.filter(agent => agent.id !== previewAgent.id));
+        setSuccessMessage('Agent deleted successfully!');
+        setPreviewAgent(null);
+        setIsDeleteConfirmOpen(false);
+    } catch (err) {
+        setError('Failed to delete agent.');
     }
   };
 
@@ -377,9 +380,9 @@ const AgentArchitect: React.FC = () => {
                             )}
                         </div>
                         <div className="flex items-center space-x-2">
-                            <button onClick={() => handleLoadSavedAgent(agent)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-500 transition-colors" title="Load"><span className="material-icons">visibility</span></button>
+                            <button onClick={() => setPreviewAgent(agent)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-500 transition-colors" title="Preview"><span className="material-icons">visibility</span></button>
                             <button onClick={() => handleOpenEditModal(agent)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-green-500 transition-colors" title="Edit"><span className="material-icons">edit</span></button>
-                            <button onClick={() => handleDelete(agent.id!)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-red-500 transition-colors" title="Delete"><span className="material-icons">delete</span></button>
+                            <button onClick={() => { setPreviewAgent(agent); setIsDeleteConfirmOpen(true); }} className="p-2 text-gray-600 dark:text-gray-300 hover:text-red-500 transition-colors" title="Delete"><span className="material-icons">delete</span></button>
                         </div>
                     </div>
                 ))}
@@ -399,6 +402,38 @@ const AgentArchitect: React.FC = () => {
                       <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{template.role}</p>
                   </button>
               ))}
+          </div>
+      </Modal>
+
+      <PreviewModal
+          isOpen={!!previewAgent && !isDeleteConfirmOpen}
+          onClose={() => setPreviewAgent(null)}
+          title={previewAgent?.name || ''}
+          content={previewAgent?.prompt || (previewAgent?.files ? {
+              'agent.md': previewAgent.files.agentFile,
+              'guidelines.md': previewAgent.files.projectGuidelines,
+              'constraints.md': previewAgent.files.constraintsFile,
+              'SKILL.md': previewAgent.files.skillFile
+          } : undefined)}
+          onCopy={() => {
+              const text = previewAgent?.prompt || (previewAgent?.files ? Object.values(previewAgent.files).join('\n\n---\n\n') : '');
+              navigator.clipboard.writeText(text);
+              setSuccessMessage('Copied to clipboard!');
+          }}
+          onExport={() => {
+              if (previewAgent?.prompt) handleExportPrompt(previewAgent.prompt, previewAgent.name);
+              else if (previewAgent?.files) handleExportLegacyZip(previewAgent);
+          }}
+          onDelete={() => setIsDeleteConfirmOpen(true)}
+      />
+
+      <Modal isOpen={isDeleteConfirmOpen} onClose={() => setIsDeleteConfirmOpen(false)} title="Confirm Deletion">
+          <div className="space-y-4">
+              <p className="text-gray-600 dark:text-gray-400">Are you sure you want to delete <strong>{previewAgent?.name}</strong>? This action cannot be undone.</p>
+              <div className="flex justify-end space-x-2">
+                  <button onClick={() => setIsDeleteConfirmOpen(false)} className="px-4 py-2 border dark:border-gray-600 rounded-lg">Cancel</button>
+                  <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded-lg">Delete</button>
+              </div>
           </div>
       </Modal>
 
