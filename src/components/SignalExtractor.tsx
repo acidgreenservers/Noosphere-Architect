@@ -1,11 +1,14 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { extractSignal } from '../services/ai/signalService';
 import { SignalConfig, ExtractedSignal, SavedSignal, PromptConfig } from '../types';
 import * as db from '../services/dbService';
 import { sanitizeFilename } from '../utils/security';
 import LoadingSpinner from './LoadingSpinner';
 import Modal from './Modal';
+import PreviewModal from './PreviewModal';
 import Toast from './Toast';
 
 interface SignalExtractorProps {
@@ -23,8 +26,10 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
     const [savedSignals, setSavedSignals] = useState<SavedSignal[]>([]);
     const [successMessage, setSuccessMessage] = useState('');
     const [draftStatus, setDraftStatus] = useState<'unloaded' | 'loaded' | 'none'>('unloaded');
+    const isCheckingDraft = useRef(false);
 
     const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+    const [previewSignal, setPreviewSignal] = useState<SavedSignal | null>(null);
     const [saveName, setSaveName] = useState('');
 
     const loadSavedSignals = useCallback(async () => {
@@ -35,6 +40,9 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
     useEffect(() => {
         loadSavedSignals();
         const loadDraft = async () => {
+            if (isCheckingDraft.current) return;
+            isCheckingDraft.current = true;
+
             const draft = await db.getSignalDraft(1);
             if (draft?.config && draft.config.messyPrompt) {
                 if (window.confirm("An unsaved signal draft was found. Do you want to load it?")) {
@@ -146,19 +154,17 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
         });
     };
 
-    const handleCopy = () => {
-        if (!result) return;
-        const quotedOriginal = config.messyPrompt.split('\n').map(line => `> ${line}`).join('\n');
-        const textToCopy = `## User Prompt\n\n${quotedOriginal}\n>\n>\n\n## Prompt Signal\n\n${result.promptSignal}\n\n## Signal Constraints\n\n${result.signalConstraints}`;
+    const handleCopySignal = (originalPrompt: string, signal: string, constraints: string) => {
+        const quotedOriginal = originalPrompt.split('\n').map(line => `> ${line}`).join('\n');
+        const textToCopy = `## User Prompt\n\n${quotedOriginal}\n>\n>\n\n## Prompt Signal\n\n${signal}\n\n## Signal Constraints\n\n${constraints}`;
         navigator.clipboard.writeText(textToCopy);
         setSuccessMessage('Signal copied to clipboard!');
     };
 
-    const handleExport = () => {
-        if (!result) return;
-        const quotedOriginal = config.messyPrompt.split('\n').map(line => `> ${line}`).join('\n');
-        const content = `## User Prompt\n\n${quotedOriginal}\n>\n>\n\n## Prompt Signal\n\n${result.promptSignal}\n\n## Signal Constraints\n\n${result.signalConstraints}`;
-        const filename = sanitizeFilename(saveName || 'extracted-signal') + '.md';
+    const handleExportSignal = (name: string, originalPrompt: string, signal: string, constraints: string) => {
+        const quotedOriginal = originalPrompt.split('\n').map(line => `> ${line}`).join('\n');
+        const content = `## User Prompt\n\n${quotedOriginal}\n>\n>\n\n## Prompt Signal\n\n${signal}\n\n## Signal Constraints\n\n${constraints}`;
+        const filename = sanitizeFilename(name || 'extracted-signal') + '.md';
 
         const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
         const url = URL.createObjectURL(blob);
@@ -227,10 +233,10 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
                            <span className={`text-xs font-mono px-2 py-1 rounded ${totalChars > 1000 ? 'bg-red-100 text-red-700' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}>
                                 {totalChars} / 1000 characters
                            </span>
-                           <button onClick={handleCopy} className="flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition" title="Copy to clipboard">
+                           <button onClick={() => handleCopySignal(config.messyPrompt, result.promptSignal, result.signalConstraints)} className="flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700 transition" title="Copy to clipboard">
                                 <span className="material-icons text-base mr-1.5">content_copy</span>Copy to clipboard
                             </button>
-                           <button onClick={handleExport} className="flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition" title="Export signal">
+                           <button onClick={() => { handleExportSignal(saveName, config.messyPrompt, result.promptSignal, result.signalConstraints); setSuccessMessage('Signal exported successfully!'); }} className="flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700 transition" title="Export signal">
                                 <span className="material-icons text-base mr-1.5">download</span>Export
                            </button>
                            <button onClick={() => setIsSaveModalOpen(true)} className="flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm transition" title="Save signal">
@@ -245,15 +251,15 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
                     <div className="p-6 space-y-8 bg-white dark:bg-gray-800">
                         <div>
                             <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Prompt Signal</h4>
-                            <div className="p-4 bg-gray-50 dark:bg-gray-900/70 rounded-lg whitespace-pre-wrap text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700 font-mono text-sm">
-                                {result.promptSignal}
+                            <div className="p-4 bg-gray-50 dark:bg-gray-900/70 rounded-lg prose prose-sm dark:prose-invert max-w-none border border-gray-200 dark:border-gray-700 prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:bg-white dark:prose-blockquote:bg-gray-800 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-blockquote:italic">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>{result.promptSignal ?? ''}</ReactMarkdown>
                             </div>
                         </div>
 
                         <div>
                             <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Signal Constraints</h4>
-                            <div className="p-4 bg-gray-50 dark:bg-gray-900/70 rounded-lg whitespace-pre-wrap text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700 font-mono text-sm">
-                                {result.signalConstraints}
+                            <div className="p-4 bg-gray-50 dark:bg-gray-900/70 rounded-lg prose prose-sm dark:prose-invert max-w-none border border-gray-200 dark:border-gray-700 prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:bg-white dark:prose-blockquote:bg-gray-800 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-blockquote:italic">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>{result.signalConstraints ?? ''}</ReactMarkdown>
                             </div>
                         </div>
                     </div>
@@ -270,13 +276,13 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {savedSignals.map(s => (
-                            <div key={s.id} className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow border border-gray-200 dark:border-gray-700 flex justify-between items-center group hover:border-blue-500 dark:hover:border-blue-400 transition-colors">
+                            <div key={s.id} className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow border border-gray-200 dark:border-gray-700 flex justify-between items-center group hover:border-blue-500 dark:hover:border-blue-400 transition-colors border-transparent">
                                 <div className="flex-grow cursor-pointer" onClick={() => handleLoadSaved(s)}>
                                     <p className="font-semibold text-gray-800 dark:text-gray-200">{s.name}</p>
                                     <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(s.createdAt).toLocaleDateString()}</p>
                                 </div>
                                 <div className="flex items-center space-x-1">
-                                    <button onClick={() => handleLoadSaved(s)} className="p-2 text-gray-500 hover:text-blue-500 transition-colors" title="Load"><span className="material-icons">visibility</span></button>
+                                    <button onClick={() => setPreviewSignal(s)} className="p-2 text-gray-500 hover:text-blue-500 transition-colors" title="Preview"><span className="material-icons">visibility</span></button>
                                     <button onClick={() => handleDelete(s.id!)} className="p-2 text-gray-500 hover:text-red-500 transition-colors" title="Delete"><span className="material-icons">delete</span></button>
                                 </div>
                             </div>
@@ -284,6 +290,29 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
                     </div>
                 </div>
             )}
+
+            <PreviewModal
+                isOpen={!!previewSignal}
+                onClose={() => setPreviewSignal(null)}
+                title={`Preview: ${previewSignal?.name}`}
+                content={previewSignal ? `## User Prompt\n\n${previewSignal.config.messyPrompt.split('\n').map(line => `> ${line}`).join('\n')}\n>\n>\n\n## Prompt Signal\n\n${previewSignal.promptSignal}\n\n## Signal Constraints\n\n${previewSignal.signalConstraints}` : ''}
+                onCopy={() => {
+                    if (previewSignal) {
+                        handleCopySignal(previewSignal.config.messyPrompt, previewSignal.promptSignal, previewSignal.signalConstraints);
+                    }
+                }}
+                onExport={() => {
+                    if (previewSignal) {
+                        handleExportSignal(previewSignal.name, previewSignal.config.messyPrompt, previewSignal.promptSignal, previewSignal.signalConstraints);
+                    }
+                }}
+                onDelete={() => {
+                    if (previewSignal?.id) {
+                        handleDelete(previewSignal.id);
+                        setPreviewSignal(null);
+                    }
+                }}
+            />
 
             <Modal isOpen={isSaveModalOpen} onClose={() => setIsSaveModalOpen(false)} title="Save Extracted Signal">
                 <div className="space-y-4">

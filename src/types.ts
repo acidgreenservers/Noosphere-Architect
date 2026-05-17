@@ -13,9 +13,12 @@ export interface GeneratedFiles {
   skillFile: string;
 }
 
+export type PromptType = 'standard' | 'system';
+
 export interface PromptConfig {
   goal: string;
   instructions: string;
+  type?: PromptType;
 }
 
 export interface SavedAgent {
@@ -65,6 +68,11 @@ export interface SavedProject {
     config: ProjectConfig;
     files: GeneratedProjectFiles;
     createdAt: string;
+}
+
+export interface GeneratedPrompt {
+  signal: string;
+  prompt: string;
 }
 
 export type MindSeedType = 'cogni' | 'lingua' | 'arch';
