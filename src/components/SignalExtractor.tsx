@@ -252,14 +252,14 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
                         <div>
                             <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Prompt Signal</h4>
                             <div className="p-4 bg-gray-50 dark:bg-gray-900/70 rounded-lg prose prose-sm dark:prose-invert max-w-none border border-gray-200 dark:border-gray-700 prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:bg-white dark:prose-blockquote:bg-gray-800 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-blockquote:italic">
-                                <ReactMarkdown remarkPlugins={[remarkGfm]}>{result.promptSignal}</ReactMarkdown>
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>{result.promptSignal ?? ''}</ReactMarkdown>
                             </div>
                         </div>
 
                         <div>
                             <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Signal Constraints</h4>
                             <div className="p-4 bg-gray-50 dark:bg-gray-900/70 rounded-lg prose prose-sm dark:prose-invert max-w-none border border-gray-200 dark:border-gray-700 prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:bg-white dark:prose-blockquote:bg-gray-800 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-blockquote:italic">
-                                <ReactMarkdown remarkPlugins={[remarkGfm]}>{result.signalConstraints}</ReactMarkdown>
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>{result.signalConstraints ?? ''}</ReactMarkdown>
                             </div>
                         </div>
                     </div>

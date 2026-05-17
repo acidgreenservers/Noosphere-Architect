@@ -37,6 +37,20 @@ Generate ONLY the raw JSON object with "promptSignal" and "signalConstraints" ke
   return contextPrefix + basePrompt;
 };
 
+function validateExtractedSignal(raw: unknown): ExtractedSignal {
+  if (!raw || typeof raw !== 'object') {
+    throw new Error("AI response was not a valid JSON object.");
+  }
+  const obj = raw as Record<string, unknown>;
+  if (typeof obj.promptSignal !== 'string' || typeof obj.signalConstraints !== 'string') {
+    throw new Error(
+      `AI response missing required fields: expected "promptSignal" (string) and "signalConstraints" (string). ` +
+      `Got: promptSignal=${JSON.stringify(obj.promptSignal)}, signalConstraints=${JSON.stringify(obj.signalConstraints)}`
+    );
+  }
+  return { promptSignal: obj.promptSignal, signalConstraints: obj.signalConstraints };
+}
+
 export const extractSignal = async (config: SignalConfig): Promise<ExtractedSignal> => {
   if (!config.messyPrompt.trim()) {
     throw new Error("Input prompt cannot be empty.");
@@ -44,5 +58,6 @@ export const extractSignal = async (config: SignalConfig): Promise<ExtractedSign
 
   const customContext = await getCustomContext('signalContext');
   const prompt = createSignalExtractorMetaPrompt(config, customContext);
-  return handleAiCall<ExtractedSignal>(prompt, true, "extracting signal");
+  const raw = await handleAiCall<unknown>(prompt, true, "extracting signal");
+  return validateExtractedSignal(raw);
 };
