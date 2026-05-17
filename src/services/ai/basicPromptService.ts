@@ -1,5 +1,5 @@
 
-import { PromptConfig } from '../../types';
+import { PromptConfig, GeneratedPrompt } from '../../types';
 import { handleAiCall } from './openRouter';
 import { getCustomContext } from '../dbService';
 
@@ -33,24 +33,23 @@ User's raw input:
 - **Key Instructions/Constraints:** ${config.instructions || 'None provided.'}
 
 ### OUTPUT FORMAT
-1. ## Topology Signal
-   - Brief analysis of the connections and invariants detected.
-2. ## Enhanced Prompt
-   - Wrap the final, ready-to-use prompt in a Markdown blockquote.
-   - Example: > "Your enhanced prompt here..."
+Return a single raw JSON object with no surrounding text or markdown code blocks.
+The JSON object must have the following keys:
+- "signal": A brief analysis of the connections, invariants, and topology detected from the input. 2-3 sentences.
+- "prompt": The final, ready-to-use enhanced prompt. This is the executable output — the prompt itself, not wrapped in a blockquote.
 
-Return the structured Markdown output. Nothing else.
+Generate ONLY the raw JSON object.
 `;
 
   return contextPrefix + basePrompt;
 };
 
-export const generateBasicPrompt = async (config: PromptConfig): Promise<string> => {
+export const generateBasicPrompt = async (config: PromptConfig): Promise<GeneratedPrompt> => {
   if (!config.goal.trim()) {
     throw new Error("Prompt goal cannot be empty.");
   }
 
   const customContext = await getCustomContext('promptContext');
   const metaPrompt = createBasicPromptMetaPrompt(config, customContext);
-  return handleAiCall<string>(metaPrompt, false, "generating basic prompt");
+  return handleAiCall<GeneratedPrompt>(metaPrompt, true, "generating basic prompt");
 };

@@ -1,5 +1,5 @@
 
-import { PromptConfig } from '../../types';
+import { PromptConfig, GeneratedPrompt } from '../../types';
 import { handleAiCall } from './openRouter';
 import { getCustomContext } from '../dbService';
 
@@ -40,13 +40,6 @@ Compress signal, eliminate slack, crystallize invariants.
 User's raw input:
 - **Core Task/Goal:** ${config.goal}
 - **Key Instructions/Constraints:** ${config.instructions || 'None provided.'}
-
-## Output Format
-1. ## Reasoning Topology
-   - Brief analysis of the implicit invariants and state mapping detected.
-2. ## System Prompt
-   - Wrap the final, reasoning-topology-encoded system prompt in a Markdown blockquote.
-   - Example: > "Your structured system prompt here..."
 
 ## Output Constraints
 - <2000 characters (reasoning topology encoded tight)
@@ -98,18 +91,24 @@ This meta-prompt generates prompts that:
 
 ---
 
-**End Context Topology Instantiation**
+### OUTPUT FORMAT
+Return a single raw JSON object with no surrounding text or markdown code blocks.
+The JSON object must have the following keys:
+- "signal": A brief analysis of the reasoning topology, invariants, and state mapping detected from the input. 2-3 sentences.
+- "prompt": The final, reasoning-topology-encoded system prompt. This is the executable output — the prompt itself.
+
+Generate ONLY the raw JSON object.
 `;
 
   return contextPrefix + basePrompt;
 };
 
-export const generateStructuredSystemPrompt = async (config: PromptConfig): Promise<string> => {
+export const generateStructuredSystemPrompt = async (config: PromptConfig): Promise<GeneratedPrompt> => {
   if (!config.goal.trim()) {
     throw new Error("Prompt goal cannot be empty.");
   }
 
   const customContext = await getCustomContext('systemPromptContext');
   const metaPrompt = createSystemPromptMetaPrompt(config, customContext);
-  return handleAiCall<string>(metaPrompt, false, "generating system prompt");
+  return handleAiCall<GeneratedPrompt>(metaPrompt, true, "generating system prompt");
 };

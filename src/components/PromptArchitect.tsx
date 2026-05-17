@@ -4,7 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { generateBasicPrompt } from '../services/ai/basicPromptService';
 import { generateStructuredSystemPrompt } from '../services/ai/structuredSystemPromptService';
-import { PromptConfig, SavedPrompt, PromptType } from '../types';
+import { PromptConfig, SavedPrompt, PromptType, GeneratedPrompt } from '../types';
 import * as db from '../services/dbService';
 import JSZip from 'jszip';
 import { sanitizeFilename } from '../utils/security';
@@ -56,7 +56,7 @@ interface PromptArchitectProps {
 const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClearInitialConfig }) => {
     const [activeTab, setActiveTab] = useState<PromptType>('standard');
     const [promptConfig, setPromptConfig] = useState<PromptConfig>({ goal: '', instructions: '' });
-    const [generatedPrompt, setGeneratedPrompt] = useState('');
+    const [generatedPrompt, setGeneratedPrompt] = useState<GeneratedPrompt | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [loadingMessage, setLoadingMessage] = useState('');
@@ -99,12 +99,12 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                 } else {
                     await db.clearTypedPromptDraft(activeTab, 1);
                     setPromptConfig({ goal: '', instructions: '' });
-                    setGeneratedPrompt('');
+                    setGeneratedPrompt(null);
                     setDraftStatus('none');
                 }
             } else {
                 setPromptConfig({ goal: '', instructions: '' });
-                setGeneratedPrompt('');
+                setGeneratedPrompt(null);
                 setDraftStatus('none');
             }
         };
@@ -124,7 +124,7 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
     const handleGenerate = useCallback(async () => {
         setIsLoading(true);
         setError(null);
-        setGeneratedPrompt('');
+        setGeneratedPrompt(null);
 
         const messages = activeTab === 'standard'
             ? ['Extracting signal...', 'Compressing structure...', 'Finalizing prompt...']
@@ -164,7 +164,7 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
 
     const handleReset = () => {
         setPromptConfig({ goal: '', instructions: '' });
-        setGeneratedPrompt('');
+        setGeneratedPrompt(null);
         setError(null);
         setIsLoading(false);
         db.clearTypedPromptDraft(activeTab, 1);
@@ -172,8 +172,8 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
 
     const handleOpenSaveModal = () => {
         if (!generatedPrompt) return;
-        const loadedPrompt = savedPrompts.find(p => p.prompt === generatedPrompt);
-        setModalInput({ name: loadedPrompt?.name || '', prompt: generatedPrompt });
+        const loadedPrompt = savedPrompts.find(p => p.prompt === generatedPrompt.prompt);
+        setModalInput({ name: loadedPrompt?.name || '', prompt: generatedPrompt.prompt });
         setModalState({ mode: 'save' });
     };
 
@@ -274,7 +274,10 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
     
     const handleLoadSavedPrompt = (prompt: SavedPrompt) => {
         setPromptConfig(prompt.config);
-        setGeneratedPrompt(prompt.prompt);
+        setGeneratedPrompt({
+            signal: '(Restored from saved — signal analysis was ephemeral.)',
+            prompt: prompt.prompt
+        });
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -410,23 +413,42 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
             {isLoading && <LoadingSpinner message={loadingMessage || 'Architecting your prompt...'} />}
 
             {generatedPrompt && !isLoading && (
-                <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-hidden">
-                     <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-                        <h3 className="text-xl font-semibold">Generated {activeTab === 'standard' ? 'Prompt' : 'System Prompt'}</h3>
-                        <div className="flex items-center space-x-2">
-                           <button onClick={() => { navigator.clipboard.writeText(generatedPrompt); setSuccessMessage('Prompt copied to clipboard!'); }} className="flex items-center px-3 py-1.5 border rounded-md text-sm hover:bg-white dark:hover:bg-gray-700 transition-colors" title="Copy prompt">
-                                <span className="material-icons text-base mr-1.5">content_copy</span>Copy
-                            </button>
-                           <button onClick={() => { handleExportPrompt(generatedPrompt); setSuccessMessage('Prompt exported successfully!'); }} className="flex items-center px-3 py-1.5 border rounded-md text-sm hover:bg-white dark:hover:bg-gray-700 transition-colors" title="Export prompt">
-                                <span className="material-icons text-base mr-1.5">download</span>Export
-                           </button>
-                           <button onClick={handleOpenSaveModal} className={`flex items-center px-3 py-1.5 border rounded-md text-sm text-white ${activeTab === 'standard' ? 'bg-blue-500 hover:bg-blue-600 shadow-blue-500/20' : 'bg-purple-500 hover:bg-purple-600 shadow-purple-500/20'} shadow-lg transition-all`} title="Save prompt">
-                                <span className="material-icons text-base mr-1.5">save</span>Save
-                            </button>
+                <div className="mt-8 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    {/* Signal Analysis Card */}
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                        <div className="flex items-center gap-2 px-6 py-3 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+                            <span className="material-icons text-blue-500 text-lg">signal_cellular_alt</span>
+                            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Signal Analysis</h4>
+                        </div>
+                        <div className="p-6 prose prose-sm dark:prose-invert max-w-none text-gray-600 dark:text-gray-400">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{generatedPrompt.signal}</ReactMarkdown>
                         </div>
                     </div>
-                    <div className="prose prose-sm sm:prose-base dark:prose-invert max-w-none p-6 md:p-10 bg-white dark:bg-gray-900/40 prose-pre:bg-gray-900 prose-pre:text-gray-100 prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:bg-gray-50 dark:prose-blockquote:bg-gray-800/50 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-blockquote:italic prose-blockquote:text-xl sm:prose-blockquote:text-2xl">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{generatedPrompt}</ReactMarkdown>
+
+                    {/* Generated Prompt Card */}
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                        <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+                            <div className="flex items-center gap-2">
+                                <span className="material-icons text-lg text-gray-600 dark:text-gray-400">psychology</span>
+                                <h3 className="text-xl font-semibold">Generated {activeTab === 'standard' ? 'Prompt' : 'System Prompt'}</h3>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                               <button onClick={() => { navigator.clipboard.writeText(generatedPrompt.prompt); setSuccessMessage('Prompt copied to clipboard!'); }} className="flex items-center px-3 py-1.5 border rounded-md text-sm hover:bg-white dark:hover:bg-gray-700 transition-colors" title="Copy prompt">
+                                    <span className="material-icons text-base mr-1.5">content_copy</span>Copy
+                                </button>
+                               <button onClick={() => { handleExportPrompt(generatedPrompt.prompt); setSuccessMessage('Prompt exported successfully!'); }} className="flex items-center px-3 py-1.5 border rounded-md text-sm hover:bg-white dark:hover:bg-gray-700 transition-colors" title="Export prompt">
+                                    <span className="material-icons text-base mr-1.5">download</span>Export
+                               </button>
+                               <button onClick={handleOpenSaveModal} className={`flex items-center px-3 py-1.5 border rounded-md text-sm text-white ${activeTab === 'standard' ? 'bg-blue-500 hover:bg-blue-600 shadow-blue-500/20' : 'bg-purple-500 hover:bg-purple-600 shadow-purple-500/20'} shadow-lg transition-all`} title="Save prompt">
+                                    <span className="material-icons text-base mr-1.5">save</span>Save
+                                </button>
+                            </div>
+                        </div>
+                        <div className="p-6 md:p-10">
+                            <blockquote className="border-l-4 border-blue-500 pl-4 py-2 italic text-lg sm:text-xl text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900/40 rounded-r-lg">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>{generatedPrompt.prompt}</ReactMarkdown>
+                            </blockquote>
+                        </div>
                     </div>
                 </div>
             )}

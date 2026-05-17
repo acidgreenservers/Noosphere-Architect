@@ -70,6 +70,11 @@ export interface SavedProject {
     createdAt: string;
 }
 
+export interface GeneratedPrompt {
+  signal: string;
+  prompt: string;
+}
+
 export type MindSeedType = 'cogni' | 'lingua' | 'arch';
 
 export interface MindSeedConfig {
