@@ -421,7 +421,7 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                             <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Signal Analysis</h4>
                         </div>
                         <div className="p-6 prose prose-sm dark:prose-invert max-w-none text-gray-600 dark:text-gray-400">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{generatedPrompt.signal}</ReactMarkdown>
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{generatedPrompt.signal ?? ''}</ReactMarkdown>
                         </div>
                     </div>
 
@@ -446,7 +446,7 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                         </div>
                         <div className="p-6 md:p-10">
                             <blockquote className="border-l-4 border-blue-500 pl-4 py-2 italic text-lg sm:text-xl text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900/40 rounded-r-lg">
-                                <ReactMarkdown remarkPlugins={[remarkGfm]}>{generatedPrompt.prompt}</ReactMarkdown>
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>{generatedPrompt.prompt ?? ''}</ReactMarkdown>
                             </blockquote>
                         </div>
                     </div>

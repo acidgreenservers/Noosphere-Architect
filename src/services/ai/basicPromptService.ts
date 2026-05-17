@@ -44,6 +44,20 @@ Generate ONLY the raw JSON object.
   return contextPrefix + basePrompt;
 };
 
+function validateGeneratedPrompt(raw: unknown): GeneratedPrompt {
+  if (!raw || typeof raw !== 'object') {
+    throw new Error("AI response was not a valid JSON object.");
+  }
+  const obj = raw as Record<string, unknown>;
+  if (typeof obj.signal !== 'string' || typeof obj.prompt !== 'string') {
+    throw new Error(
+      `AI response missing required fields: expected "signal" (string) and "prompt" (string). ` +
+      `Got: signal=${JSON.stringify(obj.signal)}, prompt=${JSON.stringify(obj.prompt)}`
+    );
+  }
+  return { signal: obj.signal, prompt: obj.prompt };
+}
+
 export const generateBasicPrompt = async (config: PromptConfig): Promise<GeneratedPrompt> => {
   if (!config.goal.trim()) {
     throw new Error("Prompt goal cannot be empty.");
@@ -51,5 +65,6 @@ export const generateBasicPrompt = async (config: PromptConfig): Promise<Generat
 
   const customContext = await getCustomContext('promptContext');
   const metaPrompt = createBasicPromptMetaPrompt(config, customContext);
-  return handleAiCall<GeneratedPrompt>(metaPrompt, true, "generating basic prompt");
+  const raw = await handleAiCall<unknown>(metaPrompt, true, "generating basic prompt");
+  return validateGeneratedPrompt(raw);
 };
