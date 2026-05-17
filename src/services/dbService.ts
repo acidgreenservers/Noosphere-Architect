@@ -155,7 +155,7 @@ export const saveDraft = (draft: {id: number, config: AgentConfig}): Promise<num
 };
 
 // Generic Prompt Draft Functions
-export const saveTypedPromptDraft = (type: PromptType, draft: {id: number, config: PromptConfig}): Promise<number> => {
+export const saveTypedPromptDraft = (type: PromptType, draft: {id: number, config: PromptConfig | AgentConfig}): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const storeName = type === 'standard' ? STANDARD_PROMPT_DRAFT_STORE : SYSTEM_PROMPT_DRAFT_STORE;
         const store = await getStore(storeName, 'readwrite');
@@ -165,7 +165,7 @@ export const saveTypedPromptDraft = (type: PromptType, draft: {id: number, confi
     });
 };
 
-export const getTypedPromptDraft = (type: PromptType, id: number): Promise<{id: number, config: PromptConfig} | undefined> => {
+export const getTypedPromptDraft = (type: PromptType, id: number): Promise<{id: number, config: PromptConfig | AgentConfig} | undefined> => {
     return new Promise(async (resolve, reject) => {
         const storeName = type === 'standard' ? STANDARD_PROMPT_DRAFT_STORE : SYSTEM_PROMPT_DRAFT_STORE;
         const store = await getStore(storeName, 'readonly');
@@ -215,7 +215,7 @@ export const getAllTypedPrompts = (type: PromptType): Promise<SavedPrompt[]> => 
         const storeName = getPromptStoreName(type);
         const store = await getStore(storeName, 'readonly');
         const request = store.getAll();
-        request.onsuccess = () => resolve(request.result.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        request.onsuccess = () => resolve(request.result.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
         request.onerror = () => reject(request.error);
     });
 };
@@ -333,7 +333,7 @@ export const getAllMindSeeds = (type: MindSeedType): Promise<SavedMindSeed[]> =>
             const storeName = getMindSeedStoreName(type);
             const store = await getStore(storeName, 'readonly');
             const request = store.getAll();
-            request.onsuccess = () => resolve(request.result.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+            request.onsuccess = () => resolve(request.result.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
             request.onerror = () => reject(request.error);
         } catch (error) {
             reject(error);
@@ -546,7 +546,7 @@ export const getAllAgents = (): Promise<SavedAgent[]> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(AGENT_STORE, 'readonly');
         const request = store.getAll();
-        request.onsuccess = () => resolve(request.result.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        request.onsuccess = () => resolve(request.result.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
         request.onerror = () => reject(request.error);
     });
 };
@@ -593,7 +593,7 @@ export const getAllPrompts = (): Promise<SavedPrompt[]> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(PROMPT_STORE, 'readonly');
         const request = store.getAll();
-        request.onsuccess = () => resolve(request.result.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        request.onsuccess = () => resolve(request.result.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
         request.onerror = () => reject(request.error);
     });
 };
@@ -639,7 +639,7 @@ export const getAllProjects = (): Promise<SavedProject[]> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(PROJECT_STORE, 'readonly');
         const request = store.getAll();
-        request.onsuccess = () => resolve(request.result.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        request.onsuccess = () => resolve(request.result.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
         request.onerror = () => reject(request.error);
     });
 };

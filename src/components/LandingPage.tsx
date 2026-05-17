@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { View } from '../App';
+import CustomContextSettings from './CustomContextSettings';
 
 interface LandingPageProps {
   onSelectView: (view: View) => void;
@@ -80,14 +81,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectView }) => {
 
                     <ToolCard 
                         icon="psychology" 
-                        title="Prompt Architect" 
-                        description="A dual-mode architect for refining standard prompts or building complex system reasoning topologies."
+                        title="Prompt & Skill Architect"
+                        description="Refine messy thoughts into prompts or architect specialized skill bundles with modular project files."
                         onClick={() => onSelectView('promptArchitect')}
                     />
                     <ToolCard
                         icon="group_work"
                         title="AI Agent Architect"
-                        description="Define an AI agent's role, scope, and goals to generate foundational project documents and guardrails."
+                        description="Define an AI agent's role, scope, and goals to generate a single, powerful, reasoning-encoded system prompt."
                         onClick={() => onSelectView('agentArchitect')}
                     />
                      <ToolCard
@@ -103,6 +104,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectView }) => {
                         onClick={() => onSelectView('agentApiSettings')}
                     />
                 </div>
+            </section>
+
+            <section className="my-24">
+                <CustomContextSettings />
             </section>
         </div>
     );

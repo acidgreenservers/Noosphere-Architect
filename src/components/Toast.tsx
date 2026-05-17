@@ -3,11 +3,12 @@ import React, { useEffect, useState } from 'react';
 
 interface ToastProps {
   message: string;
+  type?: 'success' | 'error' | 'info';
   duration?: number;
   onClose: () => void;
 }
 
-const Toast: React.FC<ToastProps> = ({ message, duration = 3000, onClose }) => {
+const Toast: React.FC<ToastProps> = ({ message, type = 'success', duration = 3000, onClose }) => {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -31,8 +32,8 @@ const Toast: React.FC<ToastProps> = ({ message, duration = 3000, onClose }) => {
       }`}
       aria-live="assertive"
     >
-      <div className="bg-green-600 text-white font-semibold py-3 px-5 rounded-lg shadow-xl flex items-center">
-        <span className="material-icons mr-2">check_circle</span>
+      <div className={`${type === 'error' ? 'bg-red-600' : 'bg-green-600'} text-white font-semibold py-3 px-5 rounded-lg shadow-xl flex items-center`}>
+        <span className="material-icons mr-2">{type === 'error' ? 'error' : 'check_circle'}</span>
         <p>{message}</p>
       </div>
     </div>

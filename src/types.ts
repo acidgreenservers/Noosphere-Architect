@@ -1,4 +1,3 @@
-
 export interface AgentConfig {
   role: string;
   scope: string;
@@ -21,12 +20,24 @@ export interface PromptConfig {
   type?: PromptType;
 }
 
+// Combined config to handle different inputs
+export interface UnifiedConfig {
+  role?: string;
+  scope?: string;
+  goals?: string;
+  constraints?: string;
+  goal?: string;
+  instructions?: string;
+}
+
 export interface SavedAgent {
   id?: number;
   name: string;
-  config: AgentConfig;
-  files: GeneratedFiles;
-  createdAt: string; // ISO string for easier storage
+  config: AgentConfig | UnifiedConfig;
+  prompt?: string; // New: for single prompt output
+  signal?: string; // New: for signal analysis
+  files?: GeneratedFiles; // Legacy: for 4-file output
+  createdAt: string;
 }
 
 export interface PromptVersion {
@@ -37,9 +48,11 @@ export interface PromptVersion {
 export interface SavedPrompt {
   id?: number;
   name: string;
-  config: PromptConfig;
-  prompt: string;
-  createdAt: string; // ISO string
+  config: PromptConfig | AgentConfig | UnifiedConfig;
+  prompt?: string; // Single prompt
+  signal?: string; // Signal analysis
+  files?: GeneratedFiles; // New: for Skill Architect 4-file output
+  createdAt: string;
   history?: PromptVersion[];
 }
 

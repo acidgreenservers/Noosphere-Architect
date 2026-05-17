@@ -13,7 +13,7 @@ const tools: ToolConfig[] = [
   { id: 'signalContext', name: 'Signal Extractor', icon: 'unarchive' },
   { id: 'mindSeedContext', name: 'MindSeed Creation Tool', icon: 'spa' },
   { id: 'promptContext', name: 'Prompt Architect', icon: 'psychology' },
-  { id: 'systemPromptContext', name: 'System Prompt Architect', icon: 'psychology_alt' },
+  { id: 'systemPromptContext', name: 'Skill Architect', icon: 'psychology_alt' },
   { id: 'agentContext', name: 'AI Agent Architect', icon: 'smart_toy' },
   { id: 'projectContext', name: 'Project Architect', icon: 'architecture' },
 ];

@@ -1,10 +1,9 @@
-
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { generateBasicPrompt } from '../services/ai/basicPromptService';
-import { generateStructuredSystemPrompt } from '../services/ai/structuredSystemPromptService';
-import { PromptConfig, SavedPrompt, PromptType, GeneratedPrompt } from '../types';
+import { generateSkillBundle } from '../services/ai/skillBundleService';
+import { PromptConfig, SavedPrompt, PromptType, GeneratedPrompt, AgentConfig, GeneratedFiles } from '../types';
 import * as db from '../services/dbService';
 import JSZip from 'jszip';
 import { sanitizeFilename } from '../utils/security';
@@ -12,12 +11,7 @@ import LoadingSpinner from './LoadingSpinner';
 import Modal from './Modal';
 import PreviewModal from './PreviewModal';
 import Toast from './Toast';
-
-const Tooltip: React.FC<{ text: string }> = ({ text }) => (
-  <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-max max-w-xs p-2 bg-gray-800 text-white text-xs rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
-    {text}
-  </span>
-);
+import GeneratedFilesDisplay from './GeneratedFilesDisplay';
 
 const PROMPT_TEMPLATES = [
     {
@@ -37,15 +31,15 @@ const PROMPT_TEMPLATES = [
 3. Concepts: Identify and explain the key programming concepts used.
 4. Simplification: Use an analogy or simple terms to clarify the logic.`
     },
+];
+
+const SKILL_TEMPLATES: AgentConfig[] = [
     {
-      name: 'Data Analysis Report',
-      goal: 'Analyze a provided dataset (as text/csv) and summarize the key findings.',
-      instructions: `1. Objective: State the main goal of the analysis.
-2. Key Insights: List the top 3-5 most important findings as bullet points.
-3. Observations: Mention any interesting patterns, trends, or outliers discovered.
-4. Recommendations: Suggest potential actions based on the analysis.
-5. Output Format: Present the report in clear, structured Markdown.`
-    },
+        role: 'Advanced Data Visualization',
+        scope: 'Transforming complex JSON datasets into interactive D3.js or Chart.js visualizations.',
+        goals: '1. Auto-detect data types.\n2. Suggest optimal chart types.\n3. Generate clean, modular JavaScript code.',
+        constraints: '1. Minimal external dependencies.\n2. Responsive design.\n3. Accessible color palettes.'
+    }
 ];
 
 interface PromptArchitectProps {
@@ -56,7 +50,11 @@ interface PromptArchitectProps {
 const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClearInitialConfig }) => {
     const [activeTab, setActiveTab] = useState<PromptType>('standard');
     const [promptConfig, setPromptConfig] = useState<PromptConfig>({ goal: '', instructions: '' });
+    const [skillConfig, setSkillConfig] = useState<AgentConfig>({ role: '', scope: '', goals: '', constraints: '' });
+
     const [generatedPrompt, setGeneratedPrompt] = useState<GeneratedPrompt | null>(null);
+    const [generatedSkill, setGeneratedSkill] = useState<GeneratedFiles | null>(null);
+
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [loadingMessage, setLoadingMessage] = useState('');
@@ -64,19 +62,25 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
 
 
     const [savedPrompts, setSavedPrompts] = useState<SavedPrompt[]>([]);
+    const [legacyPrompts, setLegacyPrompts] = useState<SavedPrompt[]>([]);
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
     const [draftStatus, setDraftStatus] = useState<'unloaded' | 'loaded' | 'none'>('unloaded');
     const checkingDraftRef = useRef<Record<PromptType, boolean>>({ standard: false, system: false });
 
     const [modalState, setModalState] = useState<{ mode: 'save' | 'edit'; prompt?: SavedPrompt } | null>(null);
-    const [modalInput, setModalInput] = useState<{ name: string; prompt: string }>({ name: '', prompt: '' });
+    const [modalInput, setModalInput] = useState<{ name: string; prompt?: string; files?: GeneratedFiles }>({ name: '' });
     const [previewPrompt, setPreviewPrompt] = useState<SavedPrompt | null>(null);
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
 
     const loadSavedPrompts = useCallback(async () => {
-        const prompts = await db.getAllTypedPrompts(activeTab);
-        setSavedPrompts(prompts);
+        const [typedPrompts, allLegacyPrompts] = await Promise.all([
+            db.getAllTypedPrompts(activeTab),
+            db.getAllPrompts()
+        ]);
+        setSavedPrompts(typedPrompts);
+        setLegacyPrompts(allLegacyPrompts);
     }, [activeTab]);
 
     useEffect(() => {
@@ -93,18 +97,22 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
 
             const draft = await db.getTypedPromptDraft(activeTab, 1);
             if (draft?.config && Object.values(draft.config).some(v => v)) {
-                if (window.confirm(`An unsaved ${activeTab} prompt draft was found. Do you want to load it?`)) {
-                    setPromptConfig(draft.config);
+                if (window.confirm(`An unsaved ${activeTab === 'standard' ? 'prompt' : 'skill'} draft was found. Do you want to load it?`)) {
+                    if (activeTab === 'standard') {
+                        setPromptConfig(draft.config as PromptConfig);
+                    } else {
+                        setSkillConfig(draft.config as AgentConfig);
+                    }
                     setDraftStatus('loaded');
                 } else {
                     await db.clearTypedPromptDraft(activeTab, 1);
-                    setPromptConfig({ goal: '', instructions: '' });
-                    setGeneratedPrompt(null);
                     setDraftStatus('none');
                 }
             } else {
-                setPromptConfig({ goal: '', instructions: '' });
+                if (activeTab === 'standard') setPromptConfig({ goal: '', instructions: '' });
+                else setSkillConfig({ role: '', scope: '', goals: '', constraints: '' });
                 setGeneratedPrompt(null);
+                setGeneratedSkill(null);
                 setDraftStatus('none');
             }
         };
@@ -114,21 +122,23 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
     useEffect(() => {
         if (draftStatus === 'unloaded') return;
         const handler = setTimeout(() => {
-            if (Object.values(promptConfig).some(v => v)) {
-                db.saveTypedPromptDraft(activeTab, { id: 1, config: promptConfig });
+            const configToSave = activeTab === 'standard' ? promptConfig : skillConfig;
+            if (Object.values(configToSave).some(v => v)) {
+                db.saveTypedPromptDraft(activeTab, { id: 1, config: configToSave });
             }
         }, 1500);
         return () => clearTimeout(handler);
-    }, [promptConfig, draftStatus, activeTab]);
+    }, [promptConfig, skillConfig, draftStatus, activeTab]);
 
     const handleGenerate = useCallback(async () => {
         setIsLoading(true);
         setError(null);
         setGeneratedPrompt(null);
+        setGeneratedSkill(null);
 
         const messages = activeTab === 'standard'
             ? ['Extracting signal...', 'Compressing structure...', 'Finalizing prompt...']
-            : ['Scanning topology...', 'Crystallizing invariants...', 'Encoding reasoning...'];
+            : ['Mapping capability...', 'Architecting guidelines...', 'Generating Skill Bundle...'];
 
         let messageIndex = 0;
         setLoadingMessage(messages[0]);
@@ -138,47 +148,51 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
         }, 2000);
 
         try {
-            if (!promptConfig.goal.trim()) {
-                setError("Please enter a goal for your prompt.");
-                setIsLoading(false);
-                if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
-                return;
+            if (activeTab === 'standard') {
+                if (!promptConfig.goal.trim()) throw new Error("Please enter a goal.");
+                const result = await generateBasicPrompt(promptConfig);
+                setGeneratedPrompt(result);
+            } else {
+                if (!skillConfig.role.trim() || !skillConfig.scope.trim()) throw new Error("Role and Scope are required.");
+                const result = await generateSkillBundle(skillConfig);
+                setGeneratedSkill(result);
             }
-
-            const result = activeTab === 'standard'
-                ? await generateBasicPrompt(promptConfig)
-                : await generateStructuredSystemPrompt(promptConfig);
-
-            setGeneratedPrompt(result);
             await db.clearTypedPromptDraft(activeTab, 1);
-        } catch (e) {
-            setError('Failed to generate prompt. Please check your API key and try again.');
+        } catch (e: any) {
+            setError(e.message || 'Failed to generate. Please check your API key.');
         } finally {
             setIsLoading(false);
-            if (loadingIntervalRef.current) {
-                clearInterval(loadingIntervalRef.current);
-            }
+            if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
             setLoadingMessage('');
         }
-    }, [promptConfig, activeTab]);
+    }, [promptConfig, skillConfig, activeTab]);
 
     const handleReset = () => {
-        setPromptConfig({ goal: '', instructions: '' });
+        if (activeTab === 'standard') setPromptConfig({ goal: '', instructions: '' });
+        else setSkillConfig({ role: '', scope: '', goals: '', constraints: '' });
         setGeneratedPrompt(null);
+        setGeneratedSkill(null);
         setError(null);
         setIsLoading(false);
         db.clearTypedPromptDraft(activeTab, 1);
     };
 
     const handleOpenSaveModal = () => {
-        if (!generatedPrompt) return;
-        const loadedPrompt = savedPrompts.find(p => p.prompt === generatedPrompt.prompt);
-        setModalInput({ name: loadedPrompt?.name || '', prompt: generatedPrompt.prompt });
-        setModalState({ mode: 'save' });
+        if (activeTab === 'standard' && generatedPrompt) {
+            setModalInput({ name: '', prompt: generatedPrompt.prompt });
+            setModalState({ mode: 'save' });
+        } else if (activeTab === 'system' && generatedSkill) {
+            setModalInput({ name: '', files: generatedSkill });
+            setModalState({ mode: 'save' });
+        }
     };
 
     const handleOpenEditModal = (prompt: SavedPrompt) => {
-        setModalInput({ name: prompt.name, prompt: prompt.prompt });
+        setModalInput({
+            name: prompt.name,
+            prompt: prompt.prompt,
+            files: prompt.files
+        });
         setModalState({ mode: 'edit', prompt });
     };
     
@@ -188,63 +202,62 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
         if (modalState.mode === 'save') {
             const newPrompt: SavedPrompt = {
                 name: modalInput.name.trim(),
-                config: promptConfig,
+                config: activeTab === 'standard' ? promptConfig : skillConfig,
                 prompt: modalInput.prompt,
+                files: modalInput.files,
                 createdAt: new Date().toISOString(),
                 history: []
             };
             await db.addTypedPrompt(activeTab, newPrompt);
-            setSuccessMessage('Prompt saved successfully!');
+            setSuccessMessage('Saved successfully!');
         } else if (modalState.mode === 'edit' && modalState.prompt) {
-            const isPromptChanged = modalState.prompt.prompt !== modalInput.prompt;
-            
-            let updatedHistory = modalState.prompt.history || [];
-            if (isPromptChanged) {
-                updatedHistory = [
-                    ...updatedHistory,
-                    {
-                        prompt: modalState.prompt.prompt,
-                        updatedAt: new Date().toISOString()
-                    }
-                ];
-            }
-
             const updatedPrompt: SavedPrompt = {
                 ...modalState.prompt,
                 name: modalInput.name.trim(),
                 prompt: modalInput.prompt,
-                history: updatedHistory
+                files: modalInput.files,
             };
             await db.updateTypedPrompt(activeTab, updatedPrompt);
-            setSuccessMessage('Prompt updated successfully!');
+            setSuccessMessage('Updated successfully!');
         }
 
         loadSavedPrompts();
         setModalState(null);
     };
     
-    const handleDelete = async (id: number) => {
-        if (window.confirm('Are you sure you want to delete this prompt?')) {
-            try {
-                await db.deleteTypedPrompt(activeTab, id);
-                setSavedPrompts(prevPrompts => prevPrompts.filter(p => p.id !== id));
-                setSuccessMessage('Prompt deleted successfully!');
-            } catch (err) {
-                setError('Failed to delete prompt.');
-                console.error(err);
-            }
+    const handleDelete = async () => {
+        if (!previewPrompt || !previewPrompt.id) return;
+        try {
+            await db.deleteTypedPrompt(activeTab, previewPrompt.id);
+            setSavedPrompts(prevPrompts => prevPrompts.filter(p => p.id !== previewPrompt.id));
+            setSuccessMessage('Deleted successfully!');
+            setPreviewPrompt(null);
+            setIsDeleteConfirmOpen(false);
+        } catch (err) {
+            setError('Failed to delete.');
+        }
+    };
+
+    const handleLegacyDelete = async (id: number) => {
+        try {
+            await db.deletePrompt(id);
+            setLegacyPrompts(prev => prev.filter(p => p.id !== id));
+            setSuccessMessage('Deleted successfully!');
+            setPreviewPrompt(null);
+            setIsDeleteConfirmOpen(false);
+        } catch (err) {
+            setError('Failed to delete.');
         }
     };
 
     const handleClearAll = async () => {
-        if (window.confirm('Are you sure you want to delete ALL saved prompts in this tab? This action cannot be undone.')) {
+        if (window.confirm('Are you sure you want to delete ALL saved items in this tab?')) {
             try {
                 await db.clearAllTypedPrompts(activeTab);
                 setSavedPrompts([]);
-                setSuccessMessage('All prompts in this tab have been deleted.');
+                setSuccessMessage('Cleared successfully.');
             } catch (err) {
-                setError('Failed to clear all prompts.');
-                console.error(err);
+                setError('Failed to clear.');
             }
         }
     };
@@ -253,61 +266,50 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
         if (savedPrompts.length === 0) return;
 
         const zip = new JSZip();
-        const exportFilename = activeTab === 'standard' ? 'PROMPT.md' : 'AGENTS.md';
 
         savedPrompts.forEach(p => {
             const folderName = sanitizeFilename(p.name);
-            zip.file(`${folderName}/${exportFilename}`, p.prompt);
+            if (p.prompt) {
+                zip.file(`${folderName}/PROMPT.md`, p.prompt);
+            } else if (p.files) {
+                zip.file(`${folderName}/agent.md`, p.files.agentFile);
+                zip.file(`${folderName}/guidelines.md`, p.files.projectGuidelines);
+                zip.file(`${folderName}/constraints.md`, p.files.constraintsFile);
+                zip.file(`${folderName}/SKILL.md`, p.files.skillFile);
+            }
         });
 
         const content = await zip.generateAsync({ type: 'blob' });
         const url = URL.createObjectURL(content);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `noosphere-${activeTab}-prompts-${new Date().toISOString().split('T')[0]}.zip`;
+        link.download = `noosphere-${activeTab === 'standard' ? 'prompts' : 'skills'}-${new Date().toISOString().split('T')[0]}.zip`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-        setSuccessMessage('All prompts exported as ZIP!');
+        setSuccessMessage('Exported as ZIP!');
     };
     
     const handleLoadSavedPrompt = (prompt: SavedPrompt) => {
-        setPromptConfig(prompt.config);
-        setGeneratedPrompt({
-            signal: '(Restored from saved — signal analysis was ephemeral.)',
-            prompt: prompt.prompt
-        });
+        if (activeTab === 'standard') {
+            setPromptConfig(prompt.config as PromptConfig);
+            setGeneratedPrompt({ signal: 'Restored from saved.', prompt: prompt.prompt || '' });
+        } else {
+            setSkillConfig(prompt.config as AgentConfig);
+            setGeneratedSkill(prompt.files || null);
+        }
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    const handleLoadTemplate = (template: { goal: string; instructions: string }) => {
-        setPromptConfig({ goal: template.goal, instructions: template.instructions });
-        setIsTemplateModalOpen(false);
-    };
-
-    const handleExportPrompt = (content: string) => {
-        if (!content) return;
-        const exportFilename = activeTab === 'standard' ? 'PROMPT.md' : 'AGENTS.md';
-        
-        const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+    const handleExportLegacyMd = (content: string, name: string) => {
+        const blob = new Blob([content], { type: 'text/markdown' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = exportFilename;
-        document.body.appendChild(link);
+        link.download = `${sanitizeFilename(name)}-legacy.md`;
         link.click();
-        document.body.removeChild(link);
         URL.revokeObjectURL(url);
-    };
-
-    const [showHistory, setShowHistory] = useState(false);
-
-    const handleRevert = (historicalPrompt: string) => {
-        if (window.confirm('Are you sure you want to revert to this version? Your current changes will be lost unless saved.')) {
-            setModalInput(prev => ({ ...prev, prompt: historicalPrompt }));
-            setShowHistory(false);
-        }
     };
 
     return (
@@ -317,12 +319,12 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
             <div className="flex justify-between items-center mb-8">
                 <div>
                     <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                        {activeTab === 'standard' ? 'Prompt Architect' : 'System Prompt Architect'}
+                        {activeTab === 'standard' ? 'Prompt Architect' : 'Skill Architect'}
                     </h2>
                     <p className="text-gray-600 dark:text-gray-400">
                         {activeTab === 'standard'
                             ? 'Extract signal from messy thoughts and refine into high-quality standard prompts.'
-                            : 'Crystallize reasoning topology and encode invariants into powerful system prompts.'}
+                            : 'Architect specialized skill modules and capability bundles for AI systems.'}
                     </p>
                 </div>
             </div>
@@ -333,34 +335,18 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                     <button
                         role="tab"
                         aria-selected={activeTab === 'standard'}
-                        onClick={() => {
-                            setActiveTab('standard');
-                            setDraftStatus('unloaded');
-                        }}
-                        className={`
-                            whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200
-                            ${activeTab === 'standard'
-                                ? 'text-blue-500 border-blue-500'
-                                : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}
-                        `}
+                        onClick={() => { setActiveTab('standard'); setDraftStatus('unloaded'); }}
+                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${activeTab === 'standard' ? 'text-blue-500 border-blue-500' : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}`}
                     >
                         Prompt Architect
                     </button>
                     <button
                         role="tab"
                         aria-selected={activeTab === 'system'}
-                        onClick={() => {
-                            setActiveTab('system');
-                            setDraftStatus('unloaded');
-                        }}
-                        className={`
-                            whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200
-                            ${activeTab === 'system'
-                                ? 'text-purple-500 border-purple-500'
-                                : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}
-                        `}
+                        onClick={() => { setActiveTab('system'); setDraftStatus('unloaded'); }}
+                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${activeTab === 'system' ? 'text-purple-500 border-purple-500' : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}`}
                     >
-                        System Prompt Architect
+                        Skill Architect
                     </button>
                 </nav>
             </div>
@@ -368,53 +354,68 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8">
                 <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="space-y-6">
                     <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-                        <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Define Your Prompt</h3>
+                        <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
+                            {activeTab === 'standard' ? 'Define Your Prompt' : 'Define Skill Module'}
+                        </h3>
                         <button type="button" onClick={() => setIsTemplateModalOpen(true)} className="w-full sm:w-auto flex items-center justify-center px-4 py-2 border border-blue-500 text-blue-500 dark:text-blue-400 dark:border-blue-400 rounded-md text-sm font-medium hover:bg-blue-50 dark:hover:bg-blue-900/40 transition">
                             <span className="material-icons mr-2 text-base">model_training</span>
                             Load Template
                         </button>
                     </div>
-                    <div>
-                        <label htmlFor="goal" className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Prompt Goal / Core Task <span className="text-red-500 ml-1">*</span>
-                            <div className="group relative flex items-center ml-2">
-                                <span className="material-icons text-gray-400 dark:text-gray-500 text-base cursor-help">info_outline</span>
-                                <Tooltip text="A clear, concise statement of what the AI should accomplish. E.g., 'Generate three creative recipes based on a list of ingredients.'" />
+
+                    {activeTab === 'standard' ? (
+                        <>
+                            <div>
+                                <label htmlFor="goal" className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    Prompt Goal / Core Task <span className="text-red-500 ml-1">*</span>
+                                </label>
+                                <input type="text" id="goal" value={promptConfig.goal} onChange={(e) => setPromptConfig(prev => ({...prev, goal: e.target.value}))} placeholder="e.g., 'Summarize technical articles'" className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md" />
                             </div>
-                        </label>
-                        <input type="text" id="goal" name="goal" value={promptConfig.goal} onChange={(e) => setPromptConfig(prev => ({...prev, goal: e.target.value}))} placeholder="e.g., 'Summarize technical articles for a beginner audience'" required className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20"/>
-                    </div>
-                    <div>
-                        <label htmlFor="instructions" className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Key Instructions, Constraints, or Steps (Optional)
-                            <div className="group relative flex items-center ml-2">
-                                <span className="material-icons text-gray-400 dark:text-gray-500 text-base cursor-help">info_outline</span>
-                                <Tooltip text="Specific rules, steps, or constraints for the AI to follow. E.g., 'Each recipe must be vegetarian. The output should be a JSON array.'" />
+                            <div>
+                                <label htmlFor="instructions" className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Instructions (Optional)</label>
+                                <textarea id="instructions" rows={5} value={promptConfig.instructions} onChange={(e) => setPromptConfig(prev => ({...prev, instructions: e.target.value}))} className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md" />
                             </div>
-                        </label>
-                        <textarea id="instructions" name="instructions" rows={5} value={promptConfig.instructions} onChange={(e) => setPromptConfig(prev => ({...prev, instructions: e.target.value}))} placeholder="e.g., 'The summary must be in 3 bullet points. Avoid jargon. Mention the key takeaways for a marketer.'" className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20"/>
-                    </div>
+                        </>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="md:col-span-1">
+                                <label className="block text-sm font-medium mb-1">Role/Capability <span className="text-red-500">*</span></label>
+                                <input type="text" value={skillConfig.role} onChange={(e) => setSkillConfig(prev => ({...prev, role: e.target.value}))} placeholder="e.g. Data Viz Specialist" className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md" />
+                            </div>
+                            <div className="md:col-span-1">
+                                <label className="block text-sm font-medium mb-1">Scope <span className="text-red-500">*</span></label>
+                                <input type="text" value={skillConfig.scope} onChange={(e) => setSkillConfig(prev => ({...prev, scope: e.target.value}))} placeholder="e.g. D3.js Charts" className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md" />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-medium mb-1">Primary Goals</label>
+                                <textarea rows={3} value={skillConfig.goals} onChange={(e) => setSkillConfig(prev => ({...prev, goals: e.target.value}))} className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md" />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-medium mb-1">Constraints</label>
+                                <textarea rows={3} value={skillConfig.constraints} onChange={(e) => setSkillConfig(prev => ({...prev, constraints: e.target.value}))} className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md" />
+                            </div>
+                        </div>
+                    )}
+
                     <div className="flex flex-col sm:flex-row items-center justify-end space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
-                        <button type="button" onClick={handleReset} disabled={isLoading} className="w-full sm:w-auto px-6 py-2 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 transition">Reset</button>
-                        <button type="submit" disabled={!promptConfig.goal.trim() || isLoading} className={`w-full sm:w-auto flex items-center justify-center px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${activeTab === 'standard' ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500' : 'bg-purple-600 hover:bg-purple-700 focus:ring-purple-500'} focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition`}>
-                            {isLoading ? 'Architecting...' : 'Generate Prompt'}
+                        <button type="button" onClick={handleReset} disabled={isLoading} className="w-full sm:w-auto px-6 py-2 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition">Reset</button>
+                        <button type="submit" disabled={isLoading} className={`w-full sm:w-auto flex items-center justify-center px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${activeTab === 'standard' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-purple-600 hover:bg-purple-700'} focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 transition`}>
+                            {isLoading ? 'Architecting...' : 'Generate'}
                         </button>
                     </div>
                 </form>
             </div>
 
             {error && (
-                <div className="mt-8 bg-red-100 dark:bg-red-900/50 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg" role="alert">
-                    <strong className="font-bold">Error: </strong>
-                    <span>{error}</span>
+                <div className="mt-8 bg-red-100 dark:bg-red-900/50 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg">
+                    <strong className="font-bold">Error: </strong><span>{error}</span>
                 </div>
             )}
 
-            {isLoading && <LoadingSpinner message={loadingMessage || 'Architecting your prompt...'} />}
+            {isLoading && <LoadingSpinner message={loadingMessage || 'Architecting...'} />}
 
             {generatedPrompt && !isLoading && (
-                <div className="mt-8 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    {/* Signal Analysis Card */}
+                <div className="mt-8 space-y-6">
                     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
                         <div className="flex items-center gap-2 px-6 py-3 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
                             <span className="material-icons text-blue-500 text-lg">signal_cellular_alt</span>
@@ -425,60 +426,80 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                         </div>
                     </div>
 
-                    {/* Generated Prompt Card */}
                     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
                         <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-                            <div className="flex items-center gap-2">
-                                <span className="material-icons text-lg text-gray-600 dark:text-gray-400">psychology</span>
-                                <h3 className="text-xl font-semibold">Generated {activeTab === 'standard' ? 'Prompt' : 'System Prompt'}</h3>
-                            </div>
+                            <h3 className="text-xl font-semibold">Generated Prompt</h3>
                             <div className="flex items-center space-x-2">
-                               <button onClick={() => { navigator.clipboard.writeText(generatedPrompt.prompt); setSuccessMessage('Prompt copied to clipboard!'); }} className="flex items-center px-3 py-1.5 border rounded-md text-sm hover:bg-white dark:hover:bg-gray-700 transition-colors" title="Copy prompt">
-                                    <span className="material-icons text-base mr-1.5">content_copy</span>Copy
-                                </button>
-                               <button onClick={() => { handleExportPrompt(generatedPrompt.prompt); setSuccessMessage('Prompt exported successfully!'); }} className="flex items-center px-3 py-1.5 border rounded-md text-sm hover:bg-white dark:hover:bg-gray-700 transition-colors" title="Export prompt">
-                                    <span className="material-icons text-base mr-1.5">download</span>Export
-                               </button>
-                               <button onClick={handleOpenSaveModal} className={`flex items-center px-3 py-1.5 border rounded-md text-sm text-white ${activeTab === 'standard' ? 'bg-blue-500 hover:bg-blue-600 shadow-blue-500/20' : 'bg-purple-500 hover:bg-purple-600 shadow-purple-500/20'} shadow-lg transition-all`} title="Save prompt">
-                                    <span className="material-icons text-base mr-1.5">save</span>Save
-                                </button>
+                               <button onClick={() => { navigator.clipboard.writeText(generatedPrompt.prompt); setSuccessMessage('Copied!'); }} className="px-3 py-1.5 border rounded-md text-sm flex items-center"><span className="material-icons text-base mr-1">content_copy</span>Copy</button>
+                               <button onClick={handleOpenSaveModal} className="px-3 py-1.5 bg-blue-500 text-white rounded-md text-sm flex items-center shadow-lg shadow-blue-500/20"><span className="material-icons text-base mr-1">save</span>Save</button>
                             </div>
                         </div>
-                        <div className="p-6 md:p-10">
-                            <blockquote className="border-l-4 border-blue-500 pl-4 py-2 italic text-lg sm:text-xl text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900/40 rounded-r-lg">
+                        <div className="p-6 md:p-10 bg-gray-50 dark:bg-gray-900/40">
+                             <div className="prose dark:prose-invert max-w-none">
                                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{generatedPrompt.prompt ?? ''}</ReactMarkdown>
-                            </blockquote>
+                             </div>
                         </div>
                     </div>
                 </div>
             )}
+
+            {generatedSkill && !isLoading && (
+                <div className="mt-8">
+                    <GeneratedFilesDisplay files={generatedSkill} onSave={handleOpenSaveModal} agentName="New Skill Module" />
+                </div>
+            )}
             
-            {savedPrompts.length > 0 && (
+            {(savedPrompts.length > 0 || legacyPrompts.length > 0) && (
                 <div className="mt-12">
                     <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-2xl font-bold">Saved {activeTab === 'standard' ? 'Prompts' : 'System Prompts'}</h3>
+                        <h3 className="text-2xl font-bold">Saved {activeTab === 'standard' ? 'Prompts' : 'Skill Bundles'}</h3>
                         <div className="flex space-x-2">
                             <button onClick={handleExportAll} className="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/60 flex items-center">
-                                <span className="material-icons text-sm mr-1">download</span>
-                                Export All
+                                <span className="material-icons text-sm mr-1">download</span>Export All
                             </button>
                             <button onClick={handleClearAll} className="px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/60 flex items-center">
-                                <span className="material-icons text-sm mr-1">delete_sweep</span>
-                                Clear All
+                                <span className="material-icons text-sm mr-1">delete_sweep</span>Clear All
                             </button>
                         </div>
                     </div>
                     <div className="space-y-4">
                         {savedPrompts.map(p => (
-                            <div key={p.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border border-gray-100 dark:border-gray-700 flex justify-between items-center hover:shadow-lg transition-shadow">
+                            <div key={p.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border border-gray-100 dark:border-gray-700 flex justify-between items-center hover:shadow-lg transition-all">
                                 <div className="flex-grow cursor-pointer" onClick={() => handleLoadSavedPrompt(p)}>
-                                    <p className="font-semibold text-gray-900 dark:text-gray-100">{p.name}</p>
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-semibold text-gray-900 dark:text-gray-100">{p.name}</p>
+                                    </div>
                                     <p className="text-sm text-gray-500 dark:text-gray-400">Saved on {new Date(p.createdAt).toLocaleDateString()}</p>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <button onClick={() => setPreviewPrompt(p)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-500" title="Preview"><span className="material-icons">visibility</span></button>
-                                    <button onClick={() => { handleOpenEditModal(p); setShowHistory(false); }} className="p-2 text-gray-600 dark:text-gray-300 hover:text-green-500" title="Edit"><span className="material-icons">edit</span></button>
-                                    <button onClick={() => handleDelete(p.id!)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-red-500" title="Delete"><span className="material-icons">delete</span></button>
+                                    <button onClick={() => { handleOpenEditModal(p); }} className="p-2 text-gray-600 dark:text-gray-300 hover:text-green-500" title="Edit"><span className="material-icons">edit</span></button>
+                                    <button onClick={() => { setPreviewPrompt(p); setIsDeleteConfirmOpen(true); }} className="p-2 text-gray-600 dark:text-gray-300 hover:text-red-500" title="Delete"><span className="material-icons">delete</span></button>
+                                </div>
+                            </div>
+                        ))}
+
+                        {legacyPrompts.map(p => (
+                            <div key={`legacy-${p.id}`} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border border-gray-100 dark:border-gray-700 flex justify-between items-center hover:shadow-lg transition-all">
+                                <div className="flex-grow cursor-pointer" onClick={() => handleLoadSavedPrompt(p)}>
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-semibold text-gray-900 dark:text-gray-100">{p.name}</p>
+                                        <span className="px-2 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 text-[10px] font-bold uppercase tracking-wider rounded">Legacy</span>
+                                    </div>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">Saved on {new Date(p.createdAt).toLocaleDateString()}</p>
+                                    {p.prompt && (
+                                        <div className="mt-2 flex items-center gap-2">
+                                            <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                                                <span className="material-icons text-xs">warning</span>
+                                                Legacy single-string format
+                                            </span>
+                                            <button onClick={(e) => { e.stopPropagation(); handleExportLegacyMd(p.prompt!, p.name); }} className="text-xs text-blue-500 hover:underline">Export MD</button>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <button onClick={() => setPreviewPrompt(p)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-500" title="Preview"><span className="material-icons">visibility</span></button>
+                                    <button onClick={() => { setPreviewPrompt(p); setIsDeleteConfirmOpen(true); }} className="p-2 text-gray-600 dark:text-gray-300 hover:text-red-500" title="Delete"><span className="material-icons">delete</span></button>
                                 </div>
                             </div>
                         ))}
@@ -486,91 +507,98 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                 </div>
             )}
 
-            <Modal isOpen={isTemplateModalOpen} onClose={() => setIsTemplateModalOpen(false)} title="Load a Prompt Template">
+            <Modal isOpen={isTemplateModalOpen} onClose={() => setIsTemplateModalOpen(false)} title="Load Template">
                 <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-                    {PROMPT_TEMPLATES.map((template) => (
+                    {(activeTab === 'standard' ? PROMPT_TEMPLATES : SKILL_TEMPLATES).map((template: any) => (
                         <button 
                             key={template.name} 
-                            onClick={() => handleLoadTemplate(template)}
+                            onClick={() => {
+                                if (activeTab === 'standard') setPromptConfig({ goal: template.goal, instructions: template.instructions });
+                                else setSkillConfig(template);
+                                setIsTemplateModalOpen(false);
+                            }}
                             className="w-full text-left p-4 rounded-lg bg-gray-50 dark:bg-gray-700 hover:bg-blue-100 dark:hover:bg-blue-900/50 border dark:border-gray-600 transition"
                         >
                             <h4 className="font-semibold text-gray-800 dark:text-gray-200">{template.name}</h4>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{template.goal}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{template.goal || template.role}</p>
                         </button>
                     ))}
                 </div>
             </Modal>
 
             <PreviewModal
-                isOpen={!!previewPrompt}
+                isOpen={!!previewPrompt && !isDeleteConfirmOpen}
                 onClose={() => setPreviewPrompt(null)}
-                title={`Preview: ${previewPrompt?.name}`}
-                content={previewPrompt?.prompt}
+                title={previewPrompt?.name || ''}
+                content={previewPrompt?.prompt || (previewPrompt?.files ? {
+                    'agent.md': previewPrompt.files.agentFile,
+                    'guidelines.md': previewPrompt.files.projectGuidelines,
+                    'constraints.md': previewPrompt.files.constraintsFile,
+                    'SKILL.md': previewPrompt.files.skillFile
+                } : undefined)}
                 onCopy={() => {
-                    if (previewPrompt) {
-                        navigator.clipboard.writeText(previewPrompt.prompt);
-                        setSuccessMessage('Copied to clipboard!');
+                    const text = previewPrompt?.prompt || (previewPrompt?.files ? Object.values(previewPrompt.files).join('\n\n---\n\n') : '');
+                    navigator.clipboard.writeText(text);
+                    setSuccessMessage('Copied to clipboard!');
+                }}
+                onExport={() => {
+                    if (previewPrompt?.prompt) handleExportLegacyMd(previewPrompt.prompt, previewPrompt.name);
+                    else if (previewPrompt?.files) {
+                        const zip = new JSZip();
+                        zip.file('agent.md', previewPrompt.files.agentFile);
+                        zip.file('guidelines.md', previewPrompt.files.projectGuidelines);
+                        zip.file('constraints.md', previewPrompt.files.constraintsFile);
+                        zip.file('SKILL.md', previewPrompt.files.skillFile);
+                        zip.generateAsync({ type: 'blob' }).then(content => {
+                            const url = URL.createObjectURL(content);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.download = `${sanitizeFilename(previewPrompt.name)}.zip`;
+                            link.click();
+                            URL.revokeObjectURL(url);
+                        });
                     }
                 }}
-                onExport={() => previewPrompt && handleExportPrompt(previewPrompt.prompt)}
-                onDelete={() => {
-                    if (previewPrompt?.id) {
-                        handleDelete(previewPrompt.id);
-                        setPreviewPrompt(null);
-                    }
-                }}
+                onDelete={() => setIsDeleteConfirmOpen(true)}
             />
 
-            <Modal isOpen={!!modalState} onClose={() => { setModalState(null); setShowHistory(false); }} title={modalState?.mode === 'edit' ? 'Edit Prompt' : 'Save Prompt'}>
+            <Modal isOpen={isDeleteConfirmOpen} onClose={() => setIsDeleteConfirmOpen(false)} title="Confirm Deletion">
+                <div className="space-y-4">
+                    <p className="text-gray-600 dark:text-gray-400">Are you sure you want to delete <strong>{previewPrompt?.name}</strong>? This action cannot be undone.</p>
+                    <div className="flex justify-end space-x-2">
+                        <button onClick={() => setIsDeleteConfirmOpen(false)} className="px-4 py-2 border dark:border-gray-600 rounded-lg">Cancel</button>
+                        <button onClick={() => {
+                            const isLegacy = legacyPrompts.some(lp => lp.id === previewPrompt?.id);
+                            if (isLegacy) handleLegacyDelete(previewPrompt!.id!);
+                            else handleDelete();
+                        }} className="px-4 py-2 bg-red-600 text-white rounded-lg">Delete</button>
+                    </div>
+                </div>
+            </Modal>
+
+            <Modal isOpen={!!modalState} onClose={() => { setModalState(null); }} title={modalState?.mode === 'edit' ? 'Edit' : 'Save'}>
                 {modalState && (
                     <div className="space-y-4">
-                        <label htmlFor="modalPromptName" className="block text-sm font-medium">Name</label>
-                        <input type="text" id="modalPromptName" value={modalInput.name} onChange={e => setModalInput({...modalInput, name: e.target.value})} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20" placeholder="e.g., My Technical Summarizer" />
+                        <label className="block text-sm font-medium">Name</label>
+                        <input type="text" value={modalInput.name} onChange={e => setModalInput({...modalInput, name: e.target.value})} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md" />
                         
                         {modalState.mode === 'edit' && (
-                            <>
-                                <div className="flex justify-between items-center">
-                                    <label className="block text-sm font-medium">Prompt</label>
-                                    {modalState.prompt?.history && modalState.prompt.history.length > 0 && (
-                                        <button 
-                                            onClick={() => setShowHistory(!showHistory)}
-                                            className="text-sm text-blue-500 hover:text-blue-600 flex items-center"
-                                        >
-                                            <span className="material-icons text-sm mr-1">history</span>
-                                            {showHistory ? 'Hide History' : 'View History'}
-                                        </button>
-                                    )}
-                                </div>
-                                
-                                {showHistory && modalState.prompt?.history ? (
-                                    <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-                                        {[...modalState.prompt.history].reverse().map((hist, idx) => (
-                                            <div key={idx} className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
-                                                <div className="flex justify-between items-center mb-2">
-                                                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                                                        {new Date(hist.updatedAt).toLocaleString()}
-                                                    </span>
-                                                    <button 
-                                                        onClick={() => handleRevert(hist.prompt)}
-                                                        className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300"
-                                                    >
-                                                        Revert to this
-                                                    </button>
-                                                </div>
-                                                <pre className="text-xs font-mono whitespace-pre-wrap text-gray-700 dark:text-gray-300">
-                                                    {hist.prompt}
-                                                </pre>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <textarea rows={10} value={modalInput.prompt} onChange={e => setModalInput({...modalInput, prompt: e.target.value})} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md font-mono text-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20" />
+                            <div className="max-h-96 overflow-y-auto space-y-4 pr-2">
+                                {modalInput.prompt !== undefined ? (
+                                    <textarea rows={10} value={modalInput.prompt} onChange={e => setModalInput({...modalInput, prompt: e.target.value})} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md font-mono text-sm" />
+                                ) : modalInput.files && (
+                                    <>
+                                        <textarea rows={5} value={modalInput.files.agentFile} onChange={e => setModalInput(prev => ({...prev, files: {...prev.files!, agentFile: e.target.value}}))} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md font-mono text-sm" />
+                                        <textarea rows={5} value={modalInput.files.projectGuidelines} onChange={e => setModalInput(prev => ({...prev, files: {...prev.files!, projectGuidelines: e.target.value}}))} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md font-mono text-sm" />
+                                        <textarea rows={5} value={modalInput.files.constraintsFile} onChange={e => setModalInput(prev => ({...prev, files: {...prev.files!, constraintsFile: e.target.value}}))} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md font-mono text-sm" />
+                                        <textarea rows={5} value={modalInput.files.skillFile} onChange={e => setModalInput(prev => ({...prev, files: {...prev.files!, skillFile: e.target.value}}))} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md font-mono text-sm" />
+                                    </>
                                 )}
-                            </>
+                            </div>
                         )}
                         
                         <div className="flex justify-end space-x-2 pt-2">
-                            <button onClick={() => { setModalState(null); setShowHistory(false); }} className="px-4 py-2 rounded-md border dark:border-gray-600">Cancel</button>
+                            <button onClick={() => setModalState(null)} className="px-4 py-2 rounded-md border dark:border-gray-600">Cancel</button>
                             <button onClick={handleModalSave} className={`px-4 py-2 rounded-md text-white ${activeTab === 'standard' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-purple-600 hover:bg-purple-700'}`}>{modalState.mode === 'edit' ? 'Update' : 'Save'}</button>
                         </div>
                     </div>
