@@ -41,6 +41,13 @@ User's raw input:
 - **Core Task/Goal:** ${config.goal}
 - **Key Instructions/Constraints:** ${config.instructions || 'None provided.'}
 
+## Output Format
+1. ## Reasoning Topology
+   - Brief analysis of the implicit invariants and state mapping detected.
+2. ## System Prompt
+   - Wrap the final, reasoning-topology-encoded system prompt in a Markdown blockquote.
+   - Example: > "Your structured system prompt here..."
+
 ## Output Constraints
 - <2000 characters (reasoning topology encoded tight)
 - No embellishment, no questions, no hand-holding

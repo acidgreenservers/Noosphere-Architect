@@ -32,7 +32,14 @@ User's raw input:
 - **Core Task/Goal:** ${config.goal}
 - **Key Instructions/Constraints:** ${config.instructions || 'None provided.'}
 
-Output the enhanced prompt. Nothing else.
+### OUTPUT FORMAT
+1. ## Topology Signal
+   - Brief analysis of the connections and invariants detected.
+2. ## Enhanced Prompt
+   - Wrap the final, ready-to-use prompt in a Markdown blockquote.
+   - Example: > "Your enhanced prompt here..."
+
+Return the structured Markdown output. Nothing else.
 `;
 
   return contextPrefix + basePrompt;

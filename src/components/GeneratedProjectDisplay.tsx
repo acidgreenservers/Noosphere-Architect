@@ -14,7 +14,7 @@ interface GeneratedProjectDisplayProps {
 type Tab = 'overviewFile' | 'standardsFile' | 'rulesFile';
 
 const FileContent: React.FC<{ content: string }> = ({ content }) => (
-    <div className="prose prose-sm sm:prose-base dark:prose-invert max-w-none p-6 md:p-10 bg-white dark:bg-gray-900/50 rounded-b-2xl border-x border-b border-gray-200 dark:border-gray-700/50 shadow-inner overflow-y-auto max-h-[70vh] prose-pre:bg-gray-900 prose-pre:text-gray-100">
+    <div className="prose prose-sm sm:prose-base dark:prose-invert max-w-none p-6 md:p-10 bg-white dark:bg-gray-900/50 rounded-b-2xl border-x border-b border-gray-200 dark:border-gray-700/50 shadow-inner overflow-y-auto max-h-[70vh] prose-pre:bg-gray-900 prose-pre:text-gray-100 prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:bg-gray-50 dark:prose-blockquote:bg-gray-800/50 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-blockquote:italic prose-blockquote:text-xl sm:prose-blockquote:text-2xl">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
     </div>
 );
@@ -23,6 +23,7 @@ const FileContent: React.FC<{ content: string }> = ({ content }) => (
 const GeneratedProjectDisplay: React.FC<GeneratedProjectDisplayProps> = ({ files, onSave, projectName }) => {
   const [activeTab, setActiveTab] = useState<Tab>('overviewFile');
   const [copyAllText, setCopyAllText] = useState('Copy All');
+  const [exportAllText, setExportAllText] = useState('Export All');
 
   const tabs: { id: Tab; label: string; icon: string }[] = [
     { id: 'overviewFile', label: 'Overview', icon: 'visibility' },
@@ -69,6 +70,8 @@ ${files.rulesFile}
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
     }
+    setExportAllText('Exported!');
+    setTimeout(() => setExportAllText('Export All'), 2000);
   };
 
   return (
@@ -79,8 +82,8 @@ ${files.rulesFile}
                 <button onClick={handleCopyAll} className="flex items-center px-3 py-1.5 border rounded-md text-sm" title="Copy all files">
                     <span className="material-icons text-base mr-1.5">collections</span>{copyAllText}
                 </button>
-                <button onClick={handleExportAll} className="flex items-center px-3 py-1.5 border rounded-md text-sm" title="Export all files">
-                    <span className="material-icons text-base mr-1.5">download</span>Export All
+                <button onClick={handleExportAll} className="flex items-center px-3 py-1.5 border rounded-md text-sm transition-colors hover:bg-gray-50 dark:hover:bg-gray-700" title="Export all files">
+                    <span className="material-icons text-base mr-1.5">{exportAllText === 'Exported!' ? 'check_circle' : 'download'}</span>{exportAllText}
                 </button>
                  <button 
                     onClick={onSave} 
