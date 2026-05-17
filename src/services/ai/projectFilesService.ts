@@ -1,9 +1,11 @@
 
 import { ProjectConfig, GeneratedProjectFiles } from '../../types';
 import { handleAiCall } from './openRouter';
+import { getCustomContext } from '../dbService';
 
-const createProjectFilesMetaPrompt = (config: ProjectConfig): string => {
-  return `
+const createProjectFilesMetaPrompt = (config: ProjectConfig, customContext?: string): string => {
+  const contextPrefix = customContext ? `**CUSTOM SYSTEM CONTEXT:**\n${customContext}\n\n---\n\n` : "";
+  const basePrompt = `
 You are a top-tier Project Management AI. Your task is to take a user's high-level project definition and generate a set of three comprehensive, structured project documents.
 
 The final output MUST be a single, raw JSON object with no surrounding text or markdown code blocks. The JSON object must have three keys: "overviewFile", "standardsFile", and "rulesFile". Each key's value must be a string containing the full content of the respective file in Markdown format.
@@ -42,9 +44,12 @@ The final output MUST be a single, raw JSON object with no surrounding text or m
 
 Generate ONLY the raw JSON object as described.
   `;
+
+  return contextPrefix + basePrompt;
 };
 
 export const generateProjectFiles = async (config: ProjectConfig): Promise<GeneratedProjectFiles> => {
-  const prompt = createProjectFilesMetaPrompt(config);
+  const customContext = await getCustomContext('projectContext');
+  const prompt = createProjectFilesMetaPrompt(config, customContext);
   return handleAiCall<GeneratedProjectFiles>(prompt, true, "generating project files");
 };

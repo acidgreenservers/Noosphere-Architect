@@ -73,7 +73,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectView }) => {
                     />
                     <ToolCard
                         icon="spa"
-                        title="MindSeed Creation Tool"
+                        title="MindSeed Architect Tool"
                         description="Compress text into generative seeds of wisdom using strict structural integrity checks."
                         onClick={() => onSelectView('mindSeedArchitect')}
                     />
@@ -81,7 +81,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectView }) => {
                     <ToolCard 
                         icon="psychology" 
                         title="Prompt Architect" 
-                        description="Transform your raw ideas into powerful, well-structured prompts that you can use with any AI model."
+                        description="A dual-mode architect for refining standard prompts or building complex system reasoning topologies."
                         onClick={() => onSelectView('promptArchitect')}
                     />
                     <ToolCard

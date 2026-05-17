@@ -1,9 +1,11 @@
 
 import { AgentConfig, GeneratedFiles } from '../../types';
 import { handleAiCall } from './openRouter';
+import { getCustomContext } from '../dbService';
 
-const createAgentFilesMetaPrompt = (config: AgentConfig): string => {
-  return `
+const createAgentFilesMetaPrompt = (config: AgentConfig, customContext?: string): string => {
+  const contextPrefix = customContext ? `**CUSTOM SYSTEM CONTEXT:**\n${customContext}\n\n---\n\n` : "";
+  const basePrompt = `
 You are an expert AI Systems Architect. Your task is to take a user's high-level agent configuration and generate a set of comprehensive, structured project files.
 
 The final output MUST be a single, raw JSON object with no surrounding text or markdown code blocks. The JSON object must have four keys: "agentFile", "projectGuidelines", "constraintsFile", and "skillFile". Each key's value must be a string containing the full content of the respective file in Markdown format.
@@ -49,9 +51,12 @@ The final output MUST be a single, raw JSON object with no surrounding text or m
 
 Generate ONLY the raw JSON object as described.
   `;
+
+  return contextPrefix + basePrompt;
 };
 
 export const generateAgentFiles = async (config: AgentConfig): Promise<GeneratedFiles> => {
-  const prompt = createAgentFilesMetaPrompt(config);
+  const customContext = await getCustomContext('agentContext');
+  const prompt = createAgentFilesMetaPrompt(config, customContext);
   return handleAiCall<GeneratedFiles>(prompt, true, "generating agent files");
 };

@@ -1,5 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { MindSeedConfig, GeneratedMindSeed, SavedMindSeed, MindSeedType } from '../types';
 import { generateMindSeed } from '../services/ai/mindSeedService';
 import { addMindSeed, getAllMindSeeds, deleteMindSeed, saveMindSeedDraft, getMindSeedDraft, clearMindSeedDraft } from '../services/dbService';
@@ -7,6 +9,7 @@ import { sanitizeFilename } from '../utils/security';
 import LoadingSpinner from './LoadingSpinner';
 import Toast from './Toast';
 import Modal from './Modal';
+import PreviewModal from './PreviewModal';
 import styles from './Button.module.css';
 
 const MAX_CHARS = 20000;
@@ -310,9 +313,13 @@ const MindSeedArchitect: React.FC = () => {
                     </thead>
                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                         <tr>
-                            <td className="px-6 py-4 text-sm italic text-gray-900 dark:text-gray-100">"{result.seed}"</td>
-                            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400" dangerouslySetInnerHTML={{ __html: result.pattern.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }}></td>
-                            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{result.deployWhen}</td>
+                            <td className="px-6 py-4 text-sm italic text-gray-900 dark:text-gray-100 font-medium">"{result.seed}"</td>
+                            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
+                                <div className="prose prose-sm dark:prose-invert">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{result.pattern}</ReactMarkdown>
+                                </div>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{result.deployWhen}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -326,58 +333,57 @@ const MindSeedArchitect: React.FC = () => {
             <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Saved MindSeeds</h3>
             <div className="grid grid-cols-1 gap-4">
               {savedSeeds.map((seed) => (
-                <div key={seed.id} className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-grow">
-                      <div className="flex items-center mb-2">
-                        <span className={`text-xs font-bold px-2 py-1 rounded uppercase mr-3 ${
-                            seed.config.type === 'cogni' ? 'bg-orange-100 text-orange-700' :
-                            seed.config.type === 'lingua' ? 'bg-green-100 text-green-700' :
-                            'bg-violet-100 text-violet-700'
-                        }`}>
-                          {seed.config.type}Seed
-                        </span>
-                        <span className="text-sm text-gray-500">{new Date(seed.createdAt).toLocaleDateString()}</span>
-                      </div>
-                      <p className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4 italic">"{seed.result.seed}"</p>
-                      <div className="flex flex-wrap gap-4 mt-2">
-                        <button
-                            onClick={() => setPreviewSeed(seed)}
-                            className="text-sm text-gray-600 dark:text-gray-400 hover:underline flex items-center"
-                        >
-                            <span className="material-icons text-xs mr-1">visibility</span> Preview
-                        </button>
-                        <button
-                            onClick={() => {
-                                setText(seed.config.text);
-                                setActiveTab(seed.config.type);
-                                setResult(seed.result);
-                                window.scrollTo({ top: 0, behavior: 'smooth' });
-                            }}
-                            className="text-sm text-blue-600 hover:underline flex items-center"
-                        >
-                            <span className="material-icons text-xs mr-1">refresh</span> Load
-                        </button>
-                        <button
-                            onClick={() => handleCopy(seed.result, seed.config.type)}
-                            className="text-sm text-gray-600 dark:text-gray-400 hover:underline flex items-center"
-                        >
-                            <span className="material-icons text-xs mr-1">content_copy</span> Copy
-                        </button>
-                        <button
-                            onClick={() => handleExport(seed.result, seed.config.type)}
-                            className="text-sm text-gray-600 dark:text-gray-400 hover:underline flex items-center"
-                        >
-                            <span className="material-icons text-xs mr-1">download</span> Export
-                        </button>
-                        <button
-                            onClick={() => handleDelete(seed.id!)}
-                            className="text-sm text-red-600 hover:underline flex items-center"
-                        >
-                            <span className="material-icons text-xs mr-1">delete</span> Delete
-                        </button>
-                      </div>
+                <div key={seed.id} className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:border-blue-500 dark:hover:border-blue-400 transition-colors flex justify-between items-center group border-transparent">
+                  <div
+                    className="flex-grow cursor-pointer"
+                    onClick={() => {
+                        setText(seed.config.text);
+                        setActiveTab(seed.config.type);
+                        setResult(seed.result);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                  >
+                    <div className="flex items-center mb-1">
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase mr-2 ${
+                          seed.config.type === 'cogni' ? 'bg-orange-100 text-orange-700' :
+                          seed.config.type === 'lingua' ? 'bg-green-100 text-green-700' :
+                          'bg-violet-100 text-violet-700'
+                      }`}>
+                        {seed.config.type}
+                      </span>
+                      <span className="text-xs text-gray-500">{new Date(seed.createdAt).toLocaleDateString()}</span>
                     </div>
+                    <p className="text-md font-medium text-gray-900 dark:text-gray-100 italic truncate max-w-md">"{seed.result.seed}"</p>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <button
+                        onClick={() => setPreviewSeed(seed)}
+                        className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-500 transition-colors"
+                        title="Preview"
+                    >
+                        <span className="material-icons">visibility</span>
+                    </button>
+                    <button
+                        onClick={() => handleCopy(seed.result, seed.config.type)}
+                        className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-500 transition-colors"
+                        title="Copy"
+                    >
+                        <span className="material-icons">content_copy</span>
+                    </button>
+                    <button
+                        onClick={() => handleExport(seed.result, seed.config.type)}
+                        className="p-2 text-gray-600 dark:text-gray-300 hover:text-green-500 transition-colors"
+                        title="Export"
+                    >
+                        <span className="material-icons">download</span>
+                    </button>
+                    <button
+                        onClick={() => handleDelete(seed.id!)}
+                        className="p-2 text-gray-600 dark:text-gray-300 hover:text-red-500 transition-colors"
+                        title="Delete"
+                    >
+                        <span className="material-icons">delete</span>
+                    </button>
                   </div>
                 </div>
               ))}
@@ -386,64 +392,30 @@ const MindSeedArchitect: React.FC = () => {
         )}
       </div>
 
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      {toast && <Toast message={toast.message} onClose={() => setToast(null)} />}
 
-      {/* Preview Modal */}
-      <Modal
+      <PreviewModal
         isOpen={!!previewSeed}
         onClose={() => setPreviewSeed(null)}
         title={`${previewSeed?.config.type.charAt(0).toUpperCase()}${previewSeed?.config.type.slice(1)}Seed Preview`}
-      >
-        {previewSeed && (
-          <div className="space-y-6">
-            <div className="mb-4">
-                <blockquote className="border-l-4 border-blue-500 pl-4 py-2 italic text-xl text-gray-800 dark:text-gray-200">
-                    "{previewSeed.result.seed}"
-                </blockquote>
-            </div>
-
-            <div className="overflow-hidden border border-gray-200 dark:border-gray-700 rounded-lg">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead className="bg-gray-50 dark:bg-gray-900/50">
-                        <tr>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Seed</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pattern</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deploy When</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                        <tr>
-                            <td className="px-4 py-3 text-sm italic text-gray-900 dark:text-gray-100">"{previewSeed.result.seed}"</td>
-                            <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400" dangerouslySetInnerHTML={{ __html: previewSeed.result.pattern.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }}></td>
-                            <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{previewSeed.result.deployWhen}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div className="flex justify-end space-x-3 mt-6">
-                <button
-                    onClick={() => handleCopy(previewSeed.result, previewSeed.config.type)}
-                    className="flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                >
-                    <span className="material-icons text-sm mr-1">content_copy</span> Copy
-                </button>
-                <button
-                    onClick={() => handleExport(previewSeed.result, previewSeed.config.type)}
-                    className="flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                >
-                    <span className="material-icons text-sm mr-1">download</span> Export
-                </button>
-                <button
-                    onClick={() => setPreviewSeed(null)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                    Close
-                </button>
-            </div>
-          </div>
-        )}
-      </Modal>
+        mindSeed={previewSeed?.result}
+        onCopy={() => {
+            if (previewSeed) {
+                handleCopy(previewSeed.result, previewSeed.config.type);
+            }
+        }}
+        onExport={() => {
+            if (previewSeed) {
+                handleExport(previewSeed.result, previewSeed.config.type);
+            }
+        }}
+        onDelete={() => {
+            if (previewSeed?.id) {
+                handleDelete(previewSeed.id);
+                setPreviewSeed(null);
+            }
+        }}
+      />
 
       {/* Delete Confirmation Modal */}
       <Modal

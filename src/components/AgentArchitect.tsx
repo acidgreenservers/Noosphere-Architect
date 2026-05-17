@@ -9,6 +9,7 @@ import AgentForm from './AgentForm';
 import GeneratedFilesDisplay from './GeneratedFilesDisplay';
 import LoadingSpinner from './LoadingSpinner';
 import Modal from './Modal';
+import PreviewModal from './PreviewModal';
 import Toast from './Toast';
 
 const AGENT_TEMPLATES = [
@@ -47,10 +48,12 @@ const AgentArchitect: React.FC = () => {
   const [savedAgents, setSavedAgents] = useState<SavedAgent[]>([]);
   const [successMessage, setSuccessMessage] = useState('');
   const [draftStatus, setDraftStatus] = useState<'unloaded' | 'loaded' | 'none'>('unloaded');
+  const isCheckingDraft = useRef(false);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
 
   const [modalState, setModalState] = useState<{ mode: 'save' | 'edit'; agent?: SavedAgent } | null>(null);
   const [modalInput, setModalInput] = useState<{ name: string; files: GeneratedFiles | null }>({ name: '', files: null });
+  const [previewAgent, setPreviewAgent] = useState<SavedAgent | null>(null);
 
   const loadSavedAgents = useCallback(async () => {
     const agents = await db.getAllAgents();
@@ -60,6 +63,9 @@ const AgentArchitect: React.FC = () => {
   useEffect(() => {
     loadSavedAgents();
     const loadDraft = async () => {
+        if (isCheckingDraft.current) return;
+        isCheckingDraft.current = true;
+
         const draft = await db.getDraft(1);
         if (draft?.config && Object.values(draft.config).some(v => v)) {
             if (window.confirm("An unsaved draft was found. Do you want to load it?")) {
@@ -195,6 +201,25 @@ const AgentArchitect: React.FC = () => {
     }
   };
 
+  const handleExportAgent = async (name: string, files: GeneratedFiles) => {
+    const zip = new JSZip();
+    zip.file('agent.md', files.agentFile);
+    zip.file('guidelines.md', files.projectGuidelines);
+    zip.file('constraints.md', files.constraintsFile);
+    zip.file('SKILL.md', files.skillFile);
+
+    const content = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(content);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${sanitizeFilename(name)}.zip`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setSuccessMessage('Agent exported as ZIP!');
+  };
+
   const handleExportAll = async () => {
     if (savedAgents.length === 0) return;
 
@@ -285,13 +310,13 @@ const AgentArchitect: React.FC = () => {
             </div>
             <div className="space-y-4">
                 {savedAgents.map(agent => (
-                    <div key={agent.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md flex justify-between items-center">
-                        <div>
+                    <div key={agent.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md flex justify-between items-center group hover:border-blue-500 dark:hover:border-blue-400 transition-colors border border-transparent">
+                        <div className="flex-grow cursor-pointer" onClick={() => handleLoadSavedAgent(agent)}>
                             <p className="font-semibold">{agent.name}</p>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Saved on {new Date(agent.createdAt).toLocaleDateString()}</p>
                         </div>
                         <div className="flex items-center space-x-2">
-                            <button onClick={() => handleLoadSavedAgent(agent)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-500 transition-colors" title="Load"><span className="material-icons">visibility</span></button>
+                            <button onClick={() => setPreviewAgent(agent)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-500 transition-colors" title="Preview"><span className="material-icons">visibility</span></button>
                             <button onClick={() => handleOpenEditModal(agent)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-green-500 transition-colors" title="Edit"><span className="material-icons">edit</span></button>
                             <button onClick={() => handleDelete(agent.id!)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-red-500 transition-colors" title="Delete"><span className="material-icons">delete</span></button>
                         </div>
@@ -300,6 +325,36 @@ const AgentArchitect: React.FC = () => {
             </div>
         </div>
       )}
+
+      <PreviewModal
+        isOpen={!!previewAgent}
+        onClose={() => setPreviewAgent(null)}
+        title={`Preview: ${previewAgent?.name}`}
+        content={previewAgent ? {
+            'agent.md': previewAgent.files.agentFile,
+            'guidelines.md': previewAgent.files.projectGuidelines,
+            'constraints.md': previewAgent.files.constraintsFile,
+            'SKILL.md': previewAgent.files.skillFile
+        } : undefined}
+        onCopy={() => {
+            if (previewAgent) {
+                const allContent = Object.entries(previewAgent.files).map(([name, content]) => `### ${name}\n\n${content}`).join('\n\n');
+                navigator.clipboard.writeText(allContent);
+                setSuccessMessage('All files copied to clipboard!');
+            }
+        }}
+        onExport={() => {
+            if (previewAgent) {
+                handleExportAgent(previewAgent.name, previewAgent.files);
+            }
+        }}
+        onDelete={() => {
+            if (previewAgent?.id) {
+                handleDelete(previewAgent.id);
+                setPreviewAgent(null);
+            }
+        }}
+      />
 
       <Modal isOpen={isTemplateModalOpen} onClose={() => setIsTemplateModalOpen(false)} title="Load an Agent Template">
           <div className="space-y-3 max-h-[60vh] overflow-y-auto">

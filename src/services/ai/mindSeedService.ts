@@ -1,8 +1,10 @@
 
 import { MindSeedConfig, GeneratedMindSeed } from '../../types';
 import { handleAiCall } from './openRouter';
+import { getCustomContext } from '../dbService';
 
-const createMindSeedMetaPrompt = (config: MindSeedConfig): string => {
+const createMindSeedMetaPrompt = (config: MindSeedConfig, customContext?: string): string => {
+  const contextPrefix = customContext ? `**CUSTOM SYSTEM CONTEXT:**\n${customContext}\n\n---\n\n` : "";
   let typeSpecificInstructions = "";
   let typeName = "";
 
@@ -41,7 +43,7 @@ Every ArchSeed must be load-bearing. It must hold weight under real system stres
     `;
   }
 
-  return `
+  const basePrompt = `
 You are an expert Systems Architect and Knowledge Synthesizer. Your task is to take a large body of text and compress it into a single, high-quality "Seed of Wisdom" called a ${typeName}.
 
 **Process:**
@@ -71,9 +73,12 @@ ${config.text}
 
 Generate ONLY the raw JSON object.
   `;
+
+  return contextPrefix + basePrompt;
 };
 
 export const generateMindSeed = async (config: MindSeedConfig): Promise<GeneratedMindSeed> => {
-  const prompt = createMindSeedMetaPrompt(config);
+  const customContext = await getCustomContext('mindSeedContext');
+  const prompt = createMindSeedMetaPrompt(config, customContext);
   return handleAiCall<GeneratedMindSeed>(prompt, true, "generating MindSeed");
 };
