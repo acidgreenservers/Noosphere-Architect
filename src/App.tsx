@@ -1,14 +1,17 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import Header from './components/Header';
 import LandingPage from './components/LandingPage';
-import AgentArchitect from './components/AgentArchitect';
-import PromptArchitect from './components/PromptArchitect';
-import ProjectArchitect from './components/ProjectArchitect';
-import MindSeedArchitect from './components/MindSeedArchitect';
-import AgentApiSettings from './components/AgentApiSettings';
-import SignalExtractor from './components/SignalExtractor';
+import LoadingSpinner from './components/LoadingSpinner';
 import { PromptConfig } from './types';
+
+// Lazy load tool components to improve initial load time and reduce main bundle size.
+const AgentArchitect = lazy(() => import('./components/AgentArchitect'));
+const PromptArchitect = lazy(() => import('./components/PromptArchitect'));
+const ProjectArchitect = lazy(() => import('./components/ProjectArchitect'));
+const MindSeedArchitect = lazy(() => import('./components/MindSeedArchitect'));
+const AgentApiSettings = lazy(() => import('./components/AgentApiSettings'));
+const SignalExtractor = lazy(() => import('./components/SignalExtractor'));
 
 export type View = 'landing' | 'agentArchitect' | 'promptArchitect' | 'projectArchitect' | 'mindSeedArchitect' | 'agentApiSettings' | 'signalExtractor';
 
@@ -53,7 +56,9 @@ const App: React.FC = () => {
         showHomeButton={view !== 'landing'}
       />
       <main className="container mx-auto p-4 md:p-8">
-        {renderView()}
+        <Suspense fallback={<LoadingSpinner message="Loading tool..." />}>
+          {renderView()}
+        </Suspense>
       </main>
       <footer className="text-center p-6 text-sm text-gray-500 dark:text-gray-400 border-t dark:border-gray-800 mt-12">
         <div className="flex justify-center items-center space-x-4">
