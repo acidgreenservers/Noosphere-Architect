@@ -27,6 +27,7 @@ const ProjectArchitect: React.FC = () => {
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
   const [successMessage, setSuccessMessage] = useState('');
   const [draftStatus, setDraftStatus] = useState<'unloaded' | 'loaded' | 'none'>('unloaded');
+    const [pendingDraft, setPendingDraft] = useState<ProjectConfig | null>(null);
   const isCheckingDraft = useRef(false);
 
   const [modalState, setModalState] = useState<{ mode: 'save' | 'edit'; project?: SavedProject } | null>(null);
@@ -46,13 +47,7 @@ const ProjectArchitect: React.FC = () => {
 
       const draft = await db.getProjectDraft(1);
       if (draft?.config && Object.values(draft.config).some(v => v)) {
-        if (window.confirm("An unsaved project draft was found. Do you want to load it?")) {
-          setProjectConfig(draft.config);
-          setDraftStatus('loaded');
-        } else {
-          await db.clearProjectDraft(1);
-          setDraftStatus('none');
-        }
+                setPendingDraft(draft.config);
       } else {
         setDraftStatus('none');
       }
@@ -226,6 +221,19 @@ const ProjectArchitect: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleAcceptDraft = () => {
+    if (!pendingDraft) return;
+    setProjectConfig(pendingDraft);
+    setDraftStatus('loaded');
+    setPendingDraft(null);
+  };
+
+  const handleDeclineDraft = async () => {
+    await db.clearProjectDraft(1);
+    setDraftStatus('none');
+    setPendingDraft(null);
+  };
+
   return (
     <div className="max-w-4xl mx-auto">
       <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
@@ -286,6 +294,28 @@ const ProjectArchitect: React.FC = () => {
             </div>
         </div>
       )}
+
+      <Modal isOpen={!!pendingDraft} onClose={() => setPendingDraft(null)} title="Unsaved Draft Found">
+        <div className="space-y-4">
+            <p className="text-gray-600 dark:text-gray-400">
+                An unsaved project draft was found. Would you like to restore it?
+            </p>
+            <div className="flex justify-end space-x-3 mt-6">
+                <button
+                    onClick={handleDeclineDraft}
+                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                    Discard
+                </button>
+                <button
+                    onClick={handleAcceptDraft}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                >
+                    Restore Draft
+                </button>
+            </div>
+        </div>
+      </Modal>
 
       <PreviewModal
         isOpen={!!previewProject}

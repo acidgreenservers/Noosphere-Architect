@@ -1,8 +1,10 @@
 
 import { PromptConfig, GeneratedPrompt } from '../../types';
-import { handleAiCall } from './openRouter';
-import { getCustomContext } from '../dbService';
+import { generateStructuredSystemPrompt } from './structuredSystemPromptService';
 
+/**
+ * @deprecated Use generateStructuredSystemPrompt from structuredSystemPromptService for high-density reasoning topology.
+ */
 const createBasicPromptMetaPrompt = (config: PromptConfig, customContext?: string): string => {
   const contextPrefix = customContext ? `**CUSTOM SYSTEM CONTEXT:**\n${customContext}\n\n---\n\n` : "";
   const basePrompt = `
@@ -59,12 +61,6 @@ function validateGeneratedPrompt(raw: unknown): GeneratedPrompt {
 }
 
 export const generateBasicPrompt = async (config: PromptConfig): Promise<GeneratedPrompt> => {
-  if (!config.goal.trim()) {
-    throw new Error("Prompt goal cannot be empty.");
-  }
-
-  const customContext = await getCustomContext('promptContext');
-  const metaPrompt = createBasicPromptMetaPrompt(config, customContext);
-  const raw = await handleAiCall<unknown>(metaPrompt, true, "generating basic prompt");
-  return validateGeneratedPrompt(raw);
+  // Alias to structured system prompt to enforce "Truth in Connections" invariant across the project
+  return generateStructuredSystemPrompt(config);
 };

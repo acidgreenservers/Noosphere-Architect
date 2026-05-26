@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { generateBasicPrompt } from '../services/ai/basicPromptService';
+import { generateStructuredSystemPrompt } from '../services/ai/structuredSystemPromptService';
 import { generateSkillBundle } from '../services/ai/skillBundleService';
 import { PromptConfig, SavedPrompt, PromptType, GeneratedPrompt, AgentConfig, GeneratedFiles } from '../types';
 import * as db from '../services/dbService';
@@ -66,6 +67,7 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
     const [draftStatus, setDraftStatus] = useState<'unloaded' | 'loaded' | 'none'>('unloaded');
+    const [pendingDraft, setPendingDraft] = useState<{ type: PromptType; config: PromptConfig | AgentConfig } | null>(null);
     const checkingDraftRef = useRef<Record<PromptType, boolean>>({ standard: false, system: false });
 
     const [modalState, setModalState] = useState<{ mode: 'save' | 'edit'; prompt?: SavedPrompt } | null>(null);
@@ -97,17 +99,7 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
 
             const draft = await db.getTypedPromptDraft(activeTab, 1);
             if (draft?.config && Object.values(draft.config).some(v => v)) {
-                if (window.confirm(`An unsaved ${activeTab === 'standard' ? 'prompt' : 'skill'} draft was found. Do you want to load it?`)) {
-                    if (activeTab === 'standard') {
-                        setPromptConfig(draft.config as PromptConfig);
-                    } else {
-                        setSkillConfig(draft.config as AgentConfig);
-                    }
-                    setDraftStatus('loaded');
-                } else {
-                    await db.clearTypedPromptDraft(activeTab, 1);
-                    setDraftStatus('none');
-                }
+                setPendingDraft({ type: activeTab, config: draft.config });
             } else {
                 if (activeTab === 'standard') setPromptConfig({ goal: '', instructions: '' });
                 else setSkillConfig({ role: '', scope: '', goals: '', constraints: '' });
@@ -150,7 +142,8 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
         try {
             if (activeTab === 'standard') {
                 if (!promptConfig.goal.trim()) throw new Error("Please enter a goal.");
-                const result = await generateBasicPrompt(promptConfig);
+                // Utilize high-density reasoning topology for standard prompts
+                const result = await generateStructuredSystemPrompt(promptConfig);
                 setGeneratedPrompt(result);
             } else {
                 if (!skillConfig.role.trim() || !skillConfig.scope.trim()) throw new Error("Role and Scope are required.");
@@ -310,6 +303,24 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
         link.download = `${sanitizeFilename(name)}-legacy.md`;
         link.click();
         URL.revokeObjectURL(url);
+    };
+
+    const handleAcceptDraft = () => {
+        if (!pendingDraft) return;
+        if (pendingDraft.type === 'standard') {
+            setPromptConfig(pendingDraft.config as PromptConfig);
+        } else {
+            setSkillConfig(pendingDraft.config as AgentConfig);
+        }
+        setDraftStatus('loaded');
+        setPendingDraft(null);
+    };
+
+    const handleDeclineDraft = async () => {
+        if (!pendingDraft) return;
+        await db.clearTypedPromptDraft(pendingDraft.type, 1);
+        setDraftStatus('none');
+        setPendingDraft(null);
     };
 
     return (
@@ -572,6 +583,28 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                             if (isLegacy) handleLegacyDelete(previewPrompt!.id!);
                             else handleDelete();
                         }} className="px-4 py-2 bg-red-600 text-white rounded-lg">Delete</button>
+                    </div>
+                </div>
+            </Modal>
+
+            <Modal isOpen={!!pendingDraft} onClose={() => setPendingDraft(null)} title="Unsaved Draft Found">
+                <div className="space-y-4">
+                    <p className="text-gray-600 dark:text-gray-400">
+                        An unsaved {pendingDraft?.type === 'standard' ? 'prompt' : 'skill'} draft was found from your last session. Would you like to restore it?
+                    </p>
+                    <div className="flex justify-end space-x-3 mt-6">
+                        <button
+                            onClick={handleDeclineDraft}
+                            className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                        >
+                            Discard
+                        </button>
+                        <button
+                            onClick={handleAcceptDraft}
+                            className={`px-4 py-2 text-white rounded-lg transition-colors shadow-sm ${activeTab === 'standard' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-purple-600 hover:bg-purple-700'}`}
+                        >
+                            Restore Draft
+                        </button>
                     </div>
                 </div>
             </Modal>

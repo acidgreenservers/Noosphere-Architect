@@ -26,6 +26,7 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
     const [savedSignals, setSavedSignals] = useState<SavedSignal[]>([]);
     const [successMessage, setSuccessMessage] = useState('');
     const [draftStatus, setDraftStatus] = useState<'unloaded' | 'loaded' | 'none'>('unloaded');
+    const [pendingDraft, setPendingDraft] = useState<SignalConfig | null>(null);
     const isCheckingDraft = useRef(false);
 
     const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
@@ -45,13 +46,7 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
 
             const draft = await db.getSignalDraft(1);
             if (draft?.config && draft.config.messyPrompt) {
-                if (window.confirm("An unsaved signal draft was found. Do you want to load it?")) {
-                    setConfig(draft.config);
-                    setDraftStatus('loaded');
-                } else {
-                    await db.clearSignalDraft(1);
-                    setDraftStatus('none');
-                }
+                setPendingDraft(draft.config);
             } else {
                 setDraftStatus('none');
             }
@@ -144,6 +139,19 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
             signalConstraints: signal.signalConstraints
         });
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleAcceptDraft = () => {
+        if (!pendingDraft) return;
+        setConfig(pendingDraft);
+        setDraftStatus('loaded');
+        setPendingDraft(null);
+    };
+
+    const handleDeclineDraft = async () => {
+        await db.clearSignalDraft(1);
+        setDraftStatus('none');
+        setPendingDraft(null);
     };
 
     const handleTransfer = () => {
@@ -290,6 +298,28 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
                     </div>
                 </div>
             )}
+
+            <Modal isOpen={!!pendingDraft} onClose={() => setPendingDraft(null)} title="Unsaved Draft Found">
+                <div className="space-y-4">
+                    <p className="text-gray-600 dark:text-gray-400">
+                        An unsaved signal extractor draft was found. Would you like to restore it?
+                    </p>
+                    <div className="flex justify-end space-x-3 mt-6">
+                        <button
+                            onClick={handleDeclineDraft}
+                            className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                        >
+                            Discard
+                        </button>
+                        <button
+                            onClick={handleAcceptDraft}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                        >
+                            Restore Draft
+                        </button>
+                    </div>
+                </div>
+            </Modal>
 
             <PreviewModal
                 isOpen={!!previewSignal}
