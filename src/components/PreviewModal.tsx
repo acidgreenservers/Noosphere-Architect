@@ -28,6 +28,8 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   title,
   content,
   mindSeed,
+  metadata,
+  onUpdateMetadata,
   onCopy,
   onExport,
   onDelete
