@@ -50,89 +50,100 @@ const initDB = (): Promise<IDBDatabase> => {
 
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(AGENT_STORE)) {
-        const agentStore = db.createObjectStore(AGENT_STORE, { keyPath: 'id', autoIncrement: true });
-        agentStore.createIndex('name', 'name', { unique: false });
-        agentStore.createIndex('createdAt', 'createdAt', { unique: false });
-      }
-      if (!db.objectStoreNames.contains(PROMPT_STORE)) {
-        const promptStore = db.createObjectStore(PROMPT_STORE, { keyPath: 'id', autoIncrement: true });
-        promptStore.createIndex('name', 'name', { unique: false });
-        promptStore.createIndex('createdAt', 'createdAt', { unique: false });
-      }
-      if (!db.objectStoreNames.contains(STANDARD_PROMPT_STORE)) {
-        const store = db.createObjectStore(STANDARD_PROMPT_STORE, { keyPath: 'id', autoIncrement: true });
-        store.createIndex('name', 'name', { unique: false });
-        store.createIndex('createdAt', 'createdAt', { unique: false });
-      }
-      if (!db.objectStoreNames.contains(SYSTEM_PROMPT_STORE)) {
-        const store = db.createObjectStore(SYSTEM_PROMPT_STORE, { keyPath: 'id', autoIncrement: true });
-        store.createIndex('name', 'name', { unique: false });
-        store.createIndex('createdAt', 'createdAt', { unique: false });
-      }
-       if (!db.objectStoreNames.contains(PROJECT_STORE)) {
-        const projectStore = db.createObjectStore(PROJECT_STORE, { keyPath: 'id', autoIncrement: true });
-        projectStore.createIndex('name', 'name', { unique: false });
-        projectStore.createIndex('createdAt', 'createdAt', { unique: false });
-      }
-      if (!db.objectStoreNames.contains(AGENT_DRAFT_STORE)) {
-        db.createObjectStore(AGENT_DRAFT_STORE, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(PROMPT_DRAFT_STORE)) {
-        db.createObjectStore(PROMPT_DRAFT_STORE, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(STANDARD_PROMPT_DRAFT_STORE)) {
-        db.createObjectStore(STANDARD_PROMPT_DRAFT_STORE, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(SYSTEM_PROMPT_DRAFT_STORE)) {
-        db.createObjectStore(SYSTEM_PROMPT_DRAFT_STORE, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(PROJECT_DRAFT_STORE)) {
-        db.createObjectStore(PROJECT_DRAFT_STORE, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(SIGNAL_STORE)) {
-        const signalStore = db.createObjectStore(SIGNAL_STORE, { keyPath: 'id', autoIncrement: true });
-        signalStore.createIndex('name', 'name', { unique: false });
-        signalStore.createIndex('createdAt', 'createdAt', { unique: false });
-      }
-      if (!db.objectStoreNames.contains(SIGNAL_DRAFT_STORE)) {
-        db.createObjectStore(SIGNAL_DRAFT_STORE, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(COGNISEED_STORE)) {
-        const store = db.createObjectStore(COGNISEED_STORE, { keyPath: 'id', autoIncrement: true });
-        store.createIndex('name', 'name', { unique: false });
-        store.createIndex('createdAt', 'createdAt', { unique: false });
-      }
-      if (!db.objectStoreNames.contains(LINGUASEED_STORE)) {
-        const store = db.createObjectStore(LINGUASEED_STORE, { keyPath: 'id', autoIncrement: true });
-        store.createIndex('name', 'name', { unique: false });
-        store.createIndex('createdAt', 'createdAt', { unique: false });
-      }
-      if (!db.objectStoreNames.contains(ARCHSEED_STORE)) {
-        const store = db.createObjectStore(ARCHSEED_STORE, { keyPath: 'id', autoIncrement: true });
-        store.createIndex('name', 'name', { unique: false });
-        store.createIndex('createdAt', 'createdAt', { unique: false });
-      }
-      if (!db.objectStoreNames.contains(MINDSEED_DRAFT_STORE)) {
-        db.createObjectStore(MINDSEED_DRAFT_STORE, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(AGENT_CONTEXT_STORE)) {
-        db.createObjectStore(AGENT_CONTEXT_STORE, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(MINDSEED_CONTEXT_STORE)) {
-        db.createObjectStore(MINDSEED_CONTEXT_STORE, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(SIGNAL_CONTEXT_STORE)) {
-        db.createObjectStore(SIGNAL_CONTEXT_STORE, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(PROMPT_CONTEXT_STORE)) {
-        db.createObjectStore(PROMPT_CONTEXT_STORE, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(SYSTEM_PROMPT_CONTEXT_STORE)) {
-        db.createObjectStore(SYSTEM_PROMPT_CONTEXT_STORE, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(PROJECT_CONTEXT_STORE)) {
-        db.createObjectStore(PROJECT_CONTEXT_STORE, { keyPath: 'id' });
+      const oldVersion = event.oldVersion;
+      const newVersion = event.newVersion || DB_VERSION;
+
+      console.log(`Upgrading DB from v${oldVersion} to v${newVersion}`);
+
+      // Modular Migration Registry
+      const migrations: Record<number, (db: IDBDatabase) => void> = {
+        1: (db) => {
+          if (!db.objectStoreNames.contains(AGENT_STORE)) {
+            const agentStore = db.createObjectStore(AGENT_STORE, { keyPath: 'id', autoIncrement: true });
+            agentStore.createIndex('name', 'name', { unique: false });
+            agentStore.createIndex('createdAt', 'createdAt', { unique: false });
+          }
+          if (!db.objectStoreNames.contains(PROMPT_STORE)) {
+            const promptStore = db.createObjectStore(PROMPT_STORE, { keyPath: 'id', autoIncrement: true });
+            promptStore.createIndex('name', 'name', { unique: false });
+            promptStore.createIndex('createdAt', 'createdAt', { unique: false });
+          }
+        },
+        2: (db) => {
+          if (!db.objectStoreNames.contains(PROJECT_STORE)) {
+            const projectStore = db.createObjectStore(PROJECT_STORE, { keyPath: 'id', autoIncrement: true });
+            projectStore.createIndex('name', 'name', { unique: false });
+            projectStore.createIndex('createdAt', 'createdAt', { unique: false });
+          }
+        },
+        3: (db) => {
+          if (!db.objectStoreNames.contains(AGENT_DRAFT_STORE)) db.createObjectStore(AGENT_DRAFT_STORE, { keyPath: 'id' });
+          if (!db.objectStoreNames.contains(PROMPT_DRAFT_STORE)) db.createObjectStore(PROMPT_DRAFT_STORE, { keyPath: 'id' });
+          if (!db.objectStoreNames.contains(PROJECT_DRAFT_STORE)) db.createObjectStore(PROJECT_DRAFT_STORE, { keyPath: 'id' });
+        },
+        4: (db) => {
+          if (!db.objectStoreNames.contains(SIGNAL_STORE)) {
+            const signalStore = db.createObjectStore(SIGNAL_STORE, { keyPath: 'id', autoIncrement: true });
+            signalStore.createIndex('name', 'name', { unique: false });
+            signalStore.createIndex('createdAt', 'createdAt', { unique: false });
+          }
+          if (!db.objectStoreNames.contains(SIGNAL_DRAFT_STORE)) db.createObjectStore(SIGNAL_DRAFT_STORE, { keyPath: 'id' });
+        },
+        5: (db) => {
+          if (!db.objectStoreNames.contains(COGNISEED_STORE)) {
+            const store = db.createObjectStore(COGNISEED_STORE, { keyPath: 'id', autoIncrement: true });
+            store.createIndex('name', 'name', { unique: false });
+            store.createIndex('createdAt', 'createdAt', { unique: false });
+          }
+          if (!db.objectStoreNames.contains(LINGUASEED_STORE)) {
+            const store = db.createObjectStore(LINGUASEED_STORE, { keyPath: 'id', autoIncrement: true });
+            store.createIndex('name', 'name', { unique: false });
+            store.createIndex('createdAt', 'createdAt', { unique: false });
+          }
+          if (!db.objectStoreNames.contains(ARCHSEED_STORE)) {
+            const store = db.createObjectStore(ARCHSEED_STORE, { keyPath: 'id', autoIncrement: true });
+            store.createIndex('name', 'name', { unique: false });
+            store.createIndex('createdAt', 'createdAt', { unique: false });
+          }
+          if (!db.objectStoreNames.contains(MINDSEED_DRAFT_STORE)) db.createObjectStore(MINDSEED_DRAFT_STORE, { keyPath: 'id' });
+        },
+        6: (db) => {
+          if (!db.objectStoreNames.contains(AGENT_CONTEXT_STORE)) db.createObjectStore(AGENT_CONTEXT_STORE, { keyPath: 'id' });
+          if (!db.objectStoreNames.contains(MINDSEED_CONTEXT_STORE)) db.createObjectStore(MINDSEED_CONTEXT_STORE, { keyPath: 'id' });
+          if (!db.objectStoreNames.contains(SIGNAL_CONTEXT_STORE)) db.createObjectStore(SIGNAL_CONTEXT_STORE, { keyPath: 'id' });
+          if (!db.objectStoreNames.contains(PROMPT_CONTEXT_STORE)) db.createObjectStore(PROMPT_CONTEXT_STORE, { keyPath: 'id' });
+          if (!db.objectStoreNames.contains(PROJECT_CONTEXT_STORE)) db.createObjectStore(PROJECT_CONTEXT_STORE, { keyPath: 'id' });
+        },
+        7: (db) => {
+          if (!db.objectStoreNames.contains(STANDARD_PROMPT_STORE)) {
+            const store = db.createObjectStore(STANDARD_PROMPT_STORE, { keyPath: 'id', autoIncrement: true });
+            store.createIndex('name', 'name', { unique: false });
+            store.createIndex('createdAt', 'createdAt', { unique: false });
+          }
+          if (!db.objectStoreNames.contains(SYSTEM_PROMPT_STORE)) {
+            const store = db.createObjectStore(SYSTEM_PROMPT_STORE, { keyPath: 'id', autoIncrement: true });
+            store.createIndex('name', 'name', { unique: false });
+            store.createIndex('createdAt', 'createdAt', { unique: false });
+          }
+        },
+        8: (db) => {
+          if (!db.objectStoreNames.contains(STANDARD_PROMPT_DRAFT_STORE)) db.createObjectStore(STANDARD_PROMPT_DRAFT_STORE, { keyPath: 'id' });
+          if (!db.objectStoreNames.contains(SYSTEM_PROMPT_DRAFT_STORE)) db.createObjectStore(SYSTEM_PROMPT_DRAFT_STORE, { keyPath: 'id' });
+        },
+        9: (db) => {
+          if (!db.objectStoreNames.contains(SYSTEM_PROMPT_CONTEXT_STORE)) db.createObjectStore(SYSTEM_PROMPT_CONTEXT_STORE, { keyPath: 'id' });
+        },
+        10: () => {
+          // Placeholder for data migration if needed
+          console.log("Migration to v10 complete: Stewarding state integrity.");
+        }
+      };
+
+      for (let v = oldVersion + 1; v <= newVersion; v++) {
+        if (migrations[v]) {
+          console.log(`Running migration for v${v}`);
+          migrations[v](db);
+        }
       }
     };
   });
