@@ -20,6 +20,7 @@ interface PreviewModalProps {
   onCopy: () => void;
   onExport: () => void;
   onDelete?: () => void;
+  categoryOptions?: string[];
 }
 
 const PreviewModal: React.FC<PreviewModalProps> = ({
@@ -32,7 +33,8 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   onUpdateMetadata,
   onCopy,
   onExport,
-  onDelete
+  onDelete,
+  categoryOptions
 }) => {
   const [activeTab, setActiveTab] = useState<string>('');
   const [copyStatus, setCopyStatus] = useState(false);
@@ -164,14 +166,42 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
                 </div>
                 <div className="h-6 w-px bg-gray-300 dark:bg-gray-600 hidden sm:block" />
                 <div className="flex items-center gap-2 flex-grow">
-                    <span className="material-icons text-gray-400 text-sm">folder</span>
+                    <select
+                        value=""
+                        onChange={(e) => {
+                            if (e.target.value) {
+                                onUpdateMetadata({ ...metadata, category: e.target.value });
+                            }
+                        }}
+                        className="bg-transparent border-none focus:ring-0 text-sm text-gray-400 cursor-pointer hover:text-blue-500 transition-colors w-8"
+                        title="Select existing category"
+                    >
+                        <option value="" disabled className="text-gray-400">──</option>
+                        {categoryOptions && categoryOptions.length > 0 ? (
+                            categoryOptions.map(cat => (
+                                <option key={cat} value={cat} className="text-gray-700 dark:text-gray-300">
+                                    {cat}
+                                </option>
+                            ))
+                        ) : (
+                            <option value="" disabled className="text-gray-400">No categories yet</option>
+                        )}
+                    </select>
                     <input
                         type="text"
                         value={metadata.category || ''}
                         onChange={(e) => onUpdateMetadata({ ...metadata, category: e.target.value })}
                         placeholder="Assign category..."
                         className="bg-transparent border-none focus:ring-0 text-sm text-gray-700 dark:text-gray-300 w-full"
+                        list="preview-category-suggestions"
                     />
+                    {categoryOptions && categoryOptions.length > 0 && (
+                        <datalist id="preview-category-suggestions">
+                            {categoryOptions.map(cat => (
+                                <option key={cat} value={cat} />
+                            ))}
+                        </datalist>
+                    )}
                 </div>
             </div>
         )}

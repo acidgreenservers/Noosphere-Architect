@@ -1,4 +1,3 @@
-ev
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import 'fake-indexeddb/auto';
 import * as db from '../../../src/services/dbService';

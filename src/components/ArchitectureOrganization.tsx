@@ -22,17 +22,47 @@ type UnifiedItem = {
     category: string;
 };
 
+type SortField = 'createdAt' | 'name' | 'type';
+type SortDirection = 'asc' | 'desc';
+
+const TYPE_LABELS: Record<UnifiedItem['type'], string> = {
+    'agent': 'Agents',
+    'prompt-standard': 'Standard Prompts',
+    'prompt-system': 'System Prompts',
+    'project': 'Projects',
+    'mindseed': 'MindSeeds',
+    'signal': 'Signals',
+    'synthesis': 'Syntheses',
+    'legacy-prompt': 'Legacy Prompts'
+};
+
+const TYPE_ICONS: Record<UnifiedItem['type'], string> = {
+    'agent': 'smart_toy',
+    'prompt-standard': 'description',
+    'prompt-system': 'psychology',
+    'project': 'folder',
+    'mindseed': 'spa',
+    'signal': 'signal_cellular_alt',
+    'synthesis': 'auto_fix_high',
+    'legacy-prompt': 'history'
+};
+
 const ArchitectureOrganization: React.FC = () => {
     const [items, setItems] = useState<UnifiedItem[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeCategory, setActiveTab] = useState<string>('all');
+    const [activeTypeFilter, setActiveTypeFilter] = useState<string>('all_types');
+    const [sortField, setSortField] = useState<SortField>('createdAt');
+    const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isSynthesisMode, setIsSynthesisMode] = useState(false);
     const [previewItem, setPreviewItem] = useState<UnifiedItem | null>(null);
     const [editItem, setEditItem] = useState<UnifiedItem | null>(null);
     const [editContent, setEditContent] = useState('');
     const [editName, setEditName] = useState('');
+    const [bulkCategoryInput, setBulkCategoryInput] = useState('');
     const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
+    const [expandedSection, setExpandedSection] = useState<string>('Views');
 
     const loadAllData = useCallback(async () => {
         const [
@@ -83,6 +113,41 @@ const ArchitectureOrganization: React.FC = () => {
     useEffect(() => {
         loadAllData();
     }, [loadAllData]);
+
+    // Derive all existing categories from items for the category filter sidebar
+    const allCategories = Array.from(new Set(items.map(i => i.category).filter(c => c && c.trim()))).sort();
+
+    // Build the combined sidebar: views section + type filter section + categories section
+    const sidebarSections = [
+        {
+            label: 'Views',
+            items: [
+                { id: 'all', label: 'All Items', icon: 'inventory_2' },
+                { id: 'starred', label: 'Starred', icon: 'star' },
+                { id: 'pinned', label: 'Pinned', icon: 'push_pin' },
+                { id: 'archived', label: 'Archived', icon: 'archive' },
+            ] as { id: string; label: string; icon: string }[]
+        },
+        {
+            label: 'Filter by Type',
+            items: [
+                { id: 'all_types', label: 'All Types', icon: 'category' },
+                ...Object.entries(TYPE_LABELS).map(([typeId, label]) => ({
+                    id: typeId,
+                    label,
+                    icon: TYPE_ICONS[typeId as UnifiedItem['type']]
+                }))
+            ] as { id: string; label: string; icon: string }[]
+        }
+    ];
+
+    // Add categories section only if categories exist
+    if (allCategories.length > 0) {
+        sidebarSections.push({
+            label: 'Categories',
+            items: allCategories.map(cat => ({ id: cat, label: cat, icon: 'folder' }))
+        });
+    }
 
     const handleToggleMetadata = async (item: UnifiedItem, field: keyof LibraryMetadata) => {
         const updatedOriginal = { ...item.original, [field]: !item.original[field] };
@@ -174,7 +239,22 @@ const ArchitectureOrganization: React.FC = () => {
         setPreviewItem(null);
     };
 
-    const categories = ['all', 'starred', 'pinned', 'archived', ...Array.from(new Set(items.map(i => i.category).filter(c => c)))];
+    // ── Sidebar helpers ─────────────────────────────────────────────
+
+    const sidebarCount = (filterId: string): number => {
+        return items.filter(i => {
+            if (filterId === 'all') return !i.isArchived;
+            if (filterId === 'starred') return i.isStarred;
+            if (filterId === 'pinned') return i.isPinned;
+            if (filterId === 'archived') return i.isArchived;
+            // Check type filters (match against TYPE_LABELS keys)
+            if (Object.keys(TYPE_LABELS).includes(filterId)) return i.type === filterId;
+            // Check category filters
+            return i.category === filterId;
+        }).length;
+    };
+
+    // ── Selection & Bulk ────────────────────────────────────────────
 
     const toggleSelection = (id: string) => {
         const next = new Set(selectedIds);
@@ -191,16 +271,65 @@ const ArchitectureOrganization: React.FC = () => {
         setSelectedIds(new Set());
     };
 
-    const filteredItems = items.filter(item => {
-        const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-        if (!matchesSearch) return false;
+    const handleBulkCategory = async () => {
+        if (!bulkCategoryInput.trim()) {
+            setToast({ message: 'Enter a category name', type: 'error' });
+            return;
+        }
+        const selectedItems = items.filter(i => selectedIds.has(String(i.id)));
+        for (const item of selectedItems) {
+            const updatedOriginal = { ...item.original, category: bulkCategoryInput.trim() };
+            await saveItem(item.type, updatedOriginal);
+            setItems(prev => prev.map(i => i.id === item.id ? { ...i, category: bulkCategoryInput.trim(), original: updatedOriginal } : i));
+        }
+        setBulkCategoryInput('');
+        setSelectedIds(new Set());
+        setToast({ message: `Assigned "${bulkCategoryInput.trim()}" to ${selectedItems.length} items`, type: 'success' });
+    };
 
-        if (activeCategory === 'all') return !item.isArchived;
-        if (activeCategory === 'starred') return item.isStarred;
-        if (activeCategory === 'pinned') return item.isPinned;
-        if (activeCategory === 'archived') return item.isArchived;
-        return item.category === activeCategory;
-    });
+    // ── Filtering & Sorting ─────────────────────────────────────────
+
+    const getSortValue = (item: UnifiedItem): string | number => {
+        switch (sortField) {
+            case 'name': return item.name.toLowerCase();
+            case 'type': return item.type;
+            case 'createdAt':
+            default: return new Date(item.createdAt).getTime();
+        }
+    };
+
+    const filteredAndSortedItems = items
+        .filter(item => {
+            const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+            if (!matchesSearch) return false;
+
+            // View filter
+            if (activeCategory === 'all' && item.isArchived) return false;
+            if (activeCategory === 'starred' && !item.isStarred) return false;
+            if (activeCategory === 'pinned' && !item.isPinned) return false;
+            if (activeCategory === 'archived' && !item.isArchived) return false;
+
+            // Type filter (only applies when not showing a specific view)
+            const isViewFilter = ['all', 'starred', 'pinned', 'archived'].includes(activeCategory);
+            if (activeTypeFilter !== 'all_types' && (isViewFilter || activeCategory === 'all')) {
+                if (item.type !== activeTypeFilter) return false;
+            }
+
+            // Category filter (when a category is the active view)
+            if (!['all', 'starred', 'pinned', 'archived'].includes(activeCategory)) {
+                if (item.category !== activeCategory) return false;
+            }
+
+            return true;
+        })
+        .sort((a, b) => {
+            const aVal = getSortValue(a);
+            const bVal = getSortValue(b);
+            const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+            return sortDirection === 'asc' ? cmp : -cmp;
+        });
+
+    // ── Preview & Export ────────────────────────────────────────────
 
     const getPreviewContent = (item: UnifiedItem): string | Record<string, string> | undefined => {
         const o = item.original;
@@ -252,7 +381,6 @@ const ArchitectureOrganization: React.FC = () => {
         if (typeof content === 'string') {
             blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
         } else if (typeof content === 'object') {
-            // Multi-file: export as a JSON bundle (or single file with separator)
             const combined = Object.entries(content)
                 .map(([name, text]) => `--- ${name} ---\n\n${text}`)
                 .join('\n\n');
@@ -274,59 +402,169 @@ const ArchitectureOrganization: React.FC = () => {
         setToast({ message: `Exported "${filename}"`, type: 'success' });
     };
 
+    // ── Render ──────────────────────────────────────────────────────
+
+    const renderSidebarButton = (id: string, label: string, icon: string) => {
+        // Highlight both a matching view OR a matching type filter OR a matching category
+        const isActive =
+            (['all', 'starred', 'pinned', 'archived'].includes(id) && activeCategory === id) ||
+            (Object.keys(TYPE_LABELS).includes(id) && activeTypeFilter === id) ||
+            (!['all', 'starred', 'pinned', 'archived'].includes(id) && !Object.keys(TYPE_LABELS).includes(id) && activeCategory === id);
+        const count = sidebarCount(id);
+
+        return (
+            <button
+                key={id}
+                onClick={() => {
+                    if (['all', 'starred', 'pinned', 'archived'].includes(id)) {
+                        setActiveTab(id);
+                        setActiveTypeFilter('all_types'); // Reset type filter when choosing a view
+                    } else if (Object.keys(TYPE_LABELS).includes(id)) {
+                        setActiveTypeFilter(id);
+                        setActiveTab('all'); // Switch to All Items when filtering by type
+                    } else {
+                        setActiveTab(id);
+                        setActiveTypeFilter('all_types');
+                    }
+                }}
+                className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all ${
+                    isActive
+                    ? 'bg-blue-600 text-white shadow-md font-bold'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+            >
+                <span className="flex items-center gap-2">
+                    <span className={`material-icons text-lg ${isActive ? 'text-white' : 'text-gray-400'}`}>{icon}</span>
+                    <span>{label}</span>
+                </span>
+                {count > 0 && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${isActive ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}>
+                        {count}
+                    </span>
+                )}
+            </button>
+        );
+    };
+
+    const cycleSortDirection = () => {
+        setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    };
+
+    const handleSortFieldChange = (field: SortField) => {
+        if (sortField === field) {
+            cycleSortDirection();
+        } else {
+            setSortField(field);
+            setSortDirection('desc');
+        }
+    };
+
     return (
-        <div className="max-w-6xl mx-auto">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6">
+        <div className="max-w-6xl mx-auto flex flex-col flex-1 min-h-0">
+            {/* Top header — fixed, no scroll */}
+            <div className="flex-shrink-0 flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6">
                 <div>
                     <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Architecture Organization</h2>
                     <p className="text-gray-600 dark:text-gray-400">Manage, categorize, and steward your synthesized wisdom.</p>
                 </div>
-                <div className="w-full md:w-72 relative">
-                    <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
-                    <input
-                        type="text"
-                        placeholder="Search library..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm"
-                    />
+                <div className="flex items-center gap-4">
+                    {/* Sort Controls */}
+                    <div className="flex items-center gap-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 shadow-sm">
+                        <span className="material-icons text-gray-400 text-sm">sort</span>
+                        {(['createdAt', 'name', 'type'] as SortField[]).map(field => (
+                            <button
+                                key={field}
+                                onClick={() => handleSortFieldChange(field)}
+                                className={`px-2 py-1 text-xs font-bold rounded-lg transition-all ${
+                                    sortField === field
+                                    ? 'bg-blue-600 text-white shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                                }`}
+                            >
+                                {field === 'createdAt' ? 'Date' : field === 'name' ? 'Name' : 'Type'}
+                            </button>
+                        ))}
+                        <button
+                            onClick={cycleSortDirection}
+                            className="ml-1 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                            title={sortDirection === 'asc' ? 'Ascending' : 'Descending'}
+                        >
+                            <span className="material-icons text-sm">
+                                {sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                            </span>
+                        </button>
+                    </div>
+                    {/* Search */}
+                    <div className="relative w-full md:w-72">
+                        <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+                        <input
+                            type="text"
+                            placeholder="Search library..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm"
+                        />
+                    </div>
                 </div>
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-8">
-                {/* Sidebar Categories */}
-                <aside className="w-full lg:w-64 space-y-2">
-                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest px-4 mb-4">Views</h3>
-                    {categories.map(cat => (
-                        <button
-                            key={cat}
-                            onClick={() => setActiveTab(cat)}
-                            className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all ${
-                                activeCategory === cat
-                                ? 'bg-blue-600 text-white shadow-md font-bold'
-                                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-                            }`}
-                        >
-                            <span className="capitalize">{cat}</span>
-                            <span className={`text-xs px-2 py-0.5 rounded-full ${activeCategory === cat ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}>
-                                {items.filter(i => {
-                                    if (cat === 'all') return !i.isArchived;
-                                    if (cat === 'starred') return i.isStarred;
-                                    if (cat === 'pinned') return i.isPinned;
-                                    if (cat === 'archived') return i.isArchived;
-                                    return i.category === cat;
-                                }).length}
-                            </span>
-                        </button>
-                    ))}
+            <div className="flex flex-col lg:flex-row gap-8 flex-1 min-h-0">
+                {/* Sidebar — sticky, no scroll, accordion sections */}
+                <aside className="w-full lg:w-64 space-y-3 lg:sticky lg:top-0 lg:self-start lg:max-h-screen overflow-y-auto">
+                    {sidebarSections.map(section => {
+                        const isExpanded = expandedSection === section.label;
+                        return (
+                            <div key={section.label} className="bg-gray-50 dark:bg-gray-800/30 rounded-xl border border-gray-100 dark:border-gray-700/50 overflow-hidden">
+                                <button
+                                    onClick={() => setExpandedSection(expandedSection === section.label ? '' : section.label)}
+                                    className="w-full flex items-center justify-between px-4 py-3 text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors"
+                                >
+                                    <span>{section.label}</span>
+                                    <span className={`material-icons text-base transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                                        expand_more
+                                    </span>
+                                </button>
+                                <div className={`transition-all duration-300 overflow-hidden ${isExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                    <div className="px-2 pb-2 space-y-1 pt-1">
+                                        {section.items.map(({ id, label, icon }) => renderSidebarButton(id, label, icon))}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
                 </aside>
 
-                {/* Main Grid */}
-                <div className="flex-grow">
+                {/* Main Grid — scrollable independently, fills remaining flex space */}
+                <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
                     {selectedIds.size > 0 && (
                         <div className="mb-6 p-4 bg-blue-600 rounded-2xl shadow-lg flex flex-wrap items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
-                            <span className="text-white font-bold ml-2">{selectedIds.size} items selected</span>
-                            <div className="flex gap-2">
+                            <span className="text-white font-bold ml-2">{selectedIds.size} item{selectedIds.size !== 1 ? 's' : ''} selected</span>
+                            <div className="flex flex-wrap items-center gap-2">
+                                {/* Bulk category assignment */}
+                                <div className="flex items-center gap-1 bg-white/20 rounded-xl px-3 py-1">
+                                    <span className="material-icons text-white text-sm">folder</span>
+                                    <input
+                                        type="text"
+                                        value={bulkCategoryInput}
+                                        onChange={(e) => setBulkCategoryInput(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleBulkCategory()}
+                                        placeholder="Assign category..."
+                                        className="w-28 bg-transparent border-none text-white placeholder-white/60 text-sm outline-none"
+                                        list="bulk-category-suggestions"
+                                    />
+                                    <datalist id="bulk-category-suggestions">
+                                        {allCategories.map(cat => (
+                                            <option key={cat} value={cat} />
+                                        ))}
+                                    </datalist>
+                                    <button
+                                        onClick={handleBulkCategory}
+                                        className="ml-1 px-2 py-1 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-lg transition-colors"
+                                        title="Assign Category"
+                                    >
+                                        Go
+                                    </button>
+                                </div>
                                 <button
                                     onClick={() => setIsSynthesisMode(true)}
                                     className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl transition-colors font-bold text-sm"
@@ -339,7 +577,7 @@ const ArchitectureOrganization: React.FC = () => {
                                     className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl transition-colors font-bold text-sm"
                                 >
                                     <span className="material-icons text-sm">archive</span>
-                                    Archive Selected
+                                    Archive
                                 </button>
                                 <button
                                     onClick={() => setSelectedIds(new Set())}
@@ -350,8 +588,14 @@ const ArchitectureOrganization: React.FC = () => {
                             </div>
                         </div>
                     )}
+                    {/* Item count summary */}
+                    <div className="mb-4 text-sm text-gray-500 dark:text-gray-400 px-1">
+                        {filteredAndSortedItems.length} item{filteredAndSortedItems.length !== 1 ? 's' : ''}
+                        {activeTypeFilter !== 'all_types' && ` in ${TYPE_LABELS[activeTypeFilter as UnifiedItem['type']]?.toLowerCase() || activeTypeFilter}`}
+                        {activeCategory !== 'all' && !['starred', 'pinned', 'archived'].includes(activeCategory) && ` in "${activeCategory}"`}
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {filteredItems.map(item => (
+                        {filteredAndSortedItems.map(item => (
                             <div key={item.id} className="relative">
                                 <LibraryItem
                                     name={item.name}
@@ -369,7 +613,7 @@ const ArchitectureOrganization: React.FC = () => {
                                 />
                             </div>
                         ))}
-                        {filteredItems.length === 0 && (
+                        {filteredAndSortedItems.length === 0 && (
                             <div className="col-span-full py-20 text-center bg-gray-50 dark:bg-gray-900/30 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-800">
                                 <span className="material-icons text-5xl text-gray-300 dark:text-gray-700 mb-4">inventory_2</span>
                                 <p className="text-gray-500 dark:text-gray-400 font-medium">No architectural assets found in this view.</p>
@@ -387,6 +631,7 @@ const ArchitectureOrganization: React.FC = () => {
                     content={getPreviewContent(previewItem)}
                     mindSeed={previewItem.type === 'mindseed' ? previewItem.original.result : undefined}
                     metadata={previewItem}
+                    categoryOptions={allCategories}
                     onUpdateMetadata={(meta) => {
                         const fields: (keyof LibraryMetadata)[] = ['isStarred', 'isPinned', 'isArchived'];
                         fields.forEach(f => {
