@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { SynthesisLine, SavedSynthesis } from '../types';
 import { extractSynthesisNodes, synthesizeNodes } from '../services/ai/synthesisService';
 import { addSynthesis } from '../services/dbService';
+import { getOpenRouterKey, getOpenRouterModel } from '../services/sessionService';
 import LoadingSpinner from './LoadingSpinner';
 import Toast from './Toast';
 import ReactMarkdown from 'react-markdown';
@@ -14,17 +14,48 @@ interface SynthesisWorkspaceProps {
     onSaveSuccess: () => void;
 }
 
+type WorkspaceState =
+    | 'checking'       // Checking if AI is configured
+    | 'awaiting_config'// AI not configured — show CTA
+    | 'extracting'     // Running extraction on source items
+    | 'idle'          // Nodes extracted, waiting for user action
+    | 'synthesizing'   // Running synthesis on selected nodes
+    | 'result'        // Synthesis complete, showing result
+    | 'error';        // Persistent error state
+
 const SynthesisWorkspace: React.FC<SynthesisWorkspaceProps> = ({ sourceItems, onClose, onSaveSuccess }) => {
+    const [state, setState] = useState<WorkspaceState>('checking');
     const [lines, setLines] = useState<SynthesisLine[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState('');
     const [intent, setIntent] = useState('');
     const [result, setResult] = useState<string | null>(null);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
 
     useEffect(() => {
+        // Pre-flight check: is AI configured?
+        const apiKey = getOpenRouterKey();
+        const model = getOpenRouterModel();
+
+        if (!apiKey && !model) {
+            setErrorMessage('OpenRouter API Key and Model are required. Please configure them in Agent API Settings.');
+            setState('awaiting_config');
+            return;
+        }
+        if (!apiKey) {
+            setErrorMessage('OpenRouter API Key is required. Please set it in Agent API Settings.');
+            setState('awaiting_config');
+            return;
+        }
+        if (!model) {
+            setErrorMessage('OpenRouter Model is required. Please select one in Agent API Settings.');
+            setState('awaiting_config');
+            return;
+        }
+
+        // AI is configured — proceed with extraction
         const prepareLines = async () => {
-            setIsLoading(true);
+            setState('extracting');
             setLoadingMessage('Decompressing sources into reasoning nodes...');
             const allLines: SynthesisLine[] = [];
 
@@ -48,10 +79,10 @@ const SynthesisWorkspace: React.FC<SynthesisWorkspaceProps> = ({ sourceItems, on
                     });
                 }
                 setLines(allLines);
-            } catch (err) {
-                setToast({ message: 'Failed to extract reasoning nodes', type: 'error' });
-            } finally {
-                setIsLoading(false);
+                setState('idle');
+            } catch (err: any) {
+                setErrorMessage(err?.message || 'Failed to extract reasoning nodes from sources.');
+                setState('error');
             }
         };
 
@@ -65,16 +96,16 @@ const SynthesisWorkspace: React.FC<SynthesisWorkspaceProps> = ({ sourceItems, on
             return;
         }
 
-        setIsLoading(true);
+        setState('synthesizing');
         setLoadingMessage('Synthesizing reasoning topology...');
         try {
             const synthesized = await synthesizeNodes(selectedNodes, intent);
             setResult(synthesized);
+            setState('result');
             setToast({ message: 'Synthesis complete!', type: 'success' });
-        } catch (err) {
-            setToast({ message: 'Synthesis failed', type: 'error' });
-        } finally {
-            setIsLoading(false);
+        } catch (err: any) {
+            setErrorMessage(err?.message || 'Synthesis failed.');
+            setState('error');
         }
     };
 
@@ -107,6 +138,69 @@ const SynthesisWorkspace: React.FC<SynthesisWorkspaceProps> = ({ sourceItems, on
         setLines(prev => prev.map(l => l.id === id ? { ...l, isSelected: !l.isSelected } : l));
     };
 
+    // ── Render: Awaiting Config ──────────────────────────────────────
+    if (state === 'awaiting_config') {
+        return (
+            <div className="fixed inset-0 z-50 bg-gray-900/90 backdrop-blur-sm overflow-y-auto">
+                <div className="min-h-screen p-4 md:p-12 flex flex-col items-center justify-center">
+                    <div className="bg-gray-800 border border-gray-700 rounded-3xl p-8 shadow-2xl max-w-lg w-full text-center space-y-6">
+                        <div className="bg-yellow-900/30 rounded-full w-16 h-16 flex items-center justify-center mx-auto">
+                            <span className="material-icons text-yellow-400 text-3xl">settings</span>
+                        </div>
+                        <h2 className="text-2xl font-bold text-white">AI Service Not Configured</h2>
+                        <p className="text-gray-400">{errorMessage}</p>
+                        <button
+                            onClick={onClose}
+                            className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-lg"
+                        >
+                            Configure in Settings
+                        </button>
+                        <div>
+                            <button onClick={onClose} className="text-gray-500 hover:text-gray-300 text-sm underline">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // ── Render: Extracting / Synthesizing ────────────────────────────
+    if (state === 'extracting' || state === 'synthesizing') {
+        return (
+            <div className="fixed inset-0 z-50 bg-gray-900/90 backdrop-blur-sm overflow-y-auto">
+                <div className="min-h-screen p-4 md:p-12 flex flex-col items-center justify-center">
+                    <LoadingSpinner message={loadingMessage} />
+                </div>
+            </div>
+        );
+    }
+
+    // ── Render: Error ────────────────────────────────────────────────
+    if (state === 'error') {
+        return (
+            <div className="fixed inset-0 z-50 bg-gray-900/90 backdrop-blur-sm overflow-y-auto">
+                <div className="min-h-screen p-4 md:p-12 flex flex-col items-center justify-center">
+                    <div className="bg-gray-800 border border-red-800 rounded-3xl p-8 shadow-2xl max-w-lg w-full text-center space-y-6">
+                        <div className="bg-red-900/30 rounded-full w-16 h-16 flex items-center justify-center mx-auto">
+                            <span className="material-icons text-red-400 text-3xl">error_outline</span>
+                        </div>
+                        <h2 className="text-2xl font-bold text-white">Extraction Failed</h2>
+                        <p className="text-gray-400">{errorMessage}</p>
+                        <button
+                            onClick={onClose}
+                            className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-lg"
+                        >
+                            Back to Organization
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // ── Render: Nodes (idle) ─────────────────────────────────────────
     return (
         <div className="fixed inset-0 z-50 bg-gray-900/90 backdrop-blur-sm overflow-y-auto">
             <div className="min-h-screen p-4 md:p-12 flex flex-col">
@@ -120,13 +214,7 @@ const SynthesisWorkspace: React.FC<SynthesisWorkspaceProps> = ({ sourceItems, on
                     </button>
                 </div>
 
-                {isLoading && (
-                    <div className="flex-grow flex flex-col items-center justify-center space-y-6">
-                        <LoadingSpinner message={loadingMessage} />
-                    </div>
-                )}
-
-                {!isLoading && !result && (
+                {state === 'idle' && (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-grow">
                         <div className="lg:col-span-2 space-y-6">
                             <div className="bg-gray-800 border border-gray-700 rounded-3xl p-6 shadow-2xl">
@@ -184,7 +272,7 @@ const SynthesisWorkspace: React.FC<SynthesisWorkspaceProps> = ({ sourceItems, on
                     </div>
                 )}
 
-                {result && !isLoading && (
+                {state === 'result' && result && (
                     <div className="max-w-4xl mx-auto w-full flex-grow space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
                         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-700">
                             <div className="flex justify-between items-center p-6 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
@@ -204,14 +292,15 @@ const SynthesisWorkspace: React.FC<SynthesisWorkspaceProps> = ({ sourceItems, on
                             </div>
                         </div>
                         <div className="flex justify-center pb-12">
-                            <button onClick={() => setResult(null)} className="text-blue-500 font-bold hover:underline">
+                            <button onClick={() => { setResult(null); setState('idle'); }} className="text-blue-500 font-bold hover:underline">
                                 ← Back to Workspace
                             </button>
                         </div>
                     </div>
                 )}
+
+                {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
             </div>
-            {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
         </div>
     );
 };

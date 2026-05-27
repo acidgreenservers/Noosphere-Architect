@@ -16,6 +16,7 @@ interface LibraryItemProps {
   onClick?: () => void;
   isLegacy?: boolean;
   typeLabel?: string;
+  isSelected?: boolean;
 }
 
 const LibraryItem: React.FC<LibraryItemProps> = ({
@@ -31,7 +32,8 @@ const LibraryItem: React.FC<LibraryItemProps> = ({
   onToggleArchive,
   onClick,
   isLegacy,
-  typeLabel
+  typeLabel,
+  isSelected
 }) => {
   const [isRevealed, setIsRevealed] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -78,7 +80,14 @@ const LibraryItem: React.FC<LibraryItemProps> = ({
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Saved on {new Date(createdAt).toLocaleDateString()}</p>
         </div>
 
-        {/* Shutter Trigger Button */}
+        {/* Selection Indicator & Shutter Trigger Button */}
+        {isSelected && (
+          <div className="ml-2 mr-1 flex items-center">
+            <div className="bg-blue-600 text-white p-1 rounded-full shadow-lg">
+              <span className="material-icons text-sm block">check</span>
+            </div>
+          </div>
+        )}
         <button
           onClick={(e) => { e.stopPropagation(); setIsRevealed(true); }}
           className="ml-2 p-1.5 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all flex items-center justify-center shadow-inner"

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     SavedAgent, SavedPrompt, SavedProject, SavedMindSeed, SavedSignal, SavedSynthesis,
@@ -203,7 +202,7 @@ const ArchitectureOrganization: React.FC = () => {
         return item.category === activeCategory;
     });
 
-    const getPreviewContent = (item: UnifiedItem) => {
+    const getPreviewContent = (item: UnifiedItem): string | Record<string, string> | undefined => {
         const o = item.original;
         if (item.type === 'mindseed') return undefined; // Handled by mindSeed prop in PreviewModal
         if (item.type === 'project') return {
@@ -221,6 +220,58 @@ const ArchitectureOrganization: React.FC = () => {
             'SKILL.md': o.files.skillFile
         };
         return '';
+    };
+
+    const getExportFilename = (item: UnifiedItem): string => {
+        const base = item.name.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 50);
+        const timestamp = new Date().toISOString().slice(0, 10);
+        switch (item.type) {
+            case 'mindseed': return `mindseed-${base}-${timestamp}.md`;
+            case 'project': return `project-${base}-${timestamp}.zip`;
+            case 'signal': return `signal-${base}-${timestamp}.md`;
+            case 'synthesis': return `synthesis-${base}-${timestamp}.md`;
+            case 'agent': return `agent-${base}-${timestamp}.md`;
+            case 'prompt-standard':
+            case 'prompt-system':
+            case 'legacy-prompt': return `prompt-${base}-${timestamp}.md`;
+            default: return `export-${base}-${timestamp}.md`;
+        }
+    };
+
+    const handleExport = (item: UnifiedItem) => {
+        const content = getPreviewContent(item);
+        if (!content) {
+            setToast({ message: 'Nothing to export for this item', type: 'error' });
+            return;
+        }
+
+        const filename = getExportFilename(item);
+        let blob: Blob;
+        let isJson = false;
+
+        if (typeof content === 'string') {
+            blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+        } else if (typeof content === 'object') {
+            // Multi-file: export as a JSON bundle (or single file with separator)
+            const combined = Object.entries(content)
+                .map(([name, text]) => `--- ${name} ---\n\n${text}`)
+                .join('\n\n');
+            blob = new Blob([combined], { type: 'text/markdown;charset=utf-8' });
+        } else {
+            blob = new Blob([JSON.stringify(content, null, 2)], { type: 'application/json;charset=utf-8' });
+            isJson = true;
+        }
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = isJson ? filename.replace(/\.md$/, '.json') : filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        setToast({ message: `Exported "${filename}"`, type: 'success' });
     };
 
     return (
@@ -312,16 +363,10 @@ const ArchitectureOrganization: React.FC = () => {
                                     onToggleStar={() => handleToggleMetadata(item, 'isStarred')}
                                     onTogglePin={() => handleToggleMetadata(item, 'isPinned')}
                                     onToggleArchive={() => handleToggleMetadata(item, 'isArchived')}
-                                onEdit={() => handleOpenEdit(item)}
+                                    onEdit={() => handleOpenEdit(item)}
                                     onClick={() => toggleSelection(String(item.id))}
+                                    isSelected={selectedIds.has(String(item.id))}
                                 />
-                                {selectedIds.has(String(item.id)) && (
-                                    <div className="absolute top-3 right-3 pointer-events-none">
-                                        <div className="bg-blue-600 text-white p-1 rounded-full shadow-lg">
-                                            <span className="material-icons text-sm block">check</span>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         ))}
                         {filteredItems.length === 0 && (
@@ -354,10 +399,7 @@ const ArchitectureOrganization: React.FC = () => {
                         const text = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
                         navigator.clipboard.writeText(text);
                     }}
-                    onExport={() => {
-                        // Standard export logic based on type
-                        setToast({ message: 'Export logic ready', type: 'success' });
-                    }}
+                    onExport={() => handleExport(previewItem)}
                     onDelete={() => handleDelete(previewItem)}
                 />
             )}
