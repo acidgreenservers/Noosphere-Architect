@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Modal from './Modal';
+import { LibraryMetadata } from '../types';
 
 interface PreviewModalProps {
   isOpen: boolean;
@@ -14,6 +15,8 @@ interface PreviewModalProps {
     pattern: string;
     deployWhen: string;
   };
+  metadata?: LibraryMetadata;
+  onUpdateMetadata?: (metadata: LibraryMetadata) => void;
   onCopy: () => void;
   onExport: () => void;
   onDelete?: () => void;
@@ -132,6 +135,44 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
       <div className="flex flex-col h-full">
+        {metadata && onUpdateMetadata && (
+            <div className="flex flex-wrap items-center gap-4 mb-6 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700">
+                <div className="flex items-center gap-1">
+                    <button
+                        onClick={() => onUpdateMetadata({ ...metadata, isStarred: !metadata.isStarred })}
+                        className={`p-2 rounded-lg transition-colors ${metadata.isStarred ? 'text-amber-500 bg-amber-50 dark:bg-amber-900/20' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                        title="Star"
+                    >
+                        <span className="material-icons">{metadata.isStarred ? 'star' : 'star_outline'}</span>
+                    </button>
+                    <button
+                        onClick={() => onUpdateMetadata({ ...metadata, isPinned: !metadata.isPinned })}
+                        className={`p-2 rounded-lg transition-colors ${metadata.isPinned ? 'text-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                        title="Pin"
+                    >
+                        <span className="material-icons">push_pin</span>
+                    </button>
+                    <button
+                        onClick={() => onUpdateMetadata({ ...metadata, isArchived: !metadata.isArchived })}
+                        className={`p-2 rounded-lg transition-colors ${metadata.isArchived ? 'text-purple-500 bg-purple-50 dark:bg-purple-900/20' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                        title="Archive"
+                    >
+                        <span className="material-icons">{metadata.isArchived ? 'unarchive' : 'archive'}</span>
+                    </button>
+                </div>
+                <div className="h-6 w-px bg-gray-300 dark:bg-gray-600 hidden sm:block" />
+                <div className="flex items-center gap-2 flex-grow">
+                    <span className="material-icons text-gray-400 text-sm">folder</span>
+                    <input
+                        type="text"
+                        value={metadata.category || ''}
+                        onChange={(e) => onUpdateMetadata({ ...metadata, category: e.target.value })}
+                        placeholder="Assign category..."
+                        className="bg-transparent border-none focus:ring-0 text-sm text-gray-700 dark:text-gray-300 w-full"
+                    />
+                </div>
+            </div>
+        )}
         <div className="flex-grow overflow-y-auto min-h-[200px] px-1">
           {renderContent()}
         </div>

@@ -2,7 +2,7 @@
 import { SavedAgent, SavedPrompt, AgentConfig, PromptConfig, SavedProject, ProjectConfig, SavedSignal, SignalConfig, SavedMindSeed, MindSeedConfig, MindSeedType, PromptType } from '../types';
 
 const DB_NAME = 'NoosphereArchitectDB';
-const DB_VERSION = 10; // Incremented for separate prompt stores and system context
+const DB_VERSION = 11; // Incremented for unified library metadata (categories, starred, etc.)
 const AGENT_STORE = 'savedAgents';
 const PROMPT_STORE = 'savedPrompts'; // Legacy, keeping for migration or reference
 const STANDARD_PROMPT_STORE = 'standardPrompts';
@@ -25,6 +25,7 @@ const SIGNAL_CONTEXT_STORE = 'signalContext';
 const PROMPT_CONTEXT_STORE = 'promptContext';
 const SYSTEM_PROMPT_CONTEXT_STORE = 'systemPromptContext';
 const PROJECT_CONTEXT_STORE = 'projectContext';
+export const SYNTHESIS_STORE = 'savedSynthesis';
 
 
 let dbInstance: IDBDatabase | null = null;
@@ -134,8 +135,51 @@ const initDB = (): Promise<IDBDatabase> => {
           if (!db.objectStoreNames.contains(SYSTEM_PROMPT_CONTEXT_STORE)) db.createObjectStore(SYSTEM_PROMPT_CONTEXT_STORE, { keyPath: 'id' });
         },
         10: () => {
-          // Placeholder for data migration if needed
           console.log("Migration to v10 complete: Stewarding state integrity.");
+        },
+        11: (db) => {
+            // Create synthesis store
+            if (!db.objectStoreNames.contains(SYNTHESIS_STORE)) {
+                const store = db.createObjectStore(SYNTHESIS_STORE, { keyPath: 'id', autoIncrement: true });
+                store.createIndex('name', 'name', { unique: false });
+                store.createIndex('createdAt', 'createdAt', { unique: false });
+            }
+
+            // Unify metadata fields across all existing records
+            const stores = [
+                AGENT_STORE, PROMPT_STORE, STANDARD_PROMPT_STORE, SYSTEM_PROMPT_STORE,
+                PROJECT_STORE, SIGNAL_STORE, COGNISEED_STORE, LINGUASEED_STORE, ARCHSEED_STORE,
+                SYNTHESIS_STORE
+            ];
+
+            // Note: indexedDB.onupgradeneeded provides the transaction
+            const tx = (event.target as IDBOpenDBRequest).transaction;
+            if (!tx) return;
+
+            stores.forEach(storeName => {
+                if (db.objectStoreNames.contains(storeName)) {
+                    const store = tx.objectStore(storeName);
+                    const request = store.openCursor();
+                    request.onsuccess = (e) => {
+                        const cursor = (e.target as IDBRequest).result as IDBCursorWithValue;
+                        if (cursor) {
+                            const data = cursor.value;
+                            // Add missing metadata fields if not present
+                            let updated = false;
+                            if (data.isStarred === undefined) { data.isStarred = false; updated = true; }
+                            if (data.isPinned === undefined) { data.isPinned = false; updated = true; }
+                            if (data.isArchived === undefined) { data.isArchived = false; updated = true; }
+                            if (data.category === undefined) { data.category = ''; updated = true; }
+
+                            if (updated) {
+                                cursor.update(data);
+                            }
+                            cursor.continue();
+                        }
+                    };
+                }
+            });
+            console.log("Migration to v11 complete: Unified metadata initialized.");
         }
       };
 
@@ -161,6 +205,52 @@ export const saveDraft = (draft: {id: number, config: AgentConfig}): Promise<num
         const store = await getStore(AGENT_DRAFT_STORE, 'readwrite');
         const request = store.put(draft);
         request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+// Synthesis Functions
+export const addSynthesis = (synthesis: SavedSynthesis): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(SYNTHESIS_STORE, 'readwrite');
+        const request = store.add(synthesis);
+        request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const getAllSynthesis = (): Promise<SavedSynthesis[]> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(SYNTHESIS_STORE, 'readonly');
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const updateSynthesis = (synthesis: SavedSynthesis): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(SYNTHESIS_STORE, 'readwrite');
+        const request = store.put(synthesis);
+        request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const deleteSynthesis = (id: number): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(SYNTHESIS_STORE, 'readwrite');
+        const request = store.delete(id);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const clearAllSynthesis = (): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(SYNTHESIS_STORE, 'readwrite');
+        const request = store.clear();
+        request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
     });
 };

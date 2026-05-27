@@ -10,6 +10,7 @@ import GeneratedProjectDisplay from './GeneratedProjectDisplay';
 import LoadingSpinner from './LoadingSpinner';
 import Modal from './Modal';
 import PreviewModal from './PreviewModal';
+import LibraryItem from './LibraryItem';
 import Toast from './Toast';
 
 const ProjectArchitect: React.FC = () => {
@@ -25,6 +26,7 @@ const ProjectArchitect: React.FC = () => {
   const loadingIntervalRef = useRef<number | null>(null);
 
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
+  const [searchTerm, setSearchText] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [draftStatus, setDraftStatus] = useState<'unloaded' | 'loaded' | 'none'>('unloaded');
     const [pendingDraft, setPendingDraft] = useState<ProjectConfig | null>(null);
@@ -129,6 +131,10 @@ const ProjectArchitect: React.FC = () => {
         config: projectConfig,
         files: modalInput.files,
         createdAt: new Date().toISOString(),
+        isStarred: false,
+        isPinned: false,
+        isArchived: false,
+        category: ''
       };
       await db.addProject(newProject);
       setSuccessMessage('Project saved successfully!');
@@ -221,6 +227,13 @@ const ProjectArchitect: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleUpdateMetadata = async (project: SavedProject, metadata: any) => {
+    const updated = { ...project, ...metadata };
+    await db.updateProject(updated);
+    setSavedProjects(prev => prev.map(p => p.id === project.id ? updated : p));
+    if (previewProject?.id === project.id) setPreviewProject(updated);
+  };
+
   const handleAcceptDraft = () => {
     if (!pendingDraft) return;
     setProjectConfig(pendingDraft);
@@ -277,20 +290,38 @@ const ProjectArchitect: React.FC = () => {
                     </button>
                 </div>
             </div>
+            <div className="mb-4">
+                <div className="relative">
+                    <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+                    <input
+                        type="text"
+                        placeholder="Search saved projects..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchText(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    />
+                </div>
+            </div>
             <div className="space-y-4">
-                {savedProjects.map(project => (
-                    <div key={project.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md flex justify-between items-center group hover:border-blue-500 dark:hover:border-blue-400 transition-colors border border-transparent">
-                        <div className="flex-grow cursor-pointer" onClick={() => handleLoadSavedProject(project)}>
-                            <p className="font-semibold">{project.name}</p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Saved on {new Date(project.createdAt).toLocaleDateString()}</p>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <button onClick={() => setPreviewProject(project)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-500 transition-colors" title="Preview"><span className="material-icons">visibility</span></button>
-                            <button onClick={() => handleOpenEditModal(project)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-green-500 transition-colors" title="Edit"><span className="material-icons">edit</span></button>
-                            <button onClick={() => handleDelete(project.id!)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-red-500 transition-colors" title="Delete"><span className="material-icons">delete</span></button>
-                        </div>
-                    </div>
-                ))}
+                {savedProjects
+                    .filter(p => !p.isArchived && p.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                    .sort((a, b) => (a.isPinned === b.isPinned ? 0 : a.isPinned ? -1 : 1))
+                    .map(project => (
+                        <LibraryItem
+                            key={project.id}
+                            name={project.name}
+                            createdAt={project.createdAt}
+                            metadata={project}
+                            icon="architecture"
+                            onPreview={() => setPreviewProject(project)}
+                            onEdit={() => handleOpenEditModal(project)}
+                            onDelete={() => handleDelete(project.id!)}
+                            onToggleStar={() => handleUpdateMetadata(project, { isStarred: !project.isStarred })}
+                            onTogglePin={() => handleUpdateMetadata(project, { isPinned: !project.isPinned })}
+                            onToggleArchive={() => handleUpdateMetadata(project, { isArchived: true })}
+                            onClick={() => handleLoadSavedProject(project)}
+                        />
+                    ))}
             </div>
         </div>
       )}
@@ -326,6 +357,8 @@ const ProjectArchitect: React.FC = () => {
             'standards.md': previewProject.files.standardsFile,
             'rules.md': previewProject.files.rulesFile
         } : undefined}
+        metadata={previewProject || undefined}
+        onUpdateMetadata={(metadata) => previewProject && handleUpdateMetadata(previewProject, metadata)}
         onCopy={() => {
             if (previewProject) {
                 const allContent = Object.entries(previewProject.files).map(([name, content]) => `### ${name}\n\n${content}`).join('\n\n');

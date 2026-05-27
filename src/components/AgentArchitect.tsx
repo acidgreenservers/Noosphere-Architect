@@ -10,6 +10,7 @@ import AgentForm from './AgentForm';
 import LoadingSpinner from './LoadingSpinner';
 import Modal from './Modal';
 import PreviewModal from './PreviewModal';
+import LibraryItem from './LibraryItem';
 import Toast from './Toast';
 
 const AGENT_TEMPLATES = [
@@ -46,6 +47,7 @@ const AgentArchitect: React.FC = () => {
   const loadingIntervalRef = useRef<number | null>(null);
 
   const [savedAgents, setSavedAgents] = useState<SavedAgent[]>([]);
+  const [searchTerm, setSearchText] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [draftStatus, setDraftStatus] = useState<'unloaded' | 'loaded' | 'none'>('unloaded');
   const isCheckingDraft = useRef(false);
@@ -156,6 +158,10 @@ const AgentArchitect: React.FC = () => {
             prompt: generatedPrompt.prompt,
             signal: generatedPrompt.signal,
             createdAt: new Date().toISOString(),
+            isStarred: false,
+            isPinned: false,
+            isArchived: false,
+            category: ''
         };
         await db.addAgent(newAgent);
         setSuccessMessage('Agent saved successfully!');
@@ -277,6 +283,13 @@ const AgentArchitect: React.FC = () => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
+  const handleUpdateMetadata = async (agent: SavedAgent, metadata: any) => {
+    const updated = { ...agent, ...metadata };
+    await db.updateAgent(updated);
+    setSavedAgents(prev => prev.map(a => a.id === agent.id ? updated : a));
+    if (previewAgent?.id === agent.id) setPreviewAgent(updated);
+  };
+
   const handleLoadTemplate = (template: AgentConfig) => {
       setAgentConfig({
           role: template.role,
@@ -364,32 +377,39 @@ const AgentArchitect: React.FC = () => {
                     </button>
                 </div>
             </div>
+            <div className="mb-4">
+                <div className="relative">
+                    <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+                    <input
+                        type="text"
+                        placeholder="Search saved agents..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchText(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    />
+                </div>
+            </div>
             <div className="space-y-4">
-                {savedAgents.map(agent => (
-                    <div key={agent.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border border-gray-100 dark:border-gray-700 flex justify-between items-center hover:shadow-lg transition-all">
-                        <div className="flex-grow cursor-pointer" onClick={() => handleLoadSavedAgent(agent)}>
-                            <div className="flex items-center gap-2">
-                                <p className="font-semibold text-gray-900 dark:text-gray-100">{agent.name}</p>
-                                {agent.files && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 text-[10px] font-bold uppercase tracking-wider rounded">Legacy</span>}
-                            </div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Saved on {new Date(agent.createdAt).toLocaleDateString()}</p>
-                            {agent.files && (
-                                <div className="mt-2 flex items-center gap-2">
-                                    <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                                        <span className="material-icons text-xs">warning</span>
-                                        Legacy multi-file format
-                                    </span>
-                                    <button onClick={(e) => { e.stopPropagation(); handleExportLegacyZip(agent); }} className="text-xs text-blue-500 hover:underline">Export ZIP</button>
-                                </div>
-                            )}
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <button onClick={() => setPreviewAgent(agent)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-500 transition-colors" title="Preview"><span className="material-icons">visibility</span></button>
-                            <button onClick={() => handleOpenEditModal(agent)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-green-500 transition-colors" title="Edit"><span className="material-icons">edit</span></button>
-                            <button onClick={() => { setPreviewAgent(agent); setIsDeleteConfirmOpen(true); }} className="p-2 text-gray-600 dark:text-gray-300 hover:text-red-500 transition-colors" title="Delete"><span className="material-icons">delete</span></button>
-                        </div>
-                    </div>
-                ))}
+                {savedAgents
+                    .filter(a => !a.isArchived && a.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                    .sort((a, b) => (a.isPinned === b.isPinned ? 0 : a.isPinned ? -1 : 1))
+                    .map(agent => (
+                        <LibraryItem
+                            key={agent.id}
+                            name={agent.name}
+                            createdAt={agent.createdAt}
+                            metadata={agent}
+                            isLegacy={!!(agent.files && !agent.prompt)}
+                            icon="group_work"
+                            onPreview={() => setPreviewAgent(agent)}
+                            onEdit={() => handleOpenEditModal(agent)}
+                            onDelete={() => { setPreviewAgent(agent); setIsDeleteConfirmOpen(true); }}
+                            onToggleStar={() => handleUpdateMetadata(agent, { isStarred: !agent.isStarred })}
+                            onTogglePin={() => handleUpdateMetadata(agent, { isPinned: !agent.isPinned })}
+                            onToggleArchive={() => handleUpdateMetadata(agent, { isArchived: true })}
+                            onClick={() => handleLoadSavedAgent(agent)}
+                        />
+                    ))}
             </div>
         </div>
       )}
@@ -419,6 +439,8 @@ const AgentArchitect: React.FC = () => {
               'constraints.md': previewAgent.files.constraintsFile,
               'SKILL.md': previewAgent.files.skillFile
           } : undefined)}
+          metadata={previewAgent || undefined}
+          onUpdateMetadata={(metadata) => previewAgent && handleUpdateMetadata(previewAgent, metadata)}
           onCopy={() => {
               const text = previewAgent?.prompt || (previewAgent?.files ? Object.values(previewAgent.files).join('\n\n---\n\n') : '');
               navigator.clipboard.writeText(text);

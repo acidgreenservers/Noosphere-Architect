@@ -11,6 +11,7 @@ import { sanitizeFilename } from '../utils/security';
 import LoadingSpinner from './LoadingSpinner';
 import Modal from './Modal';
 import PreviewModal from './PreviewModal';
+import LibraryItem from './LibraryItem';
 import Toast from './Toast';
 import GeneratedFilesDisplay from './GeneratedFilesDisplay';
 
@@ -65,6 +66,7 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
     const [savedPrompts, setSavedPrompts] = useState<SavedPrompt[]>([]);
     const [legacyPrompts, setLegacyPrompts] = useState<SavedPrompt[]>([]);
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+    const [searchTerm, setSearchText] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
     const [draftStatus, setDraftStatus] = useState<'unloaded' | 'loaded' | 'none'>('unloaded');
     const [pendingDraft, setPendingDraft] = useState<{ type: PromptType; config: PromptConfig | AgentConfig } | null>(null);
@@ -199,7 +201,11 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                 prompt: modalInput.prompt,
                 files: modalInput.files,
                 createdAt: new Date().toISOString(),
-                history: []
+                history: [],
+                isStarred: false,
+                isPinned: false,
+                isArchived: false,
+                category: ''
             };
             await db.addTypedPrompt(activeTab, newPrompt);
             setSuccessMessage('Saved successfully!');
@@ -216,6 +222,20 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
 
         loadSavedPrompts();
         setModalState(null);
+    };
+
+    const handleUpdateMetadata = async (prompt: SavedPrompt, metadata: any) => {
+        const updated = { ...prompt, ...metadata };
+        await db.updateTypedPrompt(activeTab, updated);
+        setSavedPrompts(prev => prev.map(p => p.id === prompt.id ? updated : p));
+        if (previewPrompt?.id === prompt.id) setPreviewPrompt(updated);
+    };
+
+    const handleLegacyUpdateMetadata = async (prompt: SavedPrompt, metadata: any) => {
+        const updated = { ...prompt, ...metadata };
+        await db.updatePrompt(updated);
+        setLegacyPrompts(prev => prev.map(p => p.id === prompt.id ? updated : p));
+        if (previewPrompt?.id === prompt.id) setPreviewPrompt(updated);
     };
     
     const handleDelete = async () => {
@@ -473,47 +493,57 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                             </button>
                         </div>
                     </div>
+                    <div className="mb-4">
+                        <div className="relative">
+                            <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+                            <input
+                                type="text"
+                                placeholder="Search saved items..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchText(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                            />
+                        </div>
+                    </div>
                     <div className="space-y-4">
-                        {savedPrompts.map(p => (
-                            <div key={p.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border border-gray-100 dark:border-gray-700 flex justify-between items-center hover:shadow-lg transition-all">
-                                <div className="flex-grow cursor-pointer" onClick={() => handleLoadSavedPrompt(p)}>
-                                    <div className="flex items-center gap-2">
-                                        <p className="font-semibold text-gray-900 dark:text-gray-100">{p.name}</p>
-                                    </div>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">Saved on {new Date(p.createdAt).toLocaleDateString()}</p>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <button onClick={() => setPreviewPrompt(p)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-500" title="Preview"><span className="material-icons">visibility</span></button>
-                                    <button onClick={() => { handleOpenEditModal(p); }} className="p-2 text-gray-600 dark:text-gray-300 hover:text-green-500" title="Edit"><span className="material-icons">edit</span></button>
-                                    <button onClick={() => { setPreviewPrompt(p); setIsDeleteConfirmOpen(true); }} className="p-2 text-gray-600 dark:text-gray-300 hover:text-red-500" title="Delete"><span className="material-icons">delete</span></button>
-                                </div>
-                            </div>
-                        ))}
+                        {savedPrompts
+                            .filter(p => !p.isArchived && p.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                            .sort((a, b) => (a.isPinned === b.isPinned ? 0 : a.isPinned ? -1 : 1))
+                            .map(p => (
+                                <LibraryItem
+                                    key={p.id}
+                                    name={p.name}
+                                    createdAt={p.createdAt}
+                                    metadata={p}
+                                    icon={activeTab === 'standard' ? 'article' : 'extension'}
+                                    onPreview={() => setPreviewPrompt(p)}
+                                    onEdit={() => handleOpenEditModal(p)}
+                                    onDelete={() => { setPreviewPrompt(p); setIsDeleteConfirmOpen(true); }}
+                                    onToggleStar={() => handleUpdateMetadata(p, { isStarred: !p.isStarred })}
+                                    onTogglePin={() => handleUpdateMetadata(p, { isPinned: !p.isPinned })}
+                                    onToggleArchive={() => handleUpdateMetadata(p, { isArchived: true })}
+                                    onClick={() => handleLoadSavedPrompt(p)}
+                                />
+                            ))}
 
-                        {legacyPrompts.map(p => (
-                            <div key={`legacy-${p.id}`} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border border-gray-100 dark:border-gray-700 flex justify-between items-center hover:shadow-lg transition-all">
-                                <div className="flex-grow cursor-pointer" onClick={() => handleLoadSavedPrompt(p)}>
-                                    <div className="flex items-center gap-2">
-                                        <p className="font-semibold text-gray-900 dark:text-gray-100">{p.name}</p>
-                                        <span className="px-2 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 text-[10px] font-bold uppercase tracking-wider rounded">Legacy</span>
-                                    </div>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">Saved on {new Date(p.createdAt).toLocaleDateString()}</p>
-                                    {p.prompt && (
-                                        <div className="mt-2 flex items-center gap-2">
-                                            <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                                                <span className="material-icons text-xs">warning</span>
-                                                Legacy single-string format
-                                            </span>
-                                            <button onClick={(e) => { e.stopPropagation(); handleExportLegacyMd(p.prompt!, p.name); }} className="text-xs text-blue-500 hover:underline">Export MD</button>
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <button onClick={() => setPreviewPrompt(p)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-500" title="Preview"><span className="material-icons">visibility</span></button>
-                                    <button onClick={() => { setPreviewPrompt(p); setIsDeleteConfirmOpen(true); }} className="p-2 text-gray-600 dark:text-gray-300 hover:text-red-500" title="Delete"><span className="material-icons">delete</span></button>
-                                </div>
-                            </div>
-                        ))}
+                        {legacyPrompts
+                            .filter(p => !p.isArchived && p.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                            .map(p => (
+                                <LibraryItem
+                                    key={`legacy-${p.id}`}
+                                    name={p.name}
+                                    createdAt={p.createdAt}
+                                    metadata={p}
+                                    isLegacy
+                                    icon="history"
+                                    onPreview={() => setPreviewPrompt(p)}
+                                    onDelete={() => { setPreviewPrompt(p); setIsDeleteConfirmOpen(true); }}
+                                    onToggleStar={() => handleLegacyUpdateMetadata(p, { isStarred: !p.isStarred })}
+                                    onTogglePin={() => handleLegacyUpdateMetadata(p, { isPinned: !p.isPinned })}
+                                    onToggleArchive={() => handleLegacyUpdateMetadata(p, { isArchived: true })}
+                                    onClick={() => handleLoadSavedPrompt(p)}
+                                />
+                            ))}
                     </div>
                 </div>
             )}
@@ -547,6 +577,14 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                     'constraints.md': previewPrompt.files.constraintsFile,
                     'SKILL.md': previewPrompt.files.skillFile
                 } : undefined)}
+                metadata={previewPrompt || undefined}
+                onUpdateMetadata={(metadata) => {
+                    if (previewPrompt) {
+                        const isLegacy = legacyPrompts.some(lp => lp.id === previewPrompt.id);
+                        if (isLegacy) handleLegacyUpdateMetadata(previewPrompt, metadata);
+                        else handleUpdateMetadata(previewPrompt, metadata);
+                    }
+                }}
                 onCopy={() => {
                     const text = previewPrompt?.prompt || (previewPrompt?.files ? Object.values(previewPrompt.files).join('\n\n---\n\n') : '');
                     navigator.clipboard.writeText(text);
