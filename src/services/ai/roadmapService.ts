@@ -2,7 +2,11 @@ import { RoadmapConfig } from '../../types';
 import { handleAiCall } from './openRouter';
 
 const createRoadmapMetaPrompt = (config: RoadmapConfig): string => {
-  return `Shape a roadmap task entry in the provided format by surfacing the deep intention from the text and creating a deeply actionable and rigorously detailed roadmap task entry.
+  const fileContextPrompt = config.fileContext
+    ? `**ANCHOR FILE CONTEXT (Filename: ${config.fileContext.name}):**\n${config.fileContext.content}\n\n---\n\n`
+    : "";
+
+  return `${fileContextPrompt}Shape a roadmap task entry in the provided format by surfacing the deep intention from the text and the provided anchor file context, and creating a deeply actionable and rigorously detailed roadmap task entry. The anchor file serves as a ground for the AI interpretation layer to bind its inference patterns to. Do not assume intent that is beyond the letter of the text and the anchor file. if intent is clear, just reorganize.
 
 ---
 
