@@ -151,3 +151,20 @@ export interface SavedSynthesis extends LibraryMetadata {
   lineage: string[]; // List of source entry names
   createdAt: string;
 }
+
+// ----------------------------------------------------------------------
+// UnifiedItem – a flattened representation used by ArchitectureOrganization
+// and the new StarredPinnedBar component. It aggregates the common
+// fields from all library entities (agents, prompts, projects, etc.).
+// ----------------------------------------------------------------------
+export interface UnifiedItem {
+    id: number | string;
+    name: string;
+    type: 'agent' | 'prompt-standard' | 'prompt-system' | 'project' | 'mindseed' | 'signal' | 'synthesis' | 'legacy-prompt';
+    original: any;
+    createdAt: string;
+    isStarred: boolean;
+    isPinned: boolean;
+    isArchived: boolean;
+    category: string;
+}

@@ -12,6 +12,8 @@ import Modal from './Modal';
 import PreviewModal from './PreviewModal';
 import LibraryItem from './LibraryItem';
 import Toast from './Toast';
+import { StarredPinnedBar } from './StarredPinnedBar';
+import { UnifiedItem } from '../types';
 
 const AGENT_TEMPLATES = [
     {
@@ -57,6 +59,11 @@ const AgentArchitect: React.FC = () => {
   const [modalInput, setModalInput] = useState<{ name: string; prompt: string }>({ name: '', prompt: '' });
   const [previewAgent, setPreviewAgent] = useState<SavedAgent | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    starredSection: true,
+    pinnedSection: true,
+    allItemsSection: true
+  });
 
   const loadSavedAgents = useCallback(async () => {
     const agents = await db.getAllAgents();
@@ -290,6 +297,20 @@ const AgentArchitect: React.FC = () => {
     if (previewAgent?.id === agent.id) setPreviewAgent(updated);
   };
 
+  const agentToUnified = (agent: SavedAgent): UnifiedItem => ({
+    id: `agent-${agent.id}`,
+    name: agent.name,
+    type: 'agent',
+    original: agent,
+    createdAt: agent.createdAt,
+    isStarred: agent.isStarred || false,
+    isPinned: agent.isPinned || false,
+    isArchived: agent.isArchived || false,
+    category: agent.category || ''
+  });
+
+  const unifiedAgents = savedAgents.map(agentToUnified);
+
   const handleLoadTemplate = (template: AgentConfig) => {
       setAgentConfig({
           role: template.role,
@@ -377,6 +398,36 @@ const AgentArchitect: React.FC = () => {
                     </button>
                 </div>
             </div>
+
+            <div className="mb-6 space-y-4">
+                <StarredPinnedBar
+                    type="starred"
+                    items={unifiedAgents}
+                    expanded={expandedSections.starredSection}
+                    onToggleExpand={() => setExpandedSections(prev => ({ ...prev, starredSection: !prev.starredSection }))}
+                    onToggleStar={(item) => handleUpdateMetadata(item.original, { isStarred: !item.original.isStarred })}
+                    onTogglePin={(item) => handleUpdateMetadata(item.original, { isPinned: !item.original.isPinned })}
+                    onToggleArchive={(item) => handleUpdateMetadata(item.original, { isArchived: true })}
+                    onDelete={(item) => { setPreviewAgent(item.original); setIsDeleteConfirmOpen(true); }}
+                    onEdit={(item) => handleOpenEditModal(item.original)}
+                    onSelect={(id) => handleLoadSavedAgent(savedAgents.find(a => `agent-${a.id}` === id)!)}
+                    selectedIds={new Set()}
+                />
+                <StarredPinnedBar
+                    type="pinned"
+                    items={unifiedAgents}
+                    expanded={expandedSections.pinnedSection}
+                    onToggleExpand={() => setExpandedSections(prev => ({ ...prev, pinnedSection: !prev.pinnedSection }))}
+                    onToggleStar={(item) => handleUpdateMetadata(item.original, { isStarred: !item.original.isStarred })}
+                    onTogglePin={(item) => handleUpdateMetadata(item.original, { isPinned: !item.original.isPinned })}
+                    onToggleArchive={(item) => handleUpdateMetadata(item.original, { isArchived: true })}
+                    onDelete={(item) => { setPreviewAgent(item.original); setIsDeleteConfirmOpen(true); }}
+                    onEdit={(item) => handleOpenEditModal(item.original)}
+                    onSelect={(id) => handleLoadSavedAgent(savedAgents.find(a => `agent-${a.id}` === id)!)}
+                    selectedIds={new Set()}
+                />
+            </div>
+
             <div className="mb-4">
                 <div className="relative">
                     <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
@@ -391,8 +442,7 @@ const AgentArchitect: React.FC = () => {
             </div>
             <div className="space-y-4">
                 {savedAgents
-                    .filter(a => !a.isArchived && a.name.toLowerCase().includes(searchTerm.toLowerCase()))
-                    .sort((a, b) => (a.isPinned === b.isPinned ? 0 : a.isPinned ? -1 : 1))
+                    .filter(a => !a.isArchived && !a.isStarred && !a.isPinned && a.name.toLowerCase().includes(searchTerm.toLowerCase()))
                     .map(agent => (
                         <LibraryItem
                             key={agent.id}
@@ -410,6 +460,12 @@ const AgentArchitect: React.FC = () => {
                             onClick={() => handleLoadSavedAgent(agent)}
                         />
                     ))}
+                {(savedAgents.filter(a => !a.isArchived && !a.isStarred && !a.isPinned && a.name.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && searchTerm) && (
+                    <div className="py-8 text-center text-gray-400 dark:text-gray-500">
+                        <span className="material-icons text-4xl mb-2">search_off</span>
+                        <p>No agents match your search</p>
+                    </div>
+                )}
             </div>
         </div>
       )}

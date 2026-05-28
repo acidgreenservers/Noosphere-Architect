@@ -11,6 +11,8 @@ import Toast from './Toast';
 import Modal from './Modal';
 import PreviewModal from './PreviewModal';
 import LibraryItem from './LibraryItem';
+import { StarredPinnedBar } from './StarredPinnedBar';
+import { UnifiedItem } from '../types';
 import styles from './Button.module.css';
 
 const MAX_CHARS = 20000;
@@ -28,6 +30,11 @@ const MindSeedArchitect: React.FC = () => {
   const [searchTerm, setSearchText] = useState('');
   const [previewSeed, setPreviewSeed] = useState<SavedMindSeed | null>(null);
   const [seedToDelete, setSeedToDelete] = useState<number | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    starredSection: true,
+    pinnedSection: true,
+    allItemsSection: true
+  });
 
   useEffect(() => {
     loadSavedSeeds();
@@ -147,6 +154,20 @@ const MindSeedArchitect: React.FC = () => {
     setSavedSeeds(prev => prev.map(s => s.id === seed.id ? updated : s));
     if (previewSeed?.id === seed.id) setPreviewSeed(updated);
   };
+
+  const seedToUnified = (seed: SavedMindSeed): UnifiedItem => ({
+    id: `mindseed-${activeTab}-${seed.id}`,
+    name: seed.name,
+    type: 'mindseed',
+    original: seed,
+    createdAt: seed.createdAt,
+    isStarred: seed.isStarred || false,
+    isPinned: seed.isPinned || false,
+    isArchived: seed.isArchived || false,
+    category: seed.category || ''
+  });
+
+  const unifiedSeeds = savedSeeds.map(seedToUnified);
 
   const handleClear = async () => {
     setText('');
@@ -344,6 +365,52 @@ const MindSeedArchitect: React.FC = () => {
         {savedSeeds.length > 0 && (
           <div className="mt-12">
             <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Saved MindSeeds</h3>
+
+            <div className="mb-6 space-y-4">
+                <StarredPinnedBar
+                    type="starred"
+                    items={unifiedSeeds}
+                    expanded={expandedSections.starredSection}
+                    onToggleExpand={() => setExpandedSections(prev => ({ ...prev, starredSection: !prev.starredSection }))}
+                    onToggleStar={(item) => handleUpdateMetadata(item.original, { isStarred: !item.original.isStarred })}
+                    onTogglePin={(item) => handleUpdateMetadata(item.original, { isPinned: !item.original.isPinned })}
+                    onToggleArchive={(item) => handleUpdateMetadata(item.original, { isArchived: true })}
+                    onDelete={(item) => handleDelete(item.original.id!)}
+                    onEdit={() => {}}
+                    onSelect={(id) => {
+                        const seed = savedSeeds.find(s => `mindseed-${activeTab}-${s.id}` === id);
+                        if (seed) {
+                            setText(seed.config.text);
+                            setActiveTab(seed.config.type);
+                            setResult(seed.result);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }
+                    }}
+                    selectedIds={new Set()}
+                />
+                <StarredPinnedBar
+                    type="pinned"
+                    items={unifiedSeeds}
+                    expanded={expandedSections.pinnedSection}
+                    onToggleExpand={() => setExpandedSections(prev => ({ ...prev, pinnedSection: !prev.pinnedSection }))}
+                    onToggleStar={(item) => handleUpdateMetadata(item.original, { isStarred: !item.original.isStarred })}
+                    onTogglePin={(item) => handleUpdateMetadata(item.original, { isPinned: !item.original.isPinned })}
+                    onToggleArchive={(item) => handleUpdateMetadata(item.original, { isArchived: true })}
+                    onDelete={(item) => handleDelete(item.original.id!)}
+                    onEdit={() => {}}
+                    onSelect={(id) => {
+                        const seed = savedSeeds.find(s => `mindseed-${activeTab}-${s.id}` === id);
+                        if (seed) {
+                            setText(seed.config.text);
+                            setActiveTab(seed.config.type);
+                            setResult(seed.result);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }
+                    }}
+                    selectedIds={new Set()}
+                />
+            </div>
+
             <div className="mb-4">
                 <div className="relative">
                     <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
@@ -358,8 +425,7 @@ const MindSeedArchitect: React.FC = () => {
             </div>
             <div className="grid grid-cols-1 gap-4">
               {savedSeeds
-                .filter(s => !s.isArchived && (s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.result.seed.toLowerCase().includes(searchTerm.toLowerCase())))
-                .sort((a, b) => (a.isPinned === b.isPinned ? 0 : a.isPinned ? -1 : 1))
+                .filter(s => !s.isArchived && !s.isStarred && !s.isPinned && (s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.result.seed.toLowerCase().includes(searchTerm.toLowerCase())))
                 .map((seed) => (
                     <LibraryItem
                         key={seed.id}

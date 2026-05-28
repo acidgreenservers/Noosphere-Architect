@@ -14,6 +14,8 @@ import PreviewModal from './PreviewModal';
 import LibraryItem from './LibraryItem';
 import Toast from './Toast';
 import GeneratedFilesDisplay from './GeneratedFilesDisplay';
+import { StarredPinnedBar } from './StarredPinnedBar';
+import { UnifiedItem } from '../types';
 
 const PROMPT_TEMPLATES = [
     {
@@ -76,6 +78,11 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
     const [modalInput, setModalInput] = useState<{ name: string; prompt?: string; files?: GeneratedFiles }>({ name: '' });
     const [previewPrompt, setPreviewPrompt] = useState<SavedPrompt | null>(null);
     const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+    const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+        starredSection: true,
+        pinnedSection: true,
+        allItemsSection: true
+    });
 
 
     const loadSavedPrompts = useCallback(async () => {
@@ -343,6 +350,22 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
         setPendingDraft(null);
     };
 
+    const promptToUnified = (prompt: SavedPrompt, isLegacy: boolean): UnifiedItem => ({
+        id: isLegacy ? `legacy-${prompt.id}` : `prompt-${activeTab}-${prompt.id}`,
+        name: prompt.name,
+        type: activeTab === 'standard' ? 'prompt-standard' : 'prompt-system',
+        original: prompt,
+        createdAt: prompt.createdAt,
+        isStarred: prompt.isStarred || false,
+        isPinned: prompt.isPinned || false,
+        isArchived: prompt.isArchived || false,
+        category: prompt.category || ''
+    });
+
+    const unifiedPrompts = savedPrompts.map(p => promptToUnified(p, false));
+    const unifiedLegacy = legacyPrompts.map(p => promptToUnified(p, true));
+    const allUnified = [...unifiedPrompts, ...unifiedLegacy];
+
     return (
         <div className="max-w-4xl mx-auto">
             <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
@@ -493,6 +516,66 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                             </button>
                         </div>
                     </div>
+
+                    <div className="mb-6 space-y-4">
+                        <StarredPinnedBar
+                            type="starred"
+                            items={allUnified}
+                            expanded={expandedSections.starredSection}
+                            onToggleExpand={() => setExpandedSections(prev => ({ ...prev, starredSection: !prev.starredSection }))}
+                            onToggleStar={(item) => {
+                                const isLegacy = legacyPrompts.some(lp => lp.id === item.original.id);
+                                if (isLegacy) handleLegacyUpdateMetadata(item.original, { isStarred: !item.original.isStarred });
+                                else handleUpdateMetadata(item.original, { isStarred: !item.original.isStarred });
+                            }}
+                            onTogglePin={(item) => {
+                                const isLegacy = legacyPrompts.some(lp => lp.id === item.original.id);
+                                if (isLegacy) handleLegacyUpdateMetadata(item.original, { isPinned: !item.original.isPinned });
+                                else handleUpdateMetadata(item.original, { isPinned: !item.original.isPinned });
+                            }}
+                            onToggleArchive={(item) => {
+                                const isLegacy = legacyPrompts.some(lp => lp.id === item.original.id);
+                                if (isLegacy) handleLegacyUpdateMetadata(item.original, { isArchived: true });
+                                else handleUpdateMetadata(item.original, { isArchived: true });
+                            }}
+                            onDelete={(item) => { setPreviewPrompt(item.original); setIsDeleteConfirmOpen(true); }}
+                            onEdit={(item) => handleOpenEditModal(item.original)}
+                            onSelect={(id) => {
+                                const prompt = savedPrompts.find(p => `prompt-${activeTab}-${p.id}` === id) || legacyPrompts.find(p => `legacy-${p.id}` === id);
+                                if (prompt) handleLoadSavedPrompt(prompt);
+                            }}
+                            selectedIds={new Set()}
+                        />
+                        <StarredPinnedBar
+                            type="pinned"
+                            items={allUnified}
+                            expanded={expandedSections.pinnedSection}
+                            onToggleExpand={() => setExpandedSections(prev => ({ ...prev, pinnedSection: !prev.pinnedSection }))}
+                            onToggleStar={(item) => {
+                                const isLegacy = legacyPrompts.some(lp => lp.id === item.original.id);
+                                if (isLegacy) handleLegacyUpdateMetadata(item.original, { isStarred: !item.original.isStarred });
+                                else handleUpdateMetadata(item.original, { isStarred: !item.original.isStarred });
+                            }}
+                            onTogglePin={(item) => {
+                                const isLegacy = legacyPrompts.some(lp => lp.id === item.original.id);
+                                if (isLegacy) handleLegacyUpdateMetadata(item.original, { isPinned: !item.original.isPinned });
+                                else handleUpdateMetadata(item.original, { isPinned: !item.original.isPinned });
+                            }}
+                            onToggleArchive={(item) => {
+                                const isLegacy = legacyPrompts.some(lp => lp.id === item.original.id);
+                                if (isLegacy) handleLegacyUpdateMetadata(item.original, { isArchived: true });
+                                else handleUpdateMetadata(item.original, { isArchived: true });
+                            }}
+                            onDelete={(item) => { setPreviewPrompt(item.original); setIsDeleteConfirmOpen(true); }}
+                            onEdit={(item) => handleOpenEditModal(item.original)}
+                            onSelect={(id) => {
+                                const prompt = savedPrompts.find(p => `prompt-${activeTab}-${p.id}` === id) || legacyPrompts.find(p => `legacy-${p.id}` === id);
+                                if (prompt) handleLoadSavedPrompt(prompt);
+                            }}
+                            selectedIds={new Set()}
+                        />
+                    </div>
+
                     <div className="mb-4">
                         <div className="relative">
                             <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
@@ -507,8 +590,7 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                     </div>
                     <div className="space-y-4">
                         {savedPrompts
-                            .filter(p => !p.isArchived && p.name.toLowerCase().includes(searchTerm.toLowerCase()))
-                            .sort((a, b) => (a.isPinned === b.isPinned ? 0 : a.isPinned ? -1 : 1))
+                            .filter(p => !p.isArchived && !p.isStarred && !p.isPinned && p.name.toLowerCase().includes(searchTerm.toLowerCase()))
                             .map(p => (
                                 <LibraryItem
                                     key={p.id}
@@ -527,7 +609,7 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                             ))}
 
                         {legacyPrompts
-                            .filter(p => !p.isArchived && p.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                            .filter(p => !p.isArchived && !p.isStarred && !p.isPinned && p.name.toLowerCase().includes(searchTerm.toLowerCase()))
                             .map(p => (
                                 <LibraryItem
                                     key={`legacy-${p.id}`}

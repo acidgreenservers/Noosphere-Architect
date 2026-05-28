@@ -11,6 +11,8 @@ import Modal from './Modal';
 import PreviewModal from './PreviewModal';
 import LibraryItem from './LibraryItem';
 import Toast from './Toast';
+import { StarredPinnedBar } from './StarredPinnedBar';
+import { UnifiedItem } from '../types';
 
 interface SignalExtractorProps {
     onTransfer: (config: PromptConfig) => void;
@@ -30,6 +32,11 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
     const [draftStatus, setDraftStatus] = useState<'unloaded' | 'loaded' | 'none'>('unloaded');
     const [pendingDraft, setPendingDraft] = useState<SignalConfig | null>(null);
     const isCheckingDraft = useRef(false);
+    const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+        starredSection: true,
+        pinnedSection: true,
+        allItemsSection: true
+    });
 
     const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
     const [previewSignal, setPreviewSignal] = useState<SavedSignal | null>(null);
@@ -136,6 +143,20 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
         setSavedSignals(prev => prev.map(s => s.id === signal.id ? updated : s));
         if (previewSignal?.id === signal.id) setPreviewSignal(updated);
     };
+
+    const signalToUnified = (signal: SavedSignal): UnifiedItem => ({
+        id: `signal-${signal.id}`,
+        name: signal.name,
+        type: 'signal',
+        original: signal,
+        createdAt: signal.createdAt,
+        isStarred: signal.isStarred || false,
+        isPinned: signal.isPinned || false,
+        isArchived: signal.isArchived || false,
+        category: signal.category || ''
+    });
+
+    const unifiedSignals = savedSignals.map(signalToUnified);
 
     const handleDelete = async (id: number) => {
         if (window.confirm('Are you sure you want to delete this signal?')) {
@@ -295,6 +316,36 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
                             <span className="material-icons text-sm mr-1">delete_sweep</span> Clear All
                         </button>
                     </div>
+
+                    <div className="mb-6 space-y-4">
+                        <StarredPinnedBar
+                            type="starred"
+                            items={unifiedSignals}
+                            expanded={expandedSections.starredSection}
+                            onToggleExpand={() => setExpandedSections(prev => ({ ...prev, starredSection: !prev.starredSection }))}
+                            onToggleStar={(item) => handleUpdateMetadata(item.original, { isStarred: !item.original.isStarred })}
+                            onTogglePin={(item) => handleUpdateMetadata(item.original, { isPinned: !item.original.isPinned })}
+                            onToggleArchive={(item) => handleUpdateMetadata(item.original, { isArchived: true })}
+                            onDelete={(item) => handleDelete(item.original.id!)}
+                            onEdit={() => {}}
+                            onSelect={(id) => handleLoadSaved(savedSignals.find(s => `signal-${s.id}` === id)!)}
+                            selectedIds={new Set()}
+                        />
+                        <StarredPinnedBar
+                            type="pinned"
+                            items={unifiedSignals}
+                            expanded={expandedSections.pinnedSection}
+                            onToggleExpand={() => setExpandedSections(prev => ({ ...prev, pinnedSection: !prev.pinnedSection }))}
+                            onToggleStar={(item) => handleUpdateMetadata(item.original, { isStarred: !item.original.isStarred })}
+                            onTogglePin={(item) => handleUpdateMetadata(item.original, { isPinned: !item.original.isPinned })}
+                            onToggleArchive={(item) => handleUpdateMetadata(item.original, { isArchived: true })}
+                            onDelete={(item) => handleDelete(item.original.id!)}
+                            onEdit={() => {}}
+                            onSelect={(id) => handleLoadSaved(savedSignals.find(s => `signal-${s.id}` === id)!)}
+                            selectedIds={new Set()}
+                        />
+                    </div>
+
                     <div className="mb-4">
                         <div className="relative">
                             <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
@@ -309,8 +360,7 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {savedSignals
-                            .filter(s => !s.isArchived && s.name.toLowerCase().includes(searchTerm.toLowerCase()))
-                            .sort((a, b) => (a.isPinned === b.isPinned ? 0 : a.isPinned ? -1 : 1))
+                            .filter(s => !s.isArchived && !s.isStarred && !s.isPinned && s.name.toLowerCase().includes(searchTerm.toLowerCase()))
                             .map(s => (
                                 <LibraryItem
                                     key={s.id}

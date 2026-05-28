@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     SavedAgent, SavedPrompt, SavedProject, SavedMindSeed, SavedSignal, SavedSynthesis,
-    LibraryMetadata
+    LibraryMetadata, UnifiedItem
 } from '../types';
 import * as db from '../services/dbService';
 import LibraryItem from './LibraryItem';
@@ -9,18 +9,6 @@ import PreviewModal from './PreviewModal';
 import SynthesisWorkspace from './SynthesisWorkspace';
 import Modal from './Modal';
 import Toast from './Toast';
-
-type UnifiedItem = {
-    id: number | string;
-    name: string;
-    type: 'agent' | 'prompt-standard' | 'prompt-system' | 'project' | 'mindseed' | 'signal' | 'synthesis' | 'legacy-prompt';
-    original: any;
-    createdAt: string;
-    isStarred: boolean;
-    isPinned: boolean;
-    isArchived: boolean;
-    category: string;
-};
 
 type SortField = 'createdAt' | 'name' | 'type';
 type SortDirection = 'asc' | 'desc';
@@ -50,7 +38,7 @@ const TYPE_ICONS: Record<UnifiedItem['type'], string> = {
 const ArchitectureOrganization: React.FC = () => {
     const [items, setItems] = useState<UnifiedItem[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [activeCategory, setActiveTab] = useState<string>('all');
+    const [activeCategory, setActiveCategory] = useState<string>('all');
     const [activeTypeFilter, setActiveTypeFilter] = useState<string>('all_types');
     const [sortField, setSortField] = useState<SortField>('createdAt');
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -62,8 +50,8 @@ const ArchitectureOrganization: React.FC = () => {
     const [editName, setEditName] = useState('');
     const [bulkCategoryInput, setBulkCategoryInput] = useState('');
     const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
-    const [expandedSection, setExpandedSection] = useState<string>('Views');
-
+    const [expandedSection, setExpandedSection] = useState<string | null>('Views');
+    
     const loadAllData = useCallback(async () => {
         const [
             agents, prompts, stdPrompts, sysPrompts,
@@ -114,10 +102,8 @@ const ArchitectureOrganization: React.FC = () => {
         loadAllData();
     }, [loadAllData]);
 
-    // Derive all existing categories from items for the category filter sidebar
     const allCategories = Array.from(new Set(items.map(i => i.category).filter(c => c && c.trim()))).sort();
 
-    // Build the combined sidebar: views section + type filter section + categories section
     const sidebarSections = [
         {
             label: 'Views',
@@ -141,7 +127,6 @@ const ArchitectureOrganization: React.FC = () => {
         }
     ];
 
-    // Add categories section only if categories exist
     if (allCategories.length > 0) {
         sidebarSections.push({
             label: 'Categories',
@@ -188,9 +173,8 @@ const ArchitectureOrganization: React.FC = () => {
         const o = editItem.original;
         let updatedOriginal = { ...o, name: editName };
 
-        // Handle content update based on type nuance
         if (editItem.type === 'mindseed') {
-            updatedOriginal.result = { ...o.result, seed: editName }; // MindSeed name is the seed
+            updatedOriginal.result = { ...o.result, seed: editName };
         } else if (editItem.type === 'project') {
             try {
                 updatedOriginal.files = JSON.parse(editContent);
@@ -199,7 +183,6 @@ const ArchitectureOrganization: React.FC = () => {
                 return;
             }
         } else if (editItem.type === 'signal') {
-            // Signal edit is complex as it's extracted, usually we edit the name or synthesized result
             updatedOriginal.promptSignal = editContent.split('\n\n')[0];
         } else if (editItem.type === 'synthesis') {
             updatedOriginal.content = editContent;
@@ -209,8 +192,8 @@ const ArchitectureOrganization: React.FC = () => {
             try {
                 updatedOriginal.files = JSON.parse(editContent);
             } catch {
-                 setToast({ message: 'Invalid JSON for multi-file bundle', type: 'error' });
-                 return;
+                setToast({ message: 'Invalid JSON for multi-file bundle', type: 'error' });
+                return;
             }
         }
 
@@ -239,22 +222,16 @@ const ArchitectureOrganization: React.FC = () => {
         setPreviewItem(null);
     };
 
-    // ── Sidebar helpers ─────────────────────────────────────────────
-
     const sidebarCount = (filterId: string): number => {
         return items.filter(i => {
             if (filterId === 'all') return !i.isArchived;
             if (filterId === 'starred') return i.isStarred;
             if (filterId === 'pinned') return i.isPinned;
             if (filterId === 'archived') return i.isArchived;
-            // Check type filters (match against TYPE_LABELS keys)
             if (Object.keys(TYPE_LABELS).includes(filterId)) return i.type === filterId;
-            // Check category filters
             return i.category === filterId;
         }).length;
     };
-
-    // ── Selection & Bulk ────────────────────────────────────────────
 
     const toggleSelection = (id: string) => {
         const next = new Set(selectedIds);
@@ -287,8 +264,6 @@ const ArchitectureOrganization: React.FC = () => {
         setToast({ message: `Assigned "${bulkCategoryInput.trim()}" to ${selectedItems.length} items`, type: 'success' });
     };
 
-    // ── Filtering & Sorting ─────────────────────────────────────────
-
     const getSortValue = (item: UnifiedItem): string | number => {
         switch (sortField) {
             case 'name': return item.name.toLowerCase();
@@ -303,19 +278,16 @@ const ArchitectureOrganization: React.FC = () => {
             const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
             if (!matchesSearch) return false;
 
-            // View filter
             if (activeCategory === 'all' && item.isArchived) return false;
             if (activeCategory === 'starred' && !item.isStarred) return false;
             if (activeCategory === 'pinned' && !item.isPinned) return false;
             if (activeCategory === 'archived' && !item.isArchived) return false;
 
-            // Type filter (only applies when not showing a specific view)
             const isViewFilter = ['all', 'starred', 'pinned', 'archived'].includes(activeCategory);
             if (activeTypeFilter !== 'all_types' && (isViewFilter || activeCategory === 'all')) {
                 if (item.type !== activeTypeFilter) return false;
             }
 
-            // Category filter (when a category is the active view)
             if (!['all', 'starred', 'pinned', 'archived'].includes(activeCategory)) {
                 if (item.category !== activeCategory) return false;
             }
@@ -329,11 +301,9 @@ const ArchitectureOrganization: React.FC = () => {
             return sortDirection === 'asc' ? cmp : -cmp;
         });
 
-    // ── Preview & Export ────────────────────────────────────────────
-
     const getPreviewContent = (item: UnifiedItem): string | Record<string, string> | undefined => {
         const o = item.original;
-        if (item.type === 'mindseed') return undefined; // Handled by mindSeed prop in PreviewModal
+        if (item.type === 'mindseed') return undefined;
         if (item.type === 'project') return {
             'overview.md': o.files.overviewFile,
             'standards.md': o.files.standardsFile,
@@ -376,7 +346,6 @@ const ArchitectureOrganization: React.FC = () => {
 
         const filename = getExportFilename(item);
         let blob: Blob;
-        let isJson = false;
 
         if (typeof content === 'string') {
             blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
@@ -387,13 +356,12 @@ const ArchitectureOrganization: React.FC = () => {
             blob = new Blob([combined], { type: 'text/markdown;charset=utf-8' });
         } else {
             blob = new Blob([JSON.stringify(content, null, 2)], { type: 'application/json;charset=utf-8' });
-            isJson = true;
         }
 
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = isJson ? filename.replace(/\.md$/, '.json') : filename;
+        a.download = filename;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -402,10 +370,7 @@ const ArchitectureOrganization: React.FC = () => {
         setToast({ message: `Exported "${filename}"`, type: 'success' });
     };
 
-    // ── Render ──────────────────────────────────────────────────────
-
     const renderSidebarButton = (id: string, label: string, icon: string) => {
-        // Highlight both a matching view OR a matching type filter OR a matching category
         const isActive =
             (['all', 'starred', 'pinned', 'archived'].includes(id) && activeCategory === id) ||
             (Object.keys(TYPE_LABELS).includes(id) && activeTypeFilter === id) ||
@@ -417,13 +382,13 @@ const ArchitectureOrganization: React.FC = () => {
                 key={id}
                 onClick={() => {
                     if (['all', 'starred', 'pinned', 'archived'].includes(id)) {
-                        setActiveTab(id);
-                        setActiveTypeFilter('all_types'); // Reset type filter when choosing a view
+                        setActiveCategory(id);
+                        setActiveTypeFilter('all_types');
                     } else if (Object.keys(TYPE_LABELS).includes(id)) {
                         setActiveTypeFilter(id);
-                        setActiveTab('all'); // Switch to All Items when filtering by type
+                        setActiveCategory('all');
                     } else {
-                        setActiveTab(id);
+                        setActiveCategory(id);
                         setActiveTypeFilter('all_types');
                     }
                 }}
@@ -459,16 +424,21 @@ const ArchitectureOrganization: React.FC = () => {
         }
     };
 
+    const toggleSection = (sectionLabel: string) => {
+        setExpandedSection(prev => prev === sectionLabel ? null : sectionLabel);
+    };
+
+    // ── Render ──────────────────────────────────────────────────────
+
     return (
         <div className="max-w-6xl mx-auto flex flex-col flex-1 min-h-0">
-            {/* Top header — fixed, no scroll */}
+            {/* ── Top header ── */}
             <div className="flex-shrink-0 flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6">
                 <div>
                     <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Architecture Organization</h2>
                     <p className="text-gray-600 dark:text-gray-400">Manage, categorize, and steward your synthesized wisdom.</p>
                 </div>
                 <div className="flex items-center gap-4">
-                    {/* Sort Controls */}
                     <div className="flex items-center gap-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 shadow-sm">
                         <span className="material-icons text-gray-400 text-sm">sort</span>
                         {(['createdAt', 'name', 'type'] as SortField[]).map(field => (
@@ -494,7 +464,6 @@ const ArchitectureOrganization: React.FC = () => {
                             </span>
                         </button>
                     </div>
-                    {/* Search */}
                     <div className="relative w-full md:w-72">
                         <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
                         <input
@@ -508,121 +477,124 @@ const ArchitectureOrganization: React.FC = () => {
                 </div>
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-8 flex-1 min-h-0">
-                {/* Sidebar — sticky, no scroll, accordion sections */}
-                <aside className="w-full lg:w-64 space-y-3 lg:sticky lg:top-0 lg:self-start lg:max-h-screen overflow-y-auto">
-                    {sidebarSections.map(section => {
-                        const isExpanded = expandedSection === section.label;
-                        return (
-                            <div key={section.label} className="bg-gray-50 dark:bg-gray-800/30 rounded-xl border border-gray-100 dark:border-gray-700/50 overflow-hidden">
-                                <button
-                                    onClick={() => setExpandedSection(expandedSection === section.label ? '' : section.label)}
-                                    className="w-full flex items-center justify-between px-4 py-3 text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors"
-                                >
-                                    <span>{section.label}</span>
-                                    <span className={`material-icons text-base transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
-                                        expand_more
-                                    </span>
-                                </button>
-                                <div className={`transition-all duration-300 overflow-hidden ${isExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                                    <div className="px-2 pb-2 space-y-1 pt-1">
-                                        {section.items.map(({ id, label, icon }) => renderSidebarButton(id, label, icon))}
+            {/* ── All Items Section ── */}
+            <div className="mb-6">
+                <div className="flex flex-col lg:flex-row gap-8 flex-1 min-h-0">
+
+                    {/* Sidebar */}
+                    <aside className="w-full lg:w-64 space-y-3 lg:sticky lg:top-0 lg:self-start lg:max-h-screen overflow-y-auto">
+                        {sidebarSections.map(section => {
+                            const isExpanded = expandedSection === section.label;
+                            return (
+                                <div key={section.label} className="bg-gray-50 dark:bg-gray-800/30 rounded-xl border border-gray-100 dark:border-gray-700/50 overflow-hidden">
+                                    <button
+                                        onClick={() => toggleSection(section.label)}
+                                        className="w-full flex items-center justify-between px-4 py-3 text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors"
+                                    >
+                                        <span>{section.label}</span>
+                                        <span className={`material-icons text-base transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                                            expand_more
+                                        </span>
+                                    </button>
+                                    <div className={`transition-all duration-300 overflow-hidden ${isExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                        <div className="px-2 pb-2 space-y-1 pt-1">
+                                            {section.items.map(({ id, label, icon }) => renderSidebarButton(id, label, icon))}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        );
-                    })}
-                </aside>
+                            );
+                        })}
+                    </aside>
 
-                {/* Main Grid — scrollable independently, fills remaining flex space */}
-                <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
-                    {selectedIds.size > 0 && (
-                        <div className="mb-6 p-4 bg-blue-600 rounded-2xl shadow-lg flex flex-wrap items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
-                            <span className="text-white font-bold ml-2">{selectedIds.size} item{selectedIds.size !== 1 ? 's' : ''} selected</span>
-                            <div className="flex flex-wrap items-center gap-2">
-                                {/* Bulk category assignment */}
-                                <div className="flex items-center gap-1 bg-white/20 rounded-xl px-3 py-1">
-                                    <span className="material-icons text-white text-sm">folder</span>
-                                    <input
-                                        type="text"
-                                        value={bulkCategoryInput}
-                                        onChange={(e) => setBulkCategoryInput(e.target.value)}
-                                        onKeyDown={(e) => e.key === 'Enter' && handleBulkCategory()}
-                                        placeholder="Assign category..."
-                                        className="w-28 bg-transparent border-none text-white placeholder-white/60 text-sm outline-none"
-                                        list="bulk-category-suggestions"
-                                    />
-                                    <datalist id="bulk-category-suggestions">
-                                        {allCategories.map(cat => (
-                                            <option key={cat} value={cat} />
-                                        ))}
-                                    </datalist>
+                    {/* Main Grid */}
+                    <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
+                        {selectedIds.size > 0 && (
+                            <div className="mb-6 p-4 bg-blue-600 rounded-2xl shadow-lg flex flex-wrap items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                                <span className="text-white font-bold ml-2">{selectedIds.size} item{selectedIds.size !== 1 ? 's' : ''} selected</span>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <div className="flex items-center gap-1 bg-white/20 rounded-xl px-3 py-1">
+                                        <span className="material-icons text-white text-sm">folder</span>
+                                        <input
+                                            type="text"
+                                            value={bulkCategoryInput}
+                                            onChange={(e) => setBulkCategoryInput(e.target.value)}
+                                            onKeyDown={(e) => e.key === 'Enter' && handleBulkCategory()}
+                                            placeholder="Assign category..."
+                                            className="w-28 bg-transparent border-none text-white placeholder-white/60 text-sm outline-none"
+                                            list="bulk-category-suggestions"
+                                        />
+                                        <datalist id="bulk-category-suggestions">
+                                            {allCategories.map(cat => (
+                                                <option key={cat} value={cat} />
+                                            ))}
+                                        </datalist>
+                                        <button
+                                            onClick={handleBulkCategory}
+                                            className="ml-1 px-2 py-1 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-lg transition-colors"
+                                            title="Assign Category"
+                                        >
+                                            Go
+                                        </button>
+                                    </div>
                                     <button
-                                        onClick={handleBulkCategory}
-                                        className="ml-1 px-2 py-1 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-lg transition-colors"
-                                        title="Assign Category"
+                                        onClick={() => setIsSynthesisMode(true)}
+                                        className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl transition-colors font-bold text-sm"
                                     >
-                                        Go
+                                        <span className="material-icons text-sm">auto_fix_high</span>
+                                        Synthesize
+                                    </button>
+                                    <button
+                                        onClick={handleBulkArchive}
+                                        className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl transition-colors font-bold text-sm"
+                                    >
+                                        <span className="material-icons text-sm">archive</span>
+                                        Archive
+                                    </button>
+                                    <button
+                                        onClick={() => setSelectedIds(new Set())}
+                                        className="px-4 py-2 text-white hover:underline text-sm"
+                                    >
+                                        Clear
                                     </button>
                                 </div>
-                                <button
-                                    onClick={() => setIsSynthesisMode(true)}
-                                    className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl transition-colors font-bold text-sm"
-                                >
-                                    <span className="material-icons text-sm">auto_fix_high</span>
-                                    Synthesize
-                                </button>
-                                <button
-                                    onClick={handleBulkArchive}
-                                    className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl transition-colors font-bold text-sm"
-                                >
-                                    <span className="material-icons text-sm">archive</span>
-                                    Archive
-                                </button>
-                                <button
-                                    onClick={() => setSelectedIds(new Set())}
-                                    className="px-4 py-2 text-white hover:underline text-sm"
-                                >
-                                    Clear
-                                </button>
-                            </div>
-                        </div>
-                    )}
-                    {/* Item count summary */}
-                    <div className="mb-4 text-sm text-gray-500 dark:text-gray-400 px-1">
-                        {filteredAndSortedItems.length} item{filteredAndSortedItems.length !== 1 ? 's' : ''}
-                        {activeTypeFilter !== 'all_types' && ` in ${TYPE_LABELS[activeTypeFilter as UnifiedItem['type']]?.toLowerCase() || activeTypeFilter}`}
-                        {activeCategory !== 'all' && !['starred', 'pinned', 'archived'].includes(activeCategory) && ` in "${activeCategory}"`}
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {filteredAndSortedItems.map(item => (
-                            <div key={item.id} className="relative">
-                                <LibraryItem
-                                    name={item.name}
-                                    createdAt={item.createdAt}
-                                    metadata={item}
-                                    typeLabel={item.type.replace('prompt-', '')}
-                                    onPreview={() => setPreviewItem(item)}
-                                    onDelete={() => handleDelete(item)}
-                                    onToggleStar={() => handleToggleMetadata(item, 'isStarred')}
-                                    onTogglePin={() => handleToggleMetadata(item, 'isPinned')}
-                                    onToggleArchive={() => handleToggleMetadata(item, 'isArchived')}
-                                    onEdit={() => handleOpenEdit(item)}
-                                    onClick={() => toggleSelection(String(item.id))}
-                                    isSelected={selectedIds.has(String(item.id))}
-                                />
-                            </div>
-                        ))}
-                        {filteredAndSortedItems.length === 0 && (
-                            <div className="col-span-full py-20 text-center bg-gray-50 dark:bg-gray-900/30 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-800">
-                                <span className="material-icons text-5xl text-gray-300 dark:text-gray-700 mb-4">inventory_2</span>
-                                <p className="text-gray-500 dark:text-gray-400 font-medium">No architectural assets found in this view.</p>
                             </div>
                         )}
+                        <div className="mb-4 text-sm text-gray-500 dark:text-gray-400 px-1">
+                            {filteredAndSortedItems.length} item{filteredAndSortedItems.length !== 1 ? 's' : ''}
+                            {activeTypeFilter !== 'all_types' && ` in ${TYPE_LABELS[activeTypeFilter as UnifiedItem['type']]?.toLowerCase() || activeTypeFilter}`}
+                            {activeCategory !== 'all' && !['starred', 'pinned', 'archived'].includes(activeCategory) && ` in "${activeCategory}"`}
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {filteredAndSortedItems.map(item => (
+                                <div key={item.id} className="relative">
+                                    <LibraryItem
+                                        name={item.name}
+                                        createdAt={item.createdAt}
+                                        metadata={item}
+                                        typeLabel={item.type.replace('prompt-', '')}
+                                        onPreview={() => setPreviewItem(item)}
+                                        onDelete={() => handleDelete(item)}
+                                        onToggleStar={() => handleToggleMetadata(item, 'isStarred')}
+                                        onTogglePin={() => handleToggleMetadata(item, 'isPinned')}
+                                        onToggleArchive={() => handleToggleMetadata(item, 'isArchived')}
+                                        onEdit={() => handleOpenEdit(item)}
+                                        onClick={() => toggleSelection(String(item.id))}
+                                        isSelected={selectedIds.has(String(item.id))}
+                                    />
+                                </div>
+                            ))}
+                            {filteredAndSortedItems.length === 0 && (
+                                <div className="col-span-full py-20 text-center bg-gray-50 dark:bg-gray-900/30 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-800">
+                                    <span className="material-icons text-5xl text-gray-300 dark:text-gray-700 mb-4">inventory_2</span>
+                                    <p className="text-gray-500 dark:text-gray-400 font-medium">No architectural assets found in this view.</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
 
+            {/* ── Modals ── */}
             {previewItem && (
                 <PreviewModal
                     isOpen={!!previewItem}

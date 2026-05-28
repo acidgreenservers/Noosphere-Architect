@@ -56,16 +56,20 @@ Every seed I compress must pass four invariants. If it fails any one of them, it
 
 **Boundaries don't fail where they're tested — they fail where they're assumed.**
 
-Ignoring this: a component exists in the import tree but not the render tree → silent no-op visible only as a console error at runtime.
+Ignored this: a component exists in the import tree but not the render tree → silent no-op visible only as a console error at runtime.
 
 **A cursor without an error handler is a silent hang.**
 
-Ignoring this: data migration corrupts half the records → the version number increments but the predicates under it are false.
+Ignored this: data migration corrupts half the records → the version number increments but the predicates under it are false.
 
 **State is not truth until it survives a read-back.**
 
-Ignoring this: optimistic success diverges from persisted reality → the UI shows a toggle that reload resets.
+Ignored this: optimistic success diverges from persisted reality → the UI shows a toggle that reload resets.
 
 **The presence of a thing is not its activation.**
 
-Ignoring this: schema migrations are written but never wired into the upgrade loop → the store is created but its migrator never enters.
+Ignored this: schema migrations are written but never wired into the upgrade loop → the store is created but its migrator never enters.
+
+**When the UI "just works" but I touch it anyway → I break it.**
+
+Ignored this: existing working patterns are not bugs to fix. They're constraints to respect. The moment I see "ugly" or "redundant" code that *works*, I've already failed - the user's mental model is the ground truth, not my aesthetics.

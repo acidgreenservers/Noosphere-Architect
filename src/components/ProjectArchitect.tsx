@@ -12,6 +12,8 @@ import Modal from './Modal';
 import PreviewModal from './PreviewModal';
 import LibraryItem from './LibraryItem';
 import Toast from './Toast';
+import { StarredPinnedBar } from './StarredPinnedBar';
+import { UnifiedItem } from '../types';
 
 const ProjectArchitect: React.FC = () => {
   const [projectConfig, setProjectConfig] = useState<ProjectConfig>({
@@ -35,6 +37,11 @@ const ProjectArchitect: React.FC = () => {
   const [modalState, setModalState] = useState<{ mode: 'save' | 'edit'; project?: SavedProject } | null>(null);
   const [modalInput, setModalInput] = useState<{ name: string; files: GeneratedProjectFiles | null }>({ name: '', files: null });
   const [previewProject, setPreviewProject] = useState<SavedProject | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    starredSection: true,
+    pinnedSection: true,
+    allItemsSection: true
+  });
 
   const loadSavedProjects = useCallback(async () => {
     const projects = await db.getAllProjects();
@@ -247,6 +254,20 @@ const ProjectArchitect: React.FC = () => {
     setPendingDraft(null);
   };
 
+  const projectToUnified = (project: SavedProject): UnifiedItem => ({
+    id: `project-${project.id}`,
+    name: project.name,
+    type: 'project',
+    original: project,
+    createdAt: project.createdAt,
+    isStarred: project.isStarred || false,
+    isPinned: project.isPinned || false,
+    isArchived: project.isArchived || false,
+    category: project.category || ''
+  });
+
+  const unifiedProjects = savedProjects.map(projectToUnified);
+
   return (
     <div className="max-w-4xl mx-auto">
       <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
@@ -290,6 +311,36 @@ const ProjectArchitect: React.FC = () => {
                     </button>
                 </div>
             </div>
+
+            <div className="mb-6 space-y-4">
+                <StarredPinnedBar
+                    type="starred"
+                    items={unifiedProjects}
+                    expanded={expandedSections.starredSection}
+                    onToggleExpand={() => setExpandedSections(prev => ({ ...prev, starredSection: !prev.starredSection }))}
+                    onToggleStar={(item) => handleUpdateMetadata(item.original, { isStarred: !item.original.isStarred })}
+                    onTogglePin={(item) => handleUpdateMetadata(item.original, { isPinned: !item.original.isPinned })}
+                    onToggleArchive={(item) => handleUpdateMetadata(item.original, { isArchived: true })}
+                    onDelete={(item) => handleDelete(item.original.id!)}
+                    onEdit={(item) => handleOpenEditModal(item.original)}
+                    onSelect={(id) => handleLoadSavedProject(savedProjects.find(p => `project-${p.id}` === id)!)}
+                    selectedIds={new Set()}
+                />
+                <StarredPinnedBar
+                    type="pinned"
+                    items={unifiedProjects}
+                    expanded={expandedSections.pinnedSection}
+                    onToggleExpand={() => setExpandedSections(prev => ({ ...prev, pinnedSection: !prev.pinnedSection }))}
+                    onToggleStar={(item) => handleUpdateMetadata(item.original, { isStarred: !item.original.isStarred })}
+                    onTogglePin={(item) => handleUpdateMetadata(item.original, { isPinned: !item.original.isPinned })}
+                    onToggleArchive={(item) => handleUpdateMetadata(item.original, { isArchived: true })}
+                    onDelete={(item) => handleDelete(item.original.id!)}
+                    onEdit={(item) => handleOpenEditModal(item.original)}
+                    onSelect={(id) => handleLoadSavedProject(savedProjects.find(p => `project-${p.id}` === id)!)}
+                    selectedIds={new Set()}
+                />
+            </div>
+
             <div className="mb-4">
                 <div className="relative">
                     <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
@@ -304,8 +355,7 @@ const ProjectArchitect: React.FC = () => {
             </div>
             <div className="space-y-4">
                 {savedProjects
-                    .filter(p => !p.isArchived && p.name.toLowerCase().includes(searchTerm.toLowerCase()))
-                    .sort((a, b) => (a.isPinned === b.isPinned ? 0 : a.isPinned ? -1 : 1))
+                    .filter(p => !p.isArchived && !p.isStarred && !p.isPinned && p.name.toLowerCase().includes(searchTerm.toLowerCase()))
                     .map(project => (
                         <LibraryItem
                             key={project.id}
@@ -322,6 +372,12 @@ const ProjectArchitect: React.FC = () => {
                             onClick={() => handleLoadSavedProject(project)}
                         />
                     ))}
+                {(savedProjects.filter(p => !p.isArchived && !p.isStarred && !p.isPinned && p.name.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && searchTerm) && (
+                    <div className="py-8 text-center text-gray-400 dark:text-gray-500">
+                        <span className="material-icons text-4xl mb-2">search_off</span>
+                        <p>No projects match your search</p>
+                    </div>
+                )}
             </div>
         </div>
       )}
