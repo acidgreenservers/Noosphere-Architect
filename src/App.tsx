@@ -12,8 +12,9 @@ const MindSeedArchitect = lazy(() => import('./components/MindSeedArchitect'));
 const AgentApiSettings = lazy(() => import('./components/AgentApiSettings'));
 const SignalExtractor = lazy(() => import('./components/SignalExtractor'));
 const ArchitectureOrganization = lazy(() => import('./components/ArchitectureOrganization'));
+const RoadmapArchitect = lazy(() => import('./components/RoadmapArchitect'));
 
-export type View = 'landing' | 'agentArchitect' | 'promptArchitect' | 'projectArchitect' | 'mindSeedArchitect' | 'agentApiSettings' | 'signalExtractor' | 'architectureOrganization';
+export type View = 'landing' | 'agentArchitect' | 'promptArchitect' | 'projectArchitect' | 'mindSeedArchitect' | 'agentApiSettings' | 'signalExtractor' | 'architectureOrganization' | 'roadmapArchitect';
 
 const App: React.FC = () => {
   const [view, setView] = useState<View>('landing');
@@ -40,6 +41,8 @@ const App: React.FC = () => {
         return <SignalExtractor onTransfer={handleTransferToPromptArchitect} />;
       case 'architectureOrganization':
         return <ArchitectureOrganization />;
+      case 'roadmapArchitect':
+        return <RoadmapArchitect />;
       case 'landing':
       default:
         return <LandingPage onSelectView={setView} />;
@@ -48,14 +51,15 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
-      <Header 
-        onHomeClick={() => setView('landing')} 
+      <Header
+        onHomeClick={() => setView('landing')}
         onPromptArchitectClick={() => setView('promptArchitect')}
         onProjectArchitectClick={() => setView('projectArchitect')}
         onMindSeedArchitectClick={() => setView('mindSeedArchitect')}
         onAgentApiSettingsClick={() => setView('agentApiSettings')}
         onSignalExtractorClick={() => setView('signalExtractor')}
         onArchitectureOrganizationClick={() => setView('architectureOrganization')}
+        onRoadmapArchitectClick={() => setView('roadmapArchitect')}
         showHomeButton={view !== 'landing'}
       />
       <main className="container mx-auto p-4 md:p-8">

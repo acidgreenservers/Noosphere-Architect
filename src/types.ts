@@ -135,6 +135,23 @@ export interface SavedSignal extends LibraryMetadata {
   createdAt: string;
 }
 
+export interface RoadmapConfig {
+  rawText: string;
+}
+
+export interface GeneratedRoadmapTask {
+  title: string;
+  taskEntry: string;
+}
+
+export interface SavedRoadmap extends LibraryMetadata {
+  id?: number;
+  name: string;
+  config: RoadmapConfig;
+  generatedTask: string;
+  createdAt: string;
+}
+
 export interface SynthesisLine {
   id: string;
   content: string;
@@ -160,7 +177,7 @@ export interface SavedSynthesis extends LibraryMetadata {
 export interface UnifiedItem {
     id: number | string;
     name: string;
-    type: 'agent' | 'prompt-standard' | 'prompt-system' | 'project' | 'mindseed' | 'signal' | 'synthesis' | 'legacy-prompt';
+    type: 'agent' | 'prompt-standard' | 'prompt-system' | 'project' | 'mindseed' | 'signal' | 'synthesis' | 'roadmap' | 'legacy-prompt';
     original: any;
     createdAt: string;
     isStarred: boolean;

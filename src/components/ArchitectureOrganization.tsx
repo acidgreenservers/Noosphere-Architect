@@ -21,6 +21,7 @@ const TYPE_LABELS: Record<UnifiedItem['type'], string> = {
     'mindseed': 'MindSeeds',
     'signal': 'Signals',
     'synthesis': 'Syntheses',
+    'roadmap': 'Roadmaps',
     'legacy-prompt': 'Legacy Prompts'
 };
 
@@ -32,6 +33,7 @@ const TYPE_ICONS: Record<UnifiedItem['type'], string> = {
     'mindseed': 'spa',
     'signal': 'signal_cellular_alt',
     'synthesis': 'auto_fix_high',
+    'roadmap': 'map',
     'legacy-prompt': 'history'
 };
 
@@ -56,7 +58,7 @@ const ArchitectureOrganization: React.FC = () => {
         const [
             agents, prompts, stdPrompts, sysPrompts,
             projects, seedsCogni, seedsLingua, seedsArch,
-            signals, syntheses
+            signals, syntheses, roadmaps
         ] = await Promise.all([
             db.getAllAgents(),
             db.getAllPrompts(),
@@ -67,7 +69,8 @@ const ArchitectureOrganization: React.FC = () => {
             db.getAllMindSeeds('lingua'),
             db.getAllMindSeeds('arch'),
             db.getAllSignals(),
-            db.getAllSynthesis()
+            db.getAllSynthesis(),
+            db.getAllRoadmaps()
         ]);
 
         const unified: UnifiedItem[] = [
@@ -80,7 +83,8 @@ const ArchitectureOrganization: React.FC = () => {
             ...seedsLingua.map(i => ({ ...mapToUnified(i, 'mindseed') })),
             ...seedsArch.map(i => ({ ...mapToUnified(i, 'mindseed') })),
             ...signals.map(i => ({ ...mapToUnified(i, 'signal') })),
-            ...syntheses.map(i => ({ ...mapToUnified(i, 'synthesis') }))
+            ...syntheses.map(i => ({ ...mapToUnified(i, 'synthesis') })),
+            ...roadmaps.map(i => ({ ...mapToUnified(i, 'roadmap') }))
         ];
 
         setItems(unified.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
@@ -158,6 +162,7 @@ const ArchitectureOrganization: React.FC = () => {
             case 'mindseed': await db.updateMindSeed(original); break;
             case 'signal': await db.updateSignal(original); break;
             case 'synthesis': await db.updateSynthesis(original); break;
+            case 'roadmap': await db.updateRoadmap(original); break;
         }
     };
 
@@ -216,6 +221,7 @@ const ArchitectureOrganization: React.FC = () => {
             case 'mindseed': await db.deleteMindSeed(id, item.original.config.type); break;
             case 'signal': await db.deleteSignal(id); break;
             case 'synthesis': await db.deleteSynthesis(id); break;
+            case 'roadmap': await db.deleteRoadmap(id); break;
         }
         setItems(prev => prev.filter(i => i.id !== item.id));
         setToast({ message: 'Item deleted', type: 'success' });
@@ -311,6 +317,7 @@ const ArchitectureOrganization: React.FC = () => {
         };
         if (item.type === 'signal') return `## User Prompt\n\n${o.config.messyPrompt}\n\n## Prompt Signal\n\n${o.promptSignal}\n\n## Signal Constraints\n\n${o.signalConstraints}`;
         if (item.type === 'synthesis') return o.content;
+        if (item.type === 'roadmap') return o.generatedTask;
         if (o.prompt) return o.prompt;
         if (o.files) return {
             'agent.md': o.files.agentFile,
@@ -333,6 +340,7 @@ const ArchitectureOrganization: React.FC = () => {
             case 'prompt-standard':
             case 'prompt-system':
             case 'legacy-prompt': return `prompt-${base}-${timestamp}.md`;
+            case 'roadmap': return `roadmap-${base}-${timestamp}.md`;
             default: return `export-${base}-${timestamp}.md`;
         }
     };

@@ -1,7 +1,7 @@
-import { SavedAgent, SavedPrompt, AgentConfig, PromptConfig, SavedProject, ProjectConfig, SavedSignal, SignalConfig, SavedMindSeed, MindSeedConfig, SavedSynthesis, MindSeedType, PromptType } from '../types';
+import { SavedAgent, SavedPrompt, AgentConfig, PromptConfig, SavedProject, ProjectConfig, SavedSignal, SignalConfig, SavedMindSeed, MindSeedConfig, SavedSynthesis, SavedRoadmap, RoadmapConfig, MindSeedType, PromptType } from '../types';
 
 const DB_NAME = 'NoosphereArchitectDB';
-const DB_VERSION = 12; // Incremented for migration hardening: transaction isolation, schema version store, cursor error handling
+const DB_VERSION = 13; // Incremented for Roadmap Architect store
 const AGENT_STORE = 'savedAgents';
 const PROMPT_STORE = 'savedPrompts'; // Legacy, keeping for migration or reference
 const STANDARD_PROMPT_STORE = 'standardPrompts';
@@ -25,6 +25,8 @@ const PROMPT_CONTEXT_STORE = 'promptContext';
 const SYSTEM_PROMPT_CONTEXT_STORE = 'systemPromptContext';
 const PROJECT_CONTEXT_STORE = 'projectContext';
 export const SYNTHESIS_STORE = 'savedSynthesis';
+const ROADMAP_STORE = 'savedRoadmaps';
+const ROADMAP_DRAFT_STORE = 'roadmapDraft';
 const SCHEMA_VERSION_STORE = '_schemaVersion'; // Internal store for migration verification
 
 
@@ -235,6 +237,17 @@ const initDB = (): Promise<IDBDatabase> => {
             // The store is already created at the top of onupgradeneeded (if version >= 12),
             // so this migration is deliberately minimal — it just marks completion.
             console.log("Migration to v12 complete: Schema version store initialized.");
+        },
+        13: (db, tx) => {
+            if (!db.objectStoreNames.contains(ROADMAP_STORE)) {
+                const store = db.createObjectStore(ROADMAP_STORE, { keyPath: 'id', autoIncrement: true });
+                store.createIndex('name', 'name', { unique: false });
+                store.createIndex('createdAt', 'createdAt', { unique: false });
+            }
+            if (!db.objectStoreNames.contains(ROADMAP_DRAFT_STORE)) {
+                db.createObjectStore(ROADMAP_DRAFT_STORE, { keyPath: 'id' });
+            }
+            console.log("Migration to v13 complete: Roadmap store initialized.");
         }
       };
 
@@ -306,7 +319,7 @@ export const checkDatabaseHealth = async (): Promise<{
     const expectedStores = [
       AGENT_STORE, PROMPT_STORE, STANDARD_PROMPT_STORE, SYSTEM_PROMPT_STORE,
       PROJECT_STORE, SIGNAL_STORE, COGNISEED_STORE, LINGUASEED_STORE, ARCHSEED_STORE,
-      SYNTHESIS_STORE, SCHEMA_VERSION_STORE
+      SYNTHESIS_STORE, ROADMAP_STORE, SCHEMA_VERSION_STORE
     ];
 
     expectedStores.forEach(storeName => {
@@ -930,6 +943,79 @@ export const clearAllProjects = (): Promise<void> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(PROJECT_STORE, 'readwrite');
         const request = store.clear();
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+// Roadmap Functions
+export const addRoadmap = (roadmap: SavedRoadmap): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(ROADMAP_STORE, 'readwrite');
+        const request = store.add(roadmap);
+        request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const getAllRoadmaps = (): Promise<SavedRoadmap[]> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(ROADMAP_STORE, 'readonly');
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const updateRoadmap = (roadmap: SavedRoadmap): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(ROADMAP_STORE, 'readwrite');
+        const request = store.put(roadmap);
+        request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const deleteRoadmap = (id: number): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(ROADMAP_STORE, 'readwrite');
+        const request = store.delete(id);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const clearAllRoadmaps = (): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(ROADMAP_STORE, 'readwrite');
+        const request = store.clear();
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const saveRoadmapDraft = (draft: {id: number, config: RoadmapConfig}): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(ROADMAP_DRAFT_STORE, 'readwrite');
+        const request = store.put(draft);
+        request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const getRoadmapDraft = (id: number): Promise<{id: number, config: RoadmapConfig} | undefined> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(ROADMAP_DRAFT_STORE, 'readonly');
+        const request = store.get(id);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const clearRoadmapDraft = (id: number): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(ROADMAP_DRAFT_STORE, 'readwrite');
+        const request = store.delete(id);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
     });

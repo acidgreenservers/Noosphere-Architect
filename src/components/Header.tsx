@@ -9,6 +9,7 @@ interface HeaderProps {
   onAgentApiSettingsClick: () => void;
   onSignalExtractorClick: () => void;
   onArchitectureOrganizationClick: () => void;
+  onRoadmapArchitectClick: () => void;
   showHomeButton: boolean;
 }
 
@@ -20,6 +21,7 @@ const Header: React.FC<HeaderProps> = ({
   onAgentApiSettingsClick,
   onSignalExtractorClick,
   onArchitectureOrganizationClick,
+  onRoadmapArchitectClick,
   showHomeButton
 }) => {
   return (
@@ -74,6 +76,14 @@ const Header: React.FC<HeaderProps> = ({
             title="Architecture Organization"
           >
             <span className="material-icons">inventory_2</span>
+          </button>
+          <button
+            onClick={onRoadmapArchitectClick}
+            className="flex items-center text-gray-600 dark:text-gray-300 hover:text-amber-500 dark:hover:text-amber-400 transition-colors p-2 rounded-full mr-2"
+            aria-label="Go to Roadmap Architect"
+            title="Roadmap Architect"
+          >
+            <span className="material-icons">map</span>
           </button>
           <button 
             onClick={onAgentApiSettingsClick}
