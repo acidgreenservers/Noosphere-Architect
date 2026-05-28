@@ -2,7 +2,7 @@ import { RoadmapConfig } from '../../types';
 import { handleAiCall } from './openRouter';
 
 const createRoadmapMetaPrompt = (config: RoadmapConfig): string => {
-  return `Shape a roadmap task entry in the provided format by surfacing the deep intention from the text and creating a deeply actionable and rigorously detailed roadmap task entry.
+  return `Shape a roadmap task entry in the provided format by surfacing the deep intention from the text and creating a deeply actionable and rigorously detailed roadmap task entry. Do not assume intent that is beyond the letter of the text. if intent is clear, just reorganize.
 
 ---
 
