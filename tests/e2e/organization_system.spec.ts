@@ -8,23 +8,35 @@ test.describe('Architecture Organization System', () => {
     await expect(page.getByRole('heading', { name: 'Architecture Organization', exact: true })).toBeVisible();
 
     // Check sidebar views
-    await expect(page.locator('text=all')).toBeVisible();
-    await expect(page.locator('text=starred')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'inventory_2 All Items' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'star Starred' })).toBeVisible();
   });
 
   test('should allow selection and entering synthesis workspace', async ({ page }) => {
     // Mock OpenRouter API for consistency in E2E
     await page.route('https://openrouter.ai/api/v1/chat/completions', async route => {
+      const postData = route.request().postDataJSON();
+      const prompt = postData.messages[0].content;
+
+      let responseContent = "Mock response";
+      if (prompt.includes('Knowledge Decompressor')) {
+        responseContent = JSON.stringify({ nodes: ["Node 1", "Node 2"] });
+      } else if (prompt.includes('Systems Synthesizer')) {
+        responseContent = "Mock synthesized result";
+      } else {
+        responseContent = JSON.stringify({
+          signal: "Mock signal",
+          prompt: "Mock synthesized prompt"
+        });
+      }
+
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
           choices: [{
             message: {
-              content: JSON.stringify({
-                signal: "Mock signal",
-                prompt: "Mock synthesized prompt"
-              })
+              content: responseContent
             }
           }]
         })
@@ -60,7 +72,7 @@ test.describe('Architecture Organization System', () => {
     await page.click('text=Test Prompt 1');
 
     // 4. Action bar should appear
-    await expect(page.locator('text=1 items selected')).toBeVisible();
+    await expect(page.locator('text=1 item selected')).toBeVisible();
 
     // 5. Enter synthesis
     await page.click('button:has-text("Synthesize")');

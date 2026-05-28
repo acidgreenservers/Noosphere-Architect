@@ -191,6 +191,8 @@ const ArchitectureOrganization: React.FC = () => {
             updatedOriginal.promptSignal = editContent.split('\n\n')[0];
         } else if (editItem.type === 'synthesis') {
             updatedOriginal.content = editContent;
+        } else if (editItem.type === 'roadmap') {
+            updatedOriginal.generatedTask = editContent;
         } else if (o.prompt !== undefined) {
             updatedOriginal.prompt = editContent;
         } else if (o.files) {
