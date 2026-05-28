@@ -61,7 +61,7 @@ const SynthesisWorkspace: React.FC<SynthesisWorkspaceProps> = ({ sourceItems, on
 
             try {
                 for (const item of sourceItems) {
-                    const content = item.prompt || item.extractedSignal || item.content ||
+                    const content = item.prompt || item.extractedSignal || item.content || item.generatedTask ||
                                    (item.files ? Object.values(item.files).join('\n\n') : '') ||
                                    (item.result?.seed ? `> ${item.result.seed}\n\nPattern: ${item.result.pattern}\n\nDeploy When: ${item.result.deployWhen}` : '');
 

@@ -38,6 +38,7 @@ const RoadmapArchitect: React.FC = () => {
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [previewRoadmap, setPreviewRoadmap] = useState<SavedRoadmap | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isClearAllConfirmOpen, setIsClearAllConfirmOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [saveName, setSaveName] = useState('');
 
@@ -158,6 +159,13 @@ const RoadmapArchitect: React.FC = () => {
     isArchived: roadmap.isArchived || false,
     category: roadmap.category || ''
   });
+
+  const handleClearAll = async () => {
+    await db.clearAllRoadmaps();
+    loadSavedRoadmaps();
+    setSuccessMessage('All roadmap entries cleared.');
+    setIsClearAllConfirmOpen(false);
+  };
 
   const unifiedRoadmaps = savedRoadmaps.map(roadmapToUnified);
 
@@ -315,7 +323,7 @@ const RoadmapArchitect: React.FC = () => {
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Saved Roadmap Entries</h2>
             <button
-              onClick={async () => { if(window.confirm('Clear all roadmap entries?')){ await db.clearAllRoadmaps(); loadSavedRoadmaps(); } }}
+              onClick={() => setIsClearAllConfirmOpen(true)}
               className="text-sm text-red-500 hover:text-red-600 flex items-center"
             >
               <span className="material-icons text-sm mr-1">delete_sweep</span> Clear All
@@ -405,6 +413,29 @@ const RoadmapArchitect: React.FC = () => {
               className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors shadow-sm"
             >
               Restore Draft
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Clear All Confirmation */}
+      <Modal isOpen={isClearAllConfirmOpen} onClose={() => setIsClearAllConfirmOpen(false)} title="Confirm Clear All">
+        <div className="space-y-4">
+          <p className="text-gray-600 dark:text-gray-400">
+            Are you sure you want to clear ALL roadmap entries? This action cannot be undone.
+          </p>
+          <div className="flex justify-end space-x-3 mt-6">
+            <button
+              onClick={() => setIsClearAllConfirmOpen(false)}
+              className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleClearAll}
+              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition"
+            >
+              Clear All
             </button>
           </div>
         </div>
