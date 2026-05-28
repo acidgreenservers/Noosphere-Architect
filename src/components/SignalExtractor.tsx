@@ -9,7 +9,10 @@ import { sanitizeFilename } from '../utils/security';
 import LoadingSpinner from './LoadingSpinner';
 import Modal from './Modal';
 import PreviewModal from './PreviewModal';
+import LibraryItem from './LibraryItem';
 import Toast from './Toast';
+import { StarredPinnedBar } from './StarredPinnedBar';
+import { UnifiedItem } from '../types';
 
 interface SignalExtractorProps {
     onTransfer: (config: PromptConfig) => void;
@@ -24,9 +27,16 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
     const loadingIntervalRef = useRef<number | null>(null);
 
     const [savedSignals, setSavedSignals] = useState<SavedSignal[]>([]);
+    const [searchTerm, setSearchText] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
     const [draftStatus, setDraftStatus] = useState<'unloaded' | 'loaded' | 'none'>('unloaded');
+    const [pendingDraft, setPendingDraft] = useState<SignalConfig | null>(null);
     const isCheckingDraft = useRef(false);
+    const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+        starredSection: true,
+        pinnedSection: true,
+        allItemsSection: true
+    });
 
     const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
     const [previewSignal, setPreviewSignal] = useState<SavedSignal | null>(null);
@@ -45,13 +55,7 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
 
             const draft = await db.getSignalDraft(1);
             if (draft?.config && draft.config.messyPrompt) {
-                if (window.confirm("An unsaved signal draft was found. Do you want to load it?")) {
-                    setConfig(draft.config);
-                    setDraftStatus('loaded');
-                } else {
-                    await db.clearSignalDraft(1);
-                    setDraftStatus('none');
-                }
+                setPendingDraft(draft.config);
             } else {
                 setDraftStatus('none');
             }
@@ -119,7 +123,11 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
             extractedSignal: `${result.promptSignal}\n\n${result.signalConstraints}`,
             promptSignal: result.promptSignal,
             signalConstraints: result.signalConstraints,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            isStarred: false,
+            isPinned: false,
+            isArchived: false,
+            category: ''
         };
 
         await db.addSignal(newSignal);
@@ -128,6 +136,27 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
         setIsSaveModalOpen(false);
         setSaveName('');
     };
+
+    const handleUpdateMetadata = async (signal: SavedSignal, metadata: any) => {
+        const updated = { ...signal, ...metadata };
+        await db.updateSignal(updated);
+        setSavedSignals(prev => prev.map(s => s.id === signal.id ? updated : s));
+        if (previewSignal?.id === signal.id) setPreviewSignal(updated);
+    };
+
+    const signalToUnified = (signal: SavedSignal): UnifiedItem => ({
+        id: `signal-${signal.id}`,
+        name: signal.name,
+        type: 'signal',
+        original: signal,
+        createdAt: signal.createdAt,
+        isStarred: signal.isStarred || false,
+        isPinned: signal.isPinned || false,
+        isArchived: signal.isArchived || false,
+        category: signal.category || ''
+    });
+
+    const unifiedSignals = savedSignals.map(signalToUnified);
 
     const handleDelete = async (id: number) => {
         if (window.confirm('Are you sure you want to delete this signal?')) {
@@ -144,6 +173,19 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
             signalConstraints: signal.signalConstraints
         });
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleAcceptDraft = () => {
+        if (!pendingDraft) return;
+        setConfig(pendingDraft);
+        setDraftStatus('loaded');
+        setPendingDraft(null);
+    };
+
+    const handleDeclineDraft = async () => {
+        await db.clearSignalDraft(1);
+        setDraftStatus('none');
+        setPendingDraft(null);
     };
 
     const handleTransfer = () => {
@@ -274,28 +316,99 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
                             <span className="material-icons text-sm mr-1">delete_sweep</span> Clear All
                         </button>
                     </div>
+
+                    <div className="mb-6 space-y-4">
+                        <StarredPinnedBar
+                            type="starred"
+                            items={unifiedSignals}
+                            expanded={expandedSections.starredSection}
+                            onToggleExpand={() => setExpandedSections(prev => ({ ...prev, starredSection: !prev.starredSection }))}
+                            onToggleStar={(item) => handleUpdateMetadata(item.original, { isStarred: !item.original.isStarred })}
+                            onTogglePin={(item) => handleUpdateMetadata(item.original, { isPinned: !item.original.isPinned })}
+                            onToggleArchive={(item) => handleUpdateMetadata(item.original, { isArchived: true })}
+                            onDelete={(item) => handleDelete(item.original.id!)}
+                            onEdit={() => {}}
+                            onSelect={(id) => handleLoadSaved(savedSignals.find(s => `signal-${s.id}` === id)!)}
+                            selectedIds={new Set()}
+                        />
+                        <StarredPinnedBar
+                            type="pinned"
+                            items={unifiedSignals}
+                            expanded={expandedSections.pinnedSection}
+                            onToggleExpand={() => setExpandedSections(prev => ({ ...prev, pinnedSection: !prev.pinnedSection }))}
+                            onToggleStar={(item) => handleUpdateMetadata(item.original, { isStarred: !item.original.isStarred })}
+                            onTogglePin={(item) => handleUpdateMetadata(item.original, { isPinned: !item.original.isPinned })}
+                            onToggleArchive={(item) => handleUpdateMetadata(item.original, { isArchived: true })}
+                            onDelete={(item) => handleDelete(item.original.id!)}
+                            onEdit={() => {}}
+                            onSelect={(id) => handleLoadSaved(savedSignals.find(s => `signal-${s.id}` === id)!)}
+                            selectedIds={new Set()}
+                        />
+                    </div>
+
+                    <div className="mb-4">
+                        <div className="relative">
+                            <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+                            <input
+                                type="text"
+                                placeholder="Search saved signals..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchText(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                            />
+                        </div>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {savedSignals.map(s => (
-                            <div key={s.id} className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow border border-gray-200 dark:border-gray-700 flex justify-between items-center group hover:border-blue-500 dark:hover:border-blue-400 transition-colors border-transparent">
-                                <div className="flex-grow cursor-pointer" onClick={() => handleLoadSaved(s)}>
-                                    <p className="font-semibold text-gray-800 dark:text-gray-200">{s.name}</p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(s.createdAt).toLocaleDateString()}</p>
-                                </div>
-                                <div className="flex items-center space-x-1">
-                                    <button onClick={() => setPreviewSignal(s)} className="p-2 text-gray-500 hover:text-blue-500 transition-colors" title="Preview"><span className="material-icons">visibility</span></button>
-                                    <button onClick={() => handleDelete(s.id!)} className="p-2 text-gray-500 hover:text-red-500 transition-colors" title="Delete"><span className="material-icons">delete</span></button>
-                                </div>
-                            </div>
-                        ))}
+                        {savedSignals
+                            .filter(s => !s.isArchived && !s.isStarred && !s.isPinned && s.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                            .map(s => (
+                                <LibraryItem
+                                    key={s.id}
+                                    name={s.name}
+                                    createdAt={s.createdAt}
+                                    metadata={s}
+                                    icon="unarchive"
+                                    onPreview={() => setPreviewSignal(s)}
+                                    onDelete={() => handleDelete(s.id!)}
+                                    onToggleStar={() => handleUpdateMetadata(s, { isStarred: !s.isStarred })}
+                                    onTogglePin={() => handleUpdateMetadata(s, { isPinned: !s.isPinned })}
+                                    onToggleArchive={() => handleUpdateMetadata(s, { isArchived: true })}
+                                    onClick={() => handleLoadSaved(s)}
+                                />
+                            ))}
                     </div>
                 </div>
             )}
+
+            <Modal isOpen={!!pendingDraft} onClose={() => setPendingDraft(null)} title="Unsaved Draft Found">
+                <div className="space-y-4">
+                    <p className="text-gray-600 dark:text-gray-400">
+                        An unsaved signal extractor draft was found. Would you like to restore it?
+                    </p>
+                    <div className="flex justify-end space-x-3 mt-6">
+                        <button
+                            onClick={handleDeclineDraft}
+                            className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                        >
+                            Discard
+                        </button>
+                        <button
+                            onClick={handleAcceptDraft}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                        >
+                            Restore Draft
+                        </button>
+                    </div>
+                </div>
+            </Modal>
 
             <PreviewModal
                 isOpen={!!previewSignal}
                 onClose={() => setPreviewSignal(null)}
                 title={`Preview: ${previewSignal?.name}`}
                 content={previewSignal ? `## User Prompt\n\n${previewSignal.config.messyPrompt.split('\n').map(line => `> ${line}`).join('\n')}\n>\n>\n\n## Prompt Signal\n\n${previewSignal.promptSignal}\n\n## Signal Constraints\n\n${previewSignal.signalConstraints}` : ''}
+                metadata={previewSignal || undefined}
+                onUpdateMetadata={(metadata) => previewSignal && handleUpdateMetadata(previewSignal, metadata)}
                 onCopy={() => {
                     if (previewSignal) {
                         handleCopySignal(previewSignal.config.messyPrompt, previewSignal.promptSignal, previewSignal.signalConstraints);

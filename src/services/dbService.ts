@@ -1,8 +1,7 @@
-
-import { SavedAgent, SavedPrompt, AgentConfig, PromptConfig, SavedProject, ProjectConfig, SavedSignal, SignalConfig, SavedMindSeed, MindSeedConfig, MindSeedType, PromptType } from '../types';
+import { SavedAgent, SavedPrompt, AgentConfig, PromptConfig, SavedProject, ProjectConfig, SavedSignal, SignalConfig, SavedMindSeed, MindSeedConfig, SavedSynthesis, SavedRoadmap, RoadmapConfig, MindSeedType, PromptType } from '../types';
 
 const DB_NAME = 'NoosphereArchitectDB';
-const DB_VERSION = 10; // Incremented for separate prompt stores and system context
+const DB_VERSION = 13; // Incremented for Roadmap Architect store
 const AGENT_STORE = 'savedAgents';
 const PROMPT_STORE = 'savedPrompts'; // Legacy, keeping for migration or reference
 const STANDARD_PROMPT_STORE = 'standardPrompts';
@@ -25,14 +24,23 @@ const SIGNAL_CONTEXT_STORE = 'signalContext';
 const PROMPT_CONTEXT_STORE = 'promptContext';
 const SYSTEM_PROMPT_CONTEXT_STORE = 'systemPromptContext';
 const PROJECT_CONTEXT_STORE = 'projectContext';
+export const SYNTHESIS_STORE = 'savedSynthesis';
+const ROADMAP_STORE = 'savedRoadmaps';
+const ROADMAP_DRAFT_STORE = 'roadmapDraft';
+const SCHEMA_VERSION_STORE = '_schemaVersion'; // Internal store for migration verification
 
 
 let dbInstance: IDBDatabase | null = null;
+let initPromise: Promise<IDBDatabase> | null = null; // Concurrency guard
 
 const initDB = (): Promise<IDBDatabase> => {
-  return new Promise((resolve, reject) => {
+  // Deduplicate concurrent init calls
+  if (initPromise) return initPromise;
+
+  initPromise = new Promise((resolve, reject) => {
     if (dbInstance) {
       resolve(dbInstance);
+      initPromise = null;
       return;
     }
 
@@ -40,106 +48,329 @@ const initDB = (): Promise<IDBDatabase> => {
 
     request.onerror = () => {
       console.error('Error opening DB', request.error);
-      reject('Error opening DB');
+      initPromise = null;
+      reject(request.error?.message || 'Error opening DB');
+    };
+
+    request.onblocked = () => {
+      console.warn('IndexedDB open blocked. Another tab may have an older version open.');
+      // Don't reject — the block may resolve if the user closes other tabs
     };
 
     request.onsuccess = () => {
       dbInstance = request.result;
+      initPromise = null;
+
+      // Handle unexpected close (e.g., storage quota exceeded, browser crash)
+      dbInstance.onclose = () => {
+        console.warn('IndexedDB connection unexpectedly closed. Resetting instance.');
+        dbInstance = null;
+      };
+      // Handle version change from another tab
+      dbInstance.onversionchange = () => {
+        dbInstance?.close();
+        dbInstance = null;
+        initPromise = null;
+      };
+
       resolve(dbInstance);
     };
 
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(AGENT_STORE)) {
-        const agentStore = db.createObjectStore(AGENT_STORE, { keyPath: 'id', autoIncrement: true });
-        agentStore.createIndex('name', 'name', { unique: false });
-        agentStore.createIndex('createdAt', 'createdAt', { unique: false });
+      const oldVersion = event.oldVersion;
+      const newVersion = event.newVersion || DB_VERSION;
+      const tx = (event.target as IDBOpenDBRequest).transaction;
+
+      console.log(`Upgrading DB from v${oldVersion} to v${newVersion}`);
+
+      // Create schema version store if it doesn't exist (migration v12+)
+      // This must happen before any migration runs
+      if (newVersion >= 12 && !db.objectStoreNames.contains(SCHEMA_VERSION_STORE)) {
+        db.createObjectStore(SCHEMA_VERSION_STORE, { keyPath: 'version' });
       }
-      if (!db.objectStoreNames.contains(PROMPT_STORE)) {
-        const promptStore = db.createObjectStore(PROMPT_STORE, { keyPath: 'id', autoIncrement: true });
-        promptStore.createIndex('name', 'name', { unique: false });
-        promptStore.createIndex('createdAt', 'createdAt', { unique: false });
+
+      // Write the current version as starting state BEFORE migrations
+      if (tx && db.objectStoreNames.contains(SCHEMA_VERSION_STORE)) {
+        const metaStore = tx.objectStore(SCHEMA_VERSION_STORE);
+        // Set starting state: "migrating_from_v_<oldVersion>"
+        metaStore.put({ version: 'status', value: `migrating_from_${oldVersion}`, updatedAt: new Date().toISOString() });
       }
-      if (!db.objectStoreNames.contains(STANDARD_PROMPT_STORE)) {
-        const store = db.createObjectStore(STANDARD_PROMPT_STORE, { keyPath: 'id', autoIncrement: true });
-        store.createIndex('name', 'name', { unique: false });
-        store.createIndex('createdAt', 'createdAt', { unique: false });
-      }
-      if (!db.objectStoreNames.contains(SYSTEM_PROMPT_STORE)) {
-        const store = db.createObjectStore(SYSTEM_PROMPT_STORE, { keyPath: 'id', autoIncrement: true });
-        store.createIndex('name', 'name', { unique: false });
-        store.createIndex('createdAt', 'createdAt', { unique: false });
-      }
-       if (!db.objectStoreNames.contains(PROJECT_STORE)) {
-        const projectStore = db.createObjectStore(PROJECT_STORE, { keyPath: 'id', autoIncrement: true });
-        projectStore.createIndex('name', 'name', { unique: false });
-        projectStore.createIndex('createdAt', 'createdAt', { unique: false });
-      }
-      if (!db.objectStoreNames.contains(AGENT_DRAFT_STORE)) {
-        db.createObjectStore(AGENT_DRAFT_STORE, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(PROMPT_DRAFT_STORE)) {
-        db.createObjectStore(PROMPT_DRAFT_STORE, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(STANDARD_PROMPT_DRAFT_STORE)) {
-        db.createObjectStore(STANDARD_PROMPT_DRAFT_STORE, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(SYSTEM_PROMPT_DRAFT_STORE)) {
-        db.createObjectStore(SYSTEM_PROMPT_DRAFT_STORE, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(PROJECT_DRAFT_STORE)) {
-        db.createObjectStore(PROJECT_DRAFT_STORE, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(SIGNAL_STORE)) {
-        const signalStore = db.createObjectStore(SIGNAL_STORE, { keyPath: 'id', autoIncrement: true });
-        signalStore.createIndex('name', 'name', { unique: false });
-        signalStore.createIndex('createdAt', 'createdAt', { unique: false });
-      }
-      if (!db.objectStoreNames.contains(SIGNAL_DRAFT_STORE)) {
-        db.createObjectStore(SIGNAL_DRAFT_STORE, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(COGNISEED_STORE)) {
-        const store = db.createObjectStore(COGNISEED_STORE, { keyPath: 'id', autoIncrement: true });
-        store.createIndex('name', 'name', { unique: false });
-        store.createIndex('createdAt', 'createdAt', { unique: false });
-      }
-      if (!db.objectStoreNames.contains(LINGUASEED_STORE)) {
-        const store = db.createObjectStore(LINGUASEED_STORE, { keyPath: 'id', autoIncrement: true });
-        store.createIndex('name', 'name', { unique: false });
-        store.createIndex('createdAt', 'createdAt', { unique: false });
-      }
-      if (!db.objectStoreNames.contains(ARCHSEED_STORE)) {
-        const store = db.createObjectStore(ARCHSEED_STORE, { keyPath: 'id', autoIncrement: true });
-        store.createIndex('name', 'name', { unique: false });
-        store.createIndex('createdAt', 'createdAt', { unique: false });
-      }
-      if (!db.objectStoreNames.contains(MINDSEED_DRAFT_STORE)) {
-        db.createObjectStore(MINDSEED_DRAFT_STORE, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(AGENT_CONTEXT_STORE)) {
-        db.createObjectStore(AGENT_CONTEXT_STORE, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(MINDSEED_CONTEXT_STORE)) {
-        db.createObjectStore(MINDSEED_CONTEXT_STORE, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(SIGNAL_CONTEXT_STORE)) {
-        db.createObjectStore(SIGNAL_CONTEXT_STORE, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(PROMPT_CONTEXT_STORE)) {
-        db.createObjectStore(PROMPT_CONTEXT_STORE, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(SYSTEM_PROMPT_CONTEXT_STORE)) {
-        db.createObjectStore(SYSTEM_PROMPT_CONTEXT_STORE, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(PROJECT_CONTEXT_STORE)) {
-        db.createObjectStore(PROJECT_CONTEXT_STORE, { keyPath: 'id' });
+
+      // Modular Migration Registry
+      // Each migration receives (db, tx) for explicit transaction access
+      const migrations: Record<number, (db: IDBDatabase, tx: IDBTransaction | null) => void> = {
+        1: (db, tx) => {
+          if (!db.objectStoreNames.contains(AGENT_STORE)) {
+            const agentStore = db.createObjectStore(AGENT_STORE, { keyPath: 'id', autoIncrement: true });
+            agentStore.createIndex('name', 'name', { unique: false });
+            agentStore.createIndex('createdAt', 'createdAt', { unique: false });
+          }
+          if (!db.objectStoreNames.contains(PROMPT_STORE)) {
+            const promptStore = db.createObjectStore(PROMPT_STORE, { keyPath: 'id', autoIncrement: true });
+            promptStore.createIndex('name', 'name', { unique: false });
+            promptStore.createIndex('createdAt', 'createdAt', { unique: false });
+          }
+        },
+        2: (db, tx) => {
+          if (!db.objectStoreNames.contains(PROJECT_STORE)) {
+            const projectStore = db.createObjectStore(PROJECT_STORE, { keyPath: 'id', autoIncrement: true });
+            projectStore.createIndex('name', 'name', { unique: false });
+            projectStore.createIndex('createdAt', 'createdAt', { unique: false });
+          }
+        },
+        3: (db, tx) => {
+          if (!db.objectStoreNames.contains(AGENT_DRAFT_STORE)) db.createObjectStore(AGENT_DRAFT_STORE, { keyPath: 'id' });
+          if (!db.objectStoreNames.contains(PROMPT_DRAFT_STORE)) db.createObjectStore(PROMPT_DRAFT_STORE, { keyPath: 'id' });
+          if (!db.objectStoreNames.contains(PROJECT_DRAFT_STORE)) db.createObjectStore(PROJECT_DRAFT_STORE, { keyPath: 'id' });
+        },
+        4: (db, tx) => {
+          if (!db.objectStoreNames.contains(SIGNAL_STORE)) {
+            const signalStore = db.createObjectStore(SIGNAL_STORE, { keyPath: 'id', autoIncrement: true });
+            signalStore.createIndex('name', 'name', { unique: false });
+            signalStore.createIndex('createdAt', 'createdAt', { unique: false });
+          }
+          if (!db.objectStoreNames.contains(SIGNAL_DRAFT_STORE)) db.createObjectStore(SIGNAL_DRAFT_STORE, { keyPath: 'id' });
+        },
+        5: (db, tx) => {
+          if (!db.objectStoreNames.contains(COGNISEED_STORE)) {
+            const store = db.createObjectStore(COGNISEED_STORE, { keyPath: 'id', autoIncrement: true });
+            store.createIndex('name', 'name', { unique: false });
+            store.createIndex('createdAt', 'createdAt', { unique: false });
+          }
+          if (!db.objectStoreNames.contains(LINGUASEED_STORE)) {
+            const store = db.createObjectStore(LINGUASEED_STORE, { keyPath: 'id', autoIncrement: true });
+            store.createIndex('name', 'name', { unique: false });
+            store.createIndex('createdAt', 'createdAt', { unique: false });
+          }
+          if (!db.objectStoreNames.contains(ARCHSEED_STORE)) {
+            const store = db.createObjectStore(ARCHSEED_STORE, { keyPath: 'id', autoIncrement: true });
+            store.createIndex('name', 'name', { unique: false });
+            store.createIndex('createdAt', 'createdAt', { unique: false });
+          }
+          if (!db.objectStoreNames.contains(MINDSEED_DRAFT_STORE)) db.createObjectStore(MINDSEED_DRAFT_STORE, { keyPath: 'id' });
+        },
+        6: (db, tx) => {
+          if (!db.objectStoreNames.contains(AGENT_CONTEXT_STORE)) db.createObjectStore(AGENT_CONTEXT_STORE, { keyPath: 'id' });
+          if (!db.objectStoreNames.contains(MINDSEED_CONTEXT_STORE)) db.createObjectStore(MINDSEED_CONTEXT_STORE, { keyPath: 'id' });
+          if (!db.objectStoreNames.contains(SIGNAL_CONTEXT_STORE)) db.createObjectStore(SIGNAL_CONTEXT_STORE, { keyPath: 'id' });
+          if (!db.objectStoreNames.contains(PROMPT_CONTEXT_STORE)) db.createObjectStore(PROMPT_CONTEXT_STORE, { keyPath: 'id' });
+          if (!db.objectStoreNames.contains(PROJECT_CONTEXT_STORE)) db.createObjectStore(PROJECT_CONTEXT_STORE, { keyPath: 'id' });
+        },
+        7: (db, tx) => {
+          if (!db.objectStoreNames.contains(STANDARD_PROMPT_STORE)) {
+            const store = db.createObjectStore(STANDARD_PROMPT_STORE, { keyPath: 'id', autoIncrement: true });
+            store.createIndex('name', 'name', { unique: false });
+            store.createIndex('createdAt', 'createdAt', { unique: false });
+          }
+          if (!db.objectStoreNames.contains(SYSTEM_PROMPT_STORE)) {
+            const store = db.createObjectStore(SYSTEM_PROMPT_STORE, { keyPath: 'id', autoIncrement: true });
+            store.createIndex('name', 'name', { unique: false });
+            store.createIndex('createdAt', 'createdAt', { unique: false });
+          }
+        },
+        8: (db, tx) => {
+          if (!db.objectStoreNames.contains(STANDARD_PROMPT_DRAFT_STORE)) db.createObjectStore(STANDARD_PROMPT_DRAFT_STORE, { keyPath: 'id' });
+          if (!db.objectStoreNames.contains(SYSTEM_PROMPT_DRAFT_STORE)) db.createObjectStore(SYSTEM_PROMPT_DRAFT_STORE, { keyPath: 'id' });
+        },
+        9: (db, tx) => {
+          if (!db.objectStoreNames.contains(SYSTEM_PROMPT_CONTEXT_STORE)) db.createObjectStore(SYSTEM_PROMPT_CONTEXT_STORE, { keyPath: 'id' });
+        },
+        10: (db, tx) => {
+          console.log("Migration to v10 complete: Stewarding state integrity.");
+        },
+        11: (db, tx) => {
+            // Create synthesis store
+            if (!db.objectStoreNames.contains(SYNTHESIS_STORE)) {
+                const store = db.createObjectStore(SYNTHESIS_STORE, { keyPath: 'id', autoIncrement: true });
+                store.createIndex('name', 'name', { unique: false });
+                store.createIndex('createdAt', 'createdAt', { unique: false });
+            }
+
+            if (!tx) {
+              console.warn("Migration v11: no transaction available for cursor data migration — skipping metadata unification.");
+              return;
+            }
+
+            // Unify metadata fields across all existing records
+            const stores = [
+                AGENT_STORE, PROMPT_STORE, STANDARD_PROMPT_STORE, SYSTEM_PROMPT_STORE,
+                PROJECT_STORE, SIGNAL_STORE, COGNISEED_STORE, LINGUASEED_STORE, ARCHSEED_STORE,
+                SYNTHESIS_STORE
+            ];
+
+            stores.forEach(storeName => {
+                if (db.objectStoreNames.contains(storeName)) {
+                    const store = tx.objectStore(storeName);
+                    const request = store.openCursor();
+
+                    request.onerror = (e) => {
+                      console.error(`Cursor migration v11 failed in store "${storeName}":`, (e.target as IDBRequest).error);
+                    };
+
+                    request.onsuccess = (e) => {
+                        const cursor = (e.target as IDBRequest).result as IDBCursorWithValue;
+                        if (cursor) {
+                            const data = cursor.value;
+                            let updated = false;
+                            if (data.isStarred === undefined) { data.isStarred = false; updated = true; }
+                            if (data.isPinned === undefined) { data.isPinned = false; updated = true; }
+                            if (data.isArchived === undefined) { data.isArchived = false; updated = true; }
+                            if (data.category === undefined) { data.category = ''; updated = true; }
+
+                            if (updated) {
+                              try {
+                                cursor.update(data);
+                              } catch (updateErr) {
+                                console.error(`Migration v11: cursor.update failed in "${storeName}" for record:`, data?.id, updateErr);
+                              }
+                            }
+                            cursor.continue();
+                        }
+                    };
+                }
+            });
+            console.log("Migration to v11 complete: Unified metadata initialized.");
+        },
+        12: (db, tx) => {
+            // Migration v12: Create _schemaVersion store for independent verification trail
+            // The store is already created at the top of onupgradeneeded (if version >= 12),
+            // so this migration is deliberately minimal — it just marks completion.
+            console.log("Migration to v12 complete: Schema version store initialized.");
+        },
+        13: (db, tx) => {
+            if (!db.objectStoreNames.contains(ROADMAP_STORE)) {
+                const store = db.createObjectStore(ROADMAP_STORE, { keyPath: 'id', autoIncrement: true });
+                store.createIndex('name', 'name', { unique: false });
+                store.createIndex('createdAt', 'createdAt', { unique: false });
+            }
+            if (!db.objectStoreNames.contains(ROADMAP_DRAFT_STORE)) {
+                db.createObjectStore(ROADMAP_DRAFT_STORE, { keyPath: 'id' });
+            }
+            console.log("Migration to v13 complete: Roadmap store initialized.");
+        }
+      };
+
+      for (let v = oldVersion + 1; v <= newVersion; v++) {
+        if (migrations[v]) {
+          try {
+            console.log(`Running migration for v${v}`);
+            migrations[v](db, tx);
+            // Record successful completion of this migration in the schema version store
+            if (tx && db.objectStoreNames.contains(SCHEMA_VERSION_STORE)) {
+              const metaStore = tx.objectStore(SCHEMA_VERSION_STORE);
+              metaStore.put({
+                version: v,
+                value: 'completed',
+                completedAt: new Date().toISOString()
+              });
+            }
+          } catch (err) {
+            console.error(`Migration v${v} FAILED:`, err);
+            // Record failure in schema version store
+            if (tx && db.objectStoreNames.contains(SCHEMA_VERSION_STORE)) {
+              try {
+                const metaStore = tx.objectStore(SCHEMA_VERSION_STORE);
+                metaStore.put({
+                  version: v,
+                  value: 'failed',
+                  error: String(err),
+                  failedAt: new Date().toISOString()
+                });
+              } catch (metaErr) {
+                console.error(`Failed to record migration failure in schema version store:`, metaErr);
+              }
+            }
+            // Reject the overall promise so the caller knows the DB is in an inconsistent state
+            reject(`Migration v${v} failed: ${err}`);
+            return;
+          }
+        }
       }
     };
   });
+
+  return initPromise;
+};
+
+/**
+ * Health check: verifies database integrity.
+ * Returns a diagnostics object with store status and migration history.
+ * Components can call this to detect corruption early.
+ */
+export const checkDatabaseHealth = async (): Promise<{
+  healthy: boolean;
+  storesPresent: string[];
+  storesMissing: string[];
+  schemaVersions: Record<string, unknown>;
+  errors: string[];
+}> => {
+  const diagnostics = {
+    healthy: true,
+    storesPresent: [] as string[],
+    storesMissing: [] as string[],
+    schemaVersions: {} as Record<string, unknown>,
+    errors: [] as string[]
+  };
+
+  try {
+    const db = await initDB();
+
+    const expectedStores = [
+      AGENT_STORE, PROMPT_STORE, STANDARD_PROMPT_STORE, SYSTEM_PROMPT_STORE,
+      PROJECT_STORE, SIGNAL_STORE, COGNISEED_STORE, LINGUASEED_STORE, ARCHSEED_STORE,
+      SYNTHESIS_STORE, ROADMAP_STORE, SCHEMA_VERSION_STORE
+    ];
+
+    expectedStores.forEach(storeName => {
+      if (db.objectStoreNames.contains(storeName)) {
+        diagnostics.storesPresent.push(storeName);
+      } else {
+        diagnostics.storesMissing.push(storeName);
+        diagnostics.healthy = false;
+        diagnostics.errors.push(`Missing expected store: ${storeName}`);
+      }
+    });
+
+    // Read schema version store
+    if (db.objectStoreNames.contains(SCHEMA_VERSION_STORE)) {
+      const tx = db.transaction(SCHEMA_VERSION_STORE, 'readonly');
+      const store = tx.objectStore(SCHEMA_VERSION_STORE);
+      const allVersions = await new Promise<Record<string, unknown>>((resolve, reject) => {
+        const request = store.getAll();
+        request.onsuccess = () => {
+          const result: Record<string, unknown> = {};
+          (request.result as any[]).forEach((item: any) => {
+            result[item.version] = item;
+          });
+          resolve(result);
+        };
+        request.onerror = () => reject(request.error);
+      });
+      diagnostics.schemaVersions = allVersions;
+
+      // Check for any recorded failures
+      for (const [version, record] of Object.entries(allVersions)) {
+        const rec = record as any;
+        if (rec.value === 'failed') {
+          diagnostics.healthy = false;
+          diagnostics.errors.push(`Migration v${version} recorded as FAILED: ${rec.error}`);
+        }
+      }
+    }
+  } catch (err: any) {
+    diagnostics.healthy = false;
+    diagnostics.errors.push(`Database init failed: ${err.message || String(err)}`);
+  }
+
+  return diagnostics;
 };
 
 const getStore = async (storeName: string, mode: IDBTransactionMode) => {
   const db = await initDB();
+  if (!db.objectStoreNames.contains(storeName)) {
+    throw new Error(`Store "${storeName}" does not exist in the database.`);
+  }
   const tx = db.transaction(storeName, mode);
   return tx.objectStore(storeName);
 };
@@ -150,6 +381,52 @@ export const saveDraft = (draft: {id: number, config: AgentConfig}): Promise<num
         const store = await getStore(AGENT_DRAFT_STORE, 'readwrite');
         const request = store.put(draft);
         request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+// Synthesis Functions
+export const addSynthesis = (synthesis: SavedSynthesis): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(SYNTHESIS_STORE, 'readwrite');
+        const request = store.add(synthesis);
+        request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const getAllSynthesis = (): Promise<SavedSynthesis[]> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(SYNTHESIS_STORE, 'readonly');
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const updateSynthesis = (synthesis: SavedSynthesis): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(SYNTHESIS_STORE, 'readwrite');
+        const request = store.put(synthesis);
+        request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const deleteSynthesis = (id: number): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(SYNTHESIS_STORE, 'readwrite');
+        const request = store.delete(id);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const clearAllSynthesis = (): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(SYNTHESIS_STORE, 'readwrite');
+        const request = store.clear();
+        request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
     });
 };
@@ -666,6 +943,79 @@ export const clearAllProjects = (): Promise<void> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(PROJECT_STORE, 'readwrite');
         const request = store.clear();
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+// Roadmap Functions
+export const addRoadmap = (roadmap: SavedRoadmap): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(ROADMAP_STORE, 'readwrite');
+        const request = store.add(roadmap);
+        request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const getAllRoadmaps = (): Promise<SavedRoadmap[]> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(ROADMAP_STORE, 'readonly');
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const updateRoadmap = (roadmap: SavedRoadmap): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(ROADMAP_STORE, 'readwrite');
+        const request = store.put(roadmap);
+        request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const deleteRoadmap = (id: number): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(ROADMAP_STORE, 'readwrite');
+        const request = store.delete(id);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const clearAllRoadmaps = (): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(ROADMAP_STORE, 'readwrite');
+        const request = store.clear();
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const saveRoadmapDraft = (draft: {id: number, config: RoadmapConfig}): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(ROADMAP_DRAFT_STORE, 'readwrite');
+        const request = store.put(draft);
+        request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const getRoadmapDraft = (id: number): Promise<{id: number, config: RoadmapConfig} | undefined> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(ROADMAP_DRAFT_STORE, 'readonly');
+        const request = store.get(id);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const clearRoadmapDraft = (id: number): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(ROADMAP_DRAFT_STORE, 'readwrite');
+        const request = store.delete(id);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
     });

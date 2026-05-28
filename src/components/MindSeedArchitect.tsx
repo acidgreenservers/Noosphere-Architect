@@ -4,12 +4,15 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { MindSeedConfig, GeneratedMindSeed, SavedMindSeed, MindSeedType } from '../types';
 import { generateMindSeed } from '../services/ai/mindSeedService';
-import { addMindSeed, getAllMindSeeds, deleteMindSeed, saveMindSeedDraft, getMindSeedDraft, clearMindSeedDraft } from '../services/dbService';
+import { addMindSeed, getAllMindSeeds, deleteMindSeed, updateMindSeed, getMindSeedDraft, saveMindSeedDraft, clearMindSeedDraft } from '../services/dbService';
 import { sanitizeFilename } from '../utils/security';
 import LoadingSpinner from './LoadingSpinner';
 import Toast from './Toast';
 import Modal from './Modal';
 import PreviewModal from './PreviewModal';
+import LibraryItem from './LibraryItem';
+import { StarredPinnedBar } from './StarredPinnedBar';
+import { UnifiedItem } from '../types';
 import styles from './Button.module.css';
 
 const MAX_CHARS = 20000;
@@ -24,8 +27,14 @@ const MindSeedArchitect: React.FC = () => {
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [searchTerm, setSearchText] = useState('');
   const [previewSeed, setPreviewSeed] = useState<SavedMindSeed | null>(null);
   const [seedToDelete, setSeedToDelete] = useState<number | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    starredSection: true,
+    pinnedSection: true,
+    allItemsSection: true
+  });
 
   useEffect(() => {
     loadSavedSeeds();
@@ -106,7 +115,11 @@ const MindSeedArchitect: React.FC = () => {
       name,
       config: { type: activeTab, text },
       result,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      isStarred: false,
+      isPinned: false,
+      isArchived: false,
+      category: ''
     };
 
     try {
@@ -134,6 +147,27 @@ const MindSeedArchitect: React.FC = () => {
       setSeedToDelete(null);
     }
   };
+
+  const handleUpdateMetadata = async (seed: SavedMindSeed, metadata: any) => {
+    const updated = { ...seed, ...metadata };
+    await updateMindSeed(updated);
+    setSavedSeeds(prev => prev.map(s => s.id === seed.id ? updated : s));
+    if (previewSeed?.id === seed.id) setPreviewSeed(updated);
+  };
+
+  const seedToUnified = (seed: SavedMindSeed): UnifiedItem => ({
+    id: `mindseed-${activeTab}-${seed.id}`,
+    name: seed.name,
+    type: 'mindseed',
+    original: seed,
+    createdAt: seed.createdAt,
+    isStarred: seed.isStarred || false,
+    isPinned: seed.isPinned || false,
+    isArchived: seed.isArchived || false,
+    category: seed.category || ''
+  });
+
+  const unifiedSeeds = savedSeeds.map(seedToUnified);
 
   const handleClear = async () => {
     setText('');
@@ -331,62 +365,88 @@ const MindSeedArchitect: React.FC = () => {
         {savedSeeds.length > 0 && (
           <div className="mt-12">
             <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Saved MindSeeds</h3>
-            <div className="grid grid-cols-1 gap-4">
-              {savedSeeds.map((seed) => (
-                <div key={seed.id} className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:border-blue-500 dark:hover:border-blue-400 transition-colors flex justify-between items-center group border-transparent">
-                  <div
-                    className="flex-grow cursor-pointer"
-                    onClick={() => {
-                        setText(seed.config.text);
-                        setActiveTab(seed.config.type);
-                        setResult(seed.result);
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            <div className="mb-6 space-y-4">
+                <StarredPinnedBar
+                    type="starred"
+                    items={unifiedSeeds}
+                    expanded={expandedSections.starredSection}
+                    onToggleExpand={() => setExpandedSections(prev => ({ ...prev, starredSection: !prev.starredSection }))}
+                    onToggleStar={(item) => handleUpdateMetadata(item.original, { isStarred: !item.original.isStarred })}
+                    onTogglePin={(item) => handleUpdateMetadata(item.original, { isPinned: !item.original.isPinned })}
+                    onToggleArchive={(item) => handleUpdateMetadata(item.original, { isArchived: true })}
+                    onDelete={(item) => handleDelete(item.original.id!)}
+                    onEdit={() => {}}
+                    onSelect={(id) => {
+                        const seed = savedSeeds.find(s => `mindseed-${activeTab}-${s.id}` === id);
+                        if (seed) {
+                            setText(seed.config.text);
+                            setActiveTab(seed.config.type);
+                            setResult(seed.result);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }
                     }}
-                  >
-                    <div className="flex items-center mb-1">
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase mr-2 ${
-                          seed.config.type === 'cogni' ? 'bg-orange-100 text-orange-700' :
-                          seed.config.type === 'lingua' ? 'bg-green-100 text-green-700' :
-                          'bg-violet-100 text-violet-700'
-                      }`}>
-                        {seed.config.type}
-                      </span>
-                      <span className="text-xs text-gray-500">{new Date(seed.createdAt).toLocaleDateString()}</span>
-                    </div>
-                    <p className="text-md font-medium text-gray-900 dark:text-gray-100 italic truncate max-w-md">"{seed.result.seed}"</p>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <button
-                        onClick={() => setPreviewSeed(seed)}
-                        className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-500 transition-colors"
-                        title="Preview"
-                    >
-                        <span className="material-icons">visibility</span>
-                    </button>
-                    <button
-                        onClick={() => handleCopy(seed.result, seed.config.type)}
-                        className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-500 transition-colors"
-                        title="Copy"
-                    >
-                        <span className="material-icons">content_copy</span>
-                    </button>
-                    <button
-                        onClick={() => handleExport(seed.result, seed.config.type)}
-                        className="p-2 text-gray-600 dark:text-gray-300 hover:text-green-500 transition-colors"
-                        title="Export"
-                    >
-                        <span className="material-icons">download</span>
-                    </button>
-                    <button
-                        onClick={() => handleDelete(seed.id!)}
-                        className="p-2 text-gray-600 dark:text-gray-300 hover:text-red-500 transition-colors"
-                        title="Delete"
-                    >
-                        <span className="material-icons">delete</span>
-                    </button>
-                  </div>
+                    selectedIds={new Set()}
+                />
+                <StarredPinnedBar
+                    type="pinned"
+                    items={unifiedSeeds}
+                    expanded={expandedSections.pinnedSection}
+                    onToggleExpand={() => setExpandedSections(prev => ({ ...prev, pinnedSection: !prev.pinnedSection }))}
+                    onToggleStar={(item) => handleUpdateMetadata(item.original, { isStarred: !item.original.isStarred })}
+                    onTogglePin={(item) => handleUpdateMetadata(item.original, { isPinned: !item.original.isPinned })}
+                    onToggleArchive={(item) => handleUpdateMetadata(item.original, { isArchived: true })}
+                    onDelete={(item) => handleDelete(item.original.id!)}
+                    onEdit={() => {}}
+                    onSelect={(id) => {
+                        const seed = savedSeeds.find(s => `mindseed-${activeTab}-${s.id}` === id);
+                        if (seed) {
+                            setText(seed.config.text);
+                            setActiveTab(seed.config.type);
+                            setResult(seed.result);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }
+                    }}
+                    selectedIds={new Set()}
+                />
+            </div>
+
+            <div className="mb-4">
+                <div className="relative">
+                    <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+                    <input
+                        type="text"
+                        placeholder="Search saved seeds..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchText(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    />
                 </div>
-              ))}
+            </div>
+            <div className="grid grid-cols-1 gap-4">
+              {savedSeeds
+                .filter(s => !s.isArchived && !s.isStarred && !s.isPinned && (s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.result.seed.toLowerCase().includes(searchTerm.toLowerCase())))
+                .map((seed) => (
+                    <LibraryItem
+                        key={seed.id}
+                        name={seed.result.seed}
+                        createdAt={seed.createdAt}
+                        metadata={seed}
+                        icon="spa"
+                        typeLabel={seed.config.type}
+                        onPreview={() => setPreviewSeed(seed)}
+                        onDelete={() => handleDelete(seed.id!)}
+                        onToggleStar={() => handleUpdateMetadata(seed, { isStarred: !seed.isStarred })}
+                        onTogglePin={() => handleUpdateMetadata(seed, { isPinned: !seed.isPinned })}
+                        onToggleArchive={() => handleUpdateMetadata(seed, { isArchived: true })}
+                        onClick={() => {
+                            setText(seed.config.text);
+                            setActiveTab(seed.config.type);
+                            setResult(seed.result);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                    />
+                ))}
             </div>
           </div>
         )}
@@ -399,6 +459,8 @@ const MindSeedArchitect: React.FC = () => {
         onClose={() => setPreviewSeed(null)}
         title={`${previewSeed?.config.type.charAt(0).toUpperCase()}${previewSeed?.config.type.slice(1)}Seed Preview`}
         mindSeed={previewSeed?.result}
+        metadata={previewSeed || undefined}
+        onUpdateMetadata={(metadata) => previewSeed && handleUpdateMetadata(previewSeed, metadata)}
         onCopy={() => {
             if (previewSeed) {
                 handleCopy(previewSeed.result, previewSeed.config.type);

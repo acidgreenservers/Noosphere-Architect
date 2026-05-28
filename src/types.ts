@@ -30,7 +30,14 @@ export interface UnifiedConfig {
   instructions?: string;
 }
 
-export interface SavedAgent {
+export interface LibraryMetadata {
+  category?: string;
+  isStarred?: boolean;
+  isPinned?: boolean;
+  isArchived?: boolean;
+}
+
+export interface SavedAgent extends LibraryMetadata {
   id?: number;
   name: string;
   config: AgentConfig | UnifiedConfig;
@@ -45,7 +52,7 @@ export interface PromptVersion {
   updatedAt: string;
 }
 
-export interface SavedPrompt {
+export interface SavedPrompt extends LibraryMetadata {
   id?: number;
   name: string;
   config: PromptConfig | AgentConfig | UnifiedConfig;
@@ -75,7 +82,7 @@ export interface GeneratedProjectFiles {
     rulesFile: string;
 }
 
-export interface SavedProject {
+export interface SavedProject extends LibraryMetadata {
     id?: number;
     name: string;
     config: ProjectConfig;
@@ -101,7 +108,7 @@ export interface GeneratedMindSeed {
   deployWhen: string;
 }
 
-export interface SavedMindSeed {
+export interface SavedMindSeed extends LibraryMetadata {
   id?: number;
   name: string;
   config: MindSeedConfig;
@@ -118,7 +125,7 @@ export interface ExtractedSignal {
   signalConstraints: string;
 }
 
-export interface SavedSignal {
+export interface SavedSignal extends LibraryMetadata {
   id?: number;
   name: string;
   config: SignalConfig;
@@ -126,4 +133,55 @@ export interface SavedSignal {
   promptSignal: string;
   signalConstraints: string;
   createdAt: string;
+}
+
+export interface RoadmapConfig {
+  rawText: string;
+}
+
+export interface GeneratedRoadmapTask {
+  title: string;
+  taskEntry: string;
+}
+
+export interface SavedRoadmap extends LibraryMetadata {
+  id?: number;
+  name: string;
+  config: RoadmapConfig;
+  generatedTask: string;
+  createdAt: string;
+}
+
+export interface SynthesisLine {
+  id: string;
+  content: string;
+  sourceId: string;
+  sourceName: string;
+  isSelected: boolean;
+}
+
+export interface SavedSynthesis extends LibraryMetadata {
+  id?: number;
+  name: string;
+  content: string;
+  lines: SynthesisLine[];
+  lineage: string[]; // List of source entry names
+  createdAt: string;
+}
+
+// ----------------------------------------------------------------------
+// UnifiedItem – a flattened representation used by ArchitectureOrganization
+// and the new StarredPinnedBar component. It aggregates the common
+// fields from all library entities (agents, prompts, projects, etc.).
+// ----------------------------------------------------------------------
+export interface UnifiedItem {
+    id: number | string;
+    name: string;
+    type: 'agent' | 'prompt-standard' | 'prompt-system' | 'project' | 'mindseed' | 'signal' | 'synthesis' | 'roadmap' | 'legacy-prompt';
+    original: any;
+    createdAt: string;
+    isStarred: boolean;
+    isPinned: boolean;
+    isArchived: boolean;
+    category: string;
 }

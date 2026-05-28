@@ -97,6 +97,18 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectView }) => {
                         description="Establish a high-level vision, standards, and rules to ensure all project components are consistent and aligned."
                         onClick={() => onSelectView('projectArchitect')}
                     />
+                    <ToolCard
+                        icon="inventory_2"
+                        title="Architecture Organization"
+                        description="A high-level command center to manage, categorize, and synthesize your architectural assets."
+                        onClick={() => onSelectView('architectureOrganization')}
+                    />
+                    <ToolCard
+                        icon="map"
+                        title="Roadmap Architect"
+                        description="Transform raw vision text into deeply actionable, rigorously detailed roadmap task entries."
+                        onClick={() => onSelectView('roadmapArchitect')}
+                    />
                     <ToolCard 
                         icon="settings_input_component" 
                         title="Agent API Settings" 

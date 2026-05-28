@@ -25,11 +25,11 @@ Noosphere-Architect is a sophisticated web application designed to architect hig
 
 ### Prerequisites
 
--   A valid Gemini API key
+-   A valid OpenRouter API key
 
 ### Setup
 
-The application runs directly in the browser and is configured to use an environment variable named `API_KEY` for the Gemini API key. You must have this variable available in your execution environment.
+The application runs directly in the browser and is configured to use OpenRouter for AI generation. You can configure your API Key and select your preferred models directly within the **Agent API Settings** tool.
 
 ## How to Use
 

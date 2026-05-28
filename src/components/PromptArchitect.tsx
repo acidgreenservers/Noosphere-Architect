@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { generateBasicPrompt } from '../services/ai/basicPromptService';
+import { generateStructuredSystemPrompt } from '../services/ai/structuredSystemPromptService';
 import { generateSkillBundle } from '../services/ai/skillBundleService';
 import { PromptConfig, SavedPrompt, PromptType, GeneratedPrompt, AgentConfig, GeneratedFiles } from '../types';
 import * as db from '../services/dbService';
@@ -10,8 +11,11 @@ import { sanitizeFilename } from '../utils/security';
 import LoadingSpinner from './LoadingSpinner';
 import Modal from './Modal';
 import PreviewModal from './PreviewModal';
+import LibraryItem from './LibraryItem';
 import Toast from './Toast';
 import GeneratedFilesDisplay from './GeneratedFilesDisplay';
+import { StarredPinnedBar } from './StarredPinnedBar';
+import { UnifiedItem } from '../types';
 
 const PROMPT_TEMPLATES = [
     {
@@ -64,14 +68,21 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
     const [savedPrompts, setSavedPrompts] = useState<SavedPrompt[]>([]);
     const [legacyPrompts, setLegacyPrompts] = useState<SavedPrompt[]>([]);
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+    const [searchTerm, setSearchText] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
     const [draftStatus, setDraftStatus] = useState<'unloaded' | 'loaded' | 'none'>('unloaded');
+    const [pendingDraft, setPendingDraft] = useState<{ type: PromptType; config: PromptConfig | AgentConfig } | null>(null);
     const checkingDraftRef = useRef<Record<PromptType, boolean>>({ standard: false, system: false });
 
     const [modalState, setModalState] = useState<{ mode: 'save' | 'edit'; prompt?: SavedPrompt } | null>(null);
     const [modalInput, setModalInput] = useState<{ name: string; prompt?: string; files?: GeneratedFiles }>({ name: '' });
     const [previewPrompt, setPreviewPrompt] = useState<SavedPrompt | null>(null);
     const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+    const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+        starredSection: true,
+        pinnedSection: true,
+        allItemsSection: true
+    });
 
 
     const loadSavedPrompts = useCallback(async () => {
@@ -97,17 +108,7 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
 
             const draft = await db.getTypedPromptDraft(activeTab, 1);
             if (draft?.config && Object.values(draft.config).some(v => v)) {
-                if (window.confirm(`An unsaved ${activeTab === 'standard' ? 'prompt' : 'skill'} draft was found. Do you want to load it?`)) {
-                    if (activeTab === 'standard') {
-                        setPromptConfig(draft.config as PromptConfig);
-                    } else {
-                        setSkillConfig(draft.config as AgentConfig);
-                    }
-                    setDraftStatus('loaded');
-                } else {
-                    await db.clearTypedPromptDraft(activeTab, 1);
-                    setDraftStatus('none');
-                }
+                setPendingDraft({ type: activeTab, config: draft.config });
             } else {
                 if (activeTab === 'standard') setPromptConfig({ goal: '', instructions: '' });
                 else setSkillConfig({ role: '', scope: '', goals: '', constraints: '' });
@@ -150,7 +151,8 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
         try {
             if (activeTab === 'standard') {
                 if (!promptConfig.goal.trim()) throw new Error("Please enter a goal.");
-                const result = await generateBasicPrompt(promptConfig);
+                // Utilize high-density reasoning topology for standard prompts
+                const result = await generateStructuredSystemPrompt(promptConfig);
                 setGeneratedPrompt(result);
             } else {
                 if (!skillConfig.role.trim() || !skillConfig.scope.trim()) throw new Error("Role and Scope are required.");
@@ -206,7 +208,11 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                 prompt: modalInput.prompt,
                 files: modalInput.files,
                 createdAt: new Date().toISOString(),
-                history: []
+                history: [],
+                isStarred: false,
+                isPinned: false,
+                isArchived: false,
+                category: ''
             };
             await db.addTypedPrompt(activeTab, newPrompt);
             setSuccessMessage('Saved successfully!');
@@ -223,6 +229,20 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
 
         loadSavedPrompts();
         setModalState(null);
+    };
+
+    const handleUpdateMetadata = async (prompt: SavedPrompt, metadata: any) => {
+        const updated = { ...prompt, ...metadata };
+        await db.updateTypedPrompt(activeTab, updated);
+        setSavedPrompts(prev => prev.map(p => p.id === prompt.id ? updated : p));
+        if (previewPrompt?.id === prompt.id) setPreviewPrompt(updated);
+    };
+
+    const handleLegacyUpdateMetadata = async (prompt: SavedPrompt, metadata: any) => {
+        const updated = { ...prompt, ...metadata };
+        await db.updatePrompt(updated);
+        setLegacyPrompts(prev => prev.map(p => p.id === prompt.id ? updated : p));
+        if (previewPrompt?.id === prompt.id) setPreviewPrompt(updated);
     };
     
     const handleDelete = async () => {
@@ -311,6 +331,40 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
         link.click();
         URL.revokeObjectURL(url);
     };
+
+    const handleAcceptDraft = () => {
+        if (!pendingDraft) return;
+        if (pendingDraft.type === 'standard') {
+            setPromptConfig(pendingDraft.config as PromptConfig);
+        } else {
+            setSkillConfig(pendingDraft.config as AgentConfig);
+        }
+        setDraftStatus('loaded');
+        setPendingDraft(null);
+    };
+
+    const handleDeclineDraft = async () => {
+        if (!pendingDraft) return;
+        await db.clearTypedPromptDraft(pendingDraft.type, 1);
+        setDraftStatus('none');
+        setPendingDraft(null);
+    };
+
+    const promptToUnified = (prompt: SavedPrompt, isLegacy: boolean): UnifiedItem => ({
+        id: isLegacy ? `legacy-${prompt.id}` : `prompt-${activeTab}-${prompt.id}`,
+        name: prompt.name,
+        type: activeTab === 'standard' ? 'prompt-standard' : 'prompt-system',
+        original: prompt,
+        createdAt: prompt.createdAt,
+        isStarred: prompt.isStarred || false,
+        isPinned: prompt.isPinned || false,
+        isArchived: prompt.isArchived || false,
+        category: prompt.category || ''
+    });
+
+    const unifiedPrompts = savedPrompts.map(p => promptToUnified(p, false));
+    const unifiedLegacy = legacyPrompts.map(p => promptToUnified(p, true));
+    const allUnified = [...unifiedPrompts, ...unifiedLegacy];
 
     return (
         <div className="max-w-4xl mx-auto">
@@ -462,47 +516,116 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                             </button>
                         </div>
                     </div>
-                    <div className="space-y-4">
-                        {savedPrompts.map(p => (
-                            <div key={p.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border border-gray-100 dark:border-gray-700 flex justify-between items-center hover:shadow-lg transition-all">
-                                <div className="flex-grow cursor-pointer" onClick={() => handleLoadSavedPrompt(p)}>
-                                    <div className="flex items-center gap-2">
-                                        <p className="font-semibold text-gray-900 dark:text-gray-100">{p.name}</p>
-                                    </div>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">Saved on {new Date(p.createdAt).toLocaleDateString()}</p>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <button onClick={() => setPreviewPrompt(p)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-500" title="Preview"><span className="material-icons">visibility</span></button>
-                                    <button onClick={() => { handleOpenEditModal(p); }} className="p-2 text-gray-600 dark:text-gray-300 hover:text-green-500" title="Edit"><span className="material-icons">edit</span></button>
-                                    <button onClick={() => { setPreviewPrompt(p); setIsDeleteConfirmOpen(true); }} className="p-2 text-gray-600 dark:text-gray-300 hover:text-red-500" title="Delete"><span className="material-icons">delete</span></button>
-                                </div>
-                            </div>
-                        ))}
 
-                        {legacyPrompts.map(p => (
-                            <div key={`legacy-${p.id}`} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border border-gray-100 dark:border-gray-700 flex justify-between items-center hover:shadow-lg transition-all">
-                                <div className="flex-grow cursor-pointer" onClick={() => handleLoadSavedPrompt(p)}>
-                                    <div className="flex items-center gap-2">
-                                        <p className="font-semibold text-gray-900 dark:text-gray-100">{p.name}</p>
-                                        <span className="px-2 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 text-[10px] font-bold uppercase tracking-wider rounded">Legacy</span>
-                                    </div>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">Saved on {new Date(p.createdAt).toLocaleDateString()}</p>
-                                    {p.prompt && (
-                                        <div className="mt-2 flex items-center gap-2">
-                                            <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                                                <span className="material-icons text-xs">warning</span>
-                                                Legacy single-string format
-                                            </span>
-                                            <button onClick={(e) => { e.stopPropagation(); handleExportLegacyMd(p.prompt!, p.name); }} className="text-xs text-blue-500 hover:underline">Export MD</button>
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <button onClick={() => setPreviewPrompt(p)} className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-500" title="Preview"><span className="material-icons">visibility</span></button>
-                                    <button onClick={() => { setPreviewPrompt(p); setIsDeleteConfirmOpen(true); }} className="p-2 text-gray-600 dark:text-gray-300 hover:text-red-500" title="Delete"><span className="material-icons">delete</span></button>
-                                </div>
-                            </div>
-                        ))}
+                    <div className="mb-6 space-y-4">
+                        <StarredPinnedBar
+                            type="starred"
+                            items={allUnified}
+                            expanded={expandedSections.starredSection}
+                            onToggleExpand={() => setExpandedSections(prev => ({ ...prev, starredSection: !prev.starredSection }))}
+                            onToggleStar={(item) => {
+                                const isLegacy = legacyPrompts.some(lp => lp.id === item.original.id);
+                                if (isLegacy) handleLegacyUpdateMetadata(item.original, { isStarred: !item.original.isStarred });
+                                else handleUpdateMetadata(item.original, { isStarred: !item.original.isStarred });
+                            }}
+                            onTogglePin={(item) => {
+                                const isLegacy = legacyPrompts.some(lp => lp.id === item.original.id);
+                                if (isLegacy) handleLegacyUpdateMetadata(item.original, { isPinned: !item.original.isPinned });
+                                else handleUpdateMetadata(item.original, { isPinned: !item.original.isPinned });
+                            }}
+                            onToggleArchive={(item) => {
+                                const isLegacy = legacyPrompts.some(lp => lp.id === item.original.id);
+                                if (isLegacy) handleLegacyUpdateMetadata(item.original, { isArchived: true });
+                                else handleUpdateMetadata(item.original, { isArchived: true });
+                            }}
+                            onDelete={(item) => { setPreviewPrompt(item.original); setIsDeleteConfirmOpen(true); }}
+                            onEdit={(item) => handleOpenEditModal(item.original)}
+                            onSelect={(id) => {
+                                const prompt = savedPrompts.find(p => `prompt-${activeTab}-${p.id}` === id) || legacyPrompts.find(p => `legacy-${p.id}` === id);
+                                if (prompt) handleLoadSavedPrompt(prompt);
+                            }}
+                            selectedIds={new Set()}
+                        />
+                        <StarredPinnedBar
+                            type="pinned"
+                            items={allUnified}
+                            expanded={expandedSections.pinnedSection}
+                            onToggleExpand={() => setExpandedSections(prev => ({ ...prev, pinnedSection: !prev.pinnedSection }))}
+                            onToggleStar={(item) => {
+                                const isLegacy = legacyPrompts.some(lp => lp.id === item.original.id);
+                                if (isLegacy) handleLegacyUpdateMetadata(item.original, { isStarred: !item.original.isStarred });
+                                else handleUpdateMetadata(item.original, { isStarred: !item.original.isStarred });
+                            }}
+                            onTogglePin={(item) => {
+                                const isLegacy = legacyPrompts.some(lp => lp.id === item.original.id);
+                                if (isLegacy) handleLegacyUpdateMetadata(item.original, { isPinned: !item.original.isPinned });
+                                else handleUpdateMetadata(item.original, { isPinned: !item.original.isPinned });
+                            }}
+                            onToggleArchive={(item) => {
+                                const isLegacy = legacyPrompts.some(lp => lp.id === item.original.id);
+                                if (isLegacy) handleLegacyUpdateMetadata(item.original, { isArchived: true });
+                                else handleUpdateMetadata(item.original, { isArchived: true });
+                            }}
+                            onDelete={(item) => { setPreviewPrompt(item.original); setIsDeleteConfirmOpen(true); }}
+                            onEdit={(item) => handleOpenEditModal(item.original)}
+                            onSelect={(id) => {
+                                const prompt = savedPrompts.find(p => `prompt-${activeTab}-${p.id}` === id) || legacyPrompts.find(p => `legacy-${p.id}` === id);
+                                if (prompt) handleLoadSavedPrompt(prompt);
+                            }}
+                            selectedIds={new Set()}
+                        />
+                    </div>
+
+                    <div className="mb-4">
+                        <div className="relative">
+                            <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+                            <input
+                                type="text"
+                                placeholder="Search saved items..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchText(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                            />
+                        </div>
+                    </div>
+                    <div className="space-y-4">
+                        {savedPrompts
+                            .filter(p => !p.isArchived && !p.isStarred && !p.isPinned && p.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                            .map(p => (
+                                <LibraryItem
+                                    key={p.id}
+                                    name={p.name}
+                                    createdAt={p.createdAt}
+                                    metadata={p}
+                                    icon={activeTab === 'standard' ? 'article' : 'extension'}
+                                    onPreview={() => setPreviewPrompt(p)}
+                                    onEdit={() => handleOpenEditModal(p)}
+                                    onDelete={() => { setPreviewPrompt(p); setIsDeleteConfirmOpen(true); }}
+                                    onToggleStar={() => handleUpdateMetadata(p, { isStarred: !p.isStarred })}
+                                    onTogglePin={() => handleUpdateMetadata(p, { isPinned: !p.isPinned })}
+                                    onToggleArchive={() => handleUpdateMetadata(p, { isArchived: true })}
+                                    onClick={() => handleLoadSavedPrompt(p)}
+                                />
+                            ))}
+
+                        {legacyPrompts
+                            .filter(p => !p.isArchived && !p.isStarred && !p.isPinned && p.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                            .map(p => (
+                                <LibraryItem
+                                    key={`legacy-${p.id}`}
+                                    name={p.name}
+                                    createdAt={p.createdAt}
+                                    metadata={p}
+                                    isLegacy
+                                    icon="history"
+                                    onPreview={() => setPreviewPrompt(p)}
+                                    onDelete={() => { setPreviewPrompt(p); setIsDeleteConfirmOpen(true); }}
+                                    onToggleStar={() => handleLegacyUpdateMetadata(p, { isStarred: !p.isStarred })}
+                                    onTogglePin={() => handleLegacyUpdateMetadata(p, { isPinned: !p.isPinned })}
+                                    onToggleArchive={() => handleLegacyUpdateMetadata(p, { isArchived: true })}
+                                    onClick={() => handleLoadSavedPrompt(p)}
+                                />
+                            ))}
                     </div>
                 </div>
             )}
@@ -536,6 +659,14 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                     'constraints.md': previewPrompt.files.constraintsFile,
                     'SKILL.md': previewPrompt.files.skillFile
                 } : undefined)}
+                metadata={previewPrompt || undefined}
+                onUpdateMetadata={(metadata) => {
+                    if (previewPrompt) {
+                        const isLegacy = legacyPrompts.some(lp => lp.id === previewPrompt.id);
+                        if (isLegacy) handleLegacyUpdateMetadata(previewPrompt, metadata);
+                        else handleUpdateMetadata(previewPrompt, metadata);
+                    }
+                }}
                 onCopy={() => {
                     const text = previewPrompt?.prompt || (previewPrompt?.files ? Object.values(previewPrompt.files).join('\n\n---\n\n') : '');
                     navigator.clipboard.writeText(text);
@@ -572,6 +703,28 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                             if (isLegacy) handleLegacyDelete(previewPrompt!.id!);
                             else handleDelete();
                         }} className="px-4 py-2 bg-red-600 text-white rounded-lg">Delete</button>
+                    </div>
+                </div>
+            </Modal>
+
+            <Modal isOpen={!!pendingDraft} onClose={() => setPendingDraft(null)} title="Unsaved Draft Found">
+                <div className="space-y-4">
+                    <p className="text-gray-600 dark:text-gray-400">
+                        An unsaved {pendingDraft?.type === 'standard' ? 'prompt' : 'skill'} draft was found from your last session. Would you like to restore it?
+                    </p>
+                    <div className="flex justify-end space-x-3 mt-6">
+                        <button
+                            onClick={handleDeclineDraft}
+                            className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                        >
+                            Discard
+                        </button>
+                        <button
+                            onClick={handleAcceptDraft}
+                            className={`px-4 py-2 text-white rounded-lg transition-colors shadow-sm ${activeTab === 'standard' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-purple-600 hover:bg-purple-700'}`}
+                        >
+                            Restore Draft
+                        </button>
                     </div>
                 </div>
             </Modal>

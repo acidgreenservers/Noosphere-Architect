@@ -20,7 +20,7 @@ This document outlines the potential future direction for AI Agent Architect. Ou
 ## Phase 3: Advanced AI Capabilities
 
 -   **[ ] Multi-Agent Systems:** Introduce features for defining interactions and relationships between multiple agents within a single project.
--   **[ ] Model Selection:** Allow users to choose between different Gemini models (e.g., Pro for high-quality generation, Flash for speed) based on their needs.
+-   **[ ] Model Selection:** Allow users to choose between curated OpenRouter models (DeepSeek, Xiaomi Mimo, OpenAI, etc.) based on their architectural needs.
 -   **[ ] Feedback Loop:** Implement a mechanism for users to rate the quality of the generated files and provide feedback, which could be used to refine the generation prompts over time.
 
 ## Long-Term Vision
