@@ -28,6 +28,7 @@ const RoadmapArchitect: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [draftStatus, setDraftStatus] = useState<'unloaded' | 'loaded' | 'none'>('unloaded');
   const [pendingDraft, setPendingDraft] = useState<RoadmapConfig | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const isCheckingDraft = useRef(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     starredSection: true,
@@ -53,7 +54,7 @@ const RoadmapArchitect: React.FC = () => {
       isCheckingDraft.current = true;
 
       const draft = await db.getRoadmapDraft(1);
-      if (draft?.config && draft.config.rawText) {
+      if (draft?.config && (draft.config.rawText || draft.config.fileContext)) {
         setPendingDraft(draft.config);
       } else {
         setDraftStatus('none');
@@ -65,12 +66,12 @@ const RoadmapArchitect: React.FC = () => {
   useEffect(() => {
     if (draftStatus === 'unloaded') return;
     const handler = setTimeout(() => {
-      if (config.rawText) {
+      if (config.rawText || config.fileContext) {
         db.saveRoadmapDraft({ id: 1, config });
       }
     }, 1500);
     return () => clearTimeout(handler);
-  }, [config.rawText, draftStatus]);
+  }, [config, draftStatus]);
 
   const handleGenerate = useCallback(async () => {
     setIsLoading(true);
@@ -117,6 +118,61 @@ const RoadmapArchitect: React.FC = () => {
     setGeneratedTask(null);
     setError(null);
     db.clearRoadmapDraft(1);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      readFile(file);
+    }
+  };
+
+  const readFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      setConfig(prev => ({
+        ...prev,
+        fileContext: {
+          name: file.name,
+          content: content
+        }
+      }));
+    };
+    reader.onerror = () => {
+      setError('Failed to read the file. Please try again.');
+    };
+    reader.readAsText(file);
+  };
+
+  const removeFile = () => {
+    setConfig(prev => {
+      const newConfig = { ...prev };
+      delete newConfig.fileContext;
+      return newConfig;
+    });
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      readFile(file);
+    }
   };
 
   const handleSaveRoadmap = async () => {
@@ -229,27 +285,95 @@ const RoadmapArchitect: React.FC = () => {
             </h2>
           </div>
 
-          <div>
-            <label htmlFor="rawText" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Paste Vision / Context <span className="text-red-500 ml-1">*</span>
-            </label>
-            <textarea
-              id="rawText"
-              rows={12}
-              value={config.rawText}
-              onChange={(e) => setConfig({ rawText: e.target.value })}
-              placeholder="Paste your raw thoughts, vision notes, requirements, or any unstructured text up to 20,000 characters..."
-              className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent hover:ring-2 hover:ring-amber-500/20 text-gray-900 dark:text-gray-100"
-              required
-            />
-            <div className="flex justify-end mt-1">
-              <span className={`text-xs font-mono px-2 py-1 rounded ${
-                charCount > MAX_CHARS
-                  ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
-              }`}>
-                {charCount.toLocaleString()} / {MAX_CHARS.toLocaleString()} characters
-              </span>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-2">
+              <label htmlFor="rawText" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Paste Vision / Context <span className="text-red-500 ml-1">*</span>
+              </label>
+              <textarea
+                id="rawText"
+                rows={12}
+                value={config.rawText}
+                onChange={(e) => setConfig(prev => ({ ...prev, rawText: e.target.value }))}
+                placeholder="Paste your raw thoughts, vision notes, requirements, or any unstructured text up to 20,000 characters..."
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent hover:ring-2 hover:ring-amber-500/20 text-gray-900 dark:text-gray-100"
+                required
+              />
+              <div className="flex justify-end mt-1">
+                <span className={`text-xs font-mono px-2 py-1 rounded ${
+                  charCount > MAX_CHARS
+                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                }`}>
+                  {charCount.toLocaleString()} / {MAX_CHARS.toLocaleString()} characters
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Anchor File Context (Optional)
+              </label>
+              {!config.fileContext ? (
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer h-[326px] flex flex-col items-center justify-center ${
+                    isDragging
+                      ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20'
+                      : 'border-gray-300 dark:border-gray-600 hover:border-amber-500 dark:hover:border-amber-400 bg-gray-50/50 dark:bg-gray-900/20'
+                  }`}
+                  onClick={() => document.getElementById('fileInput')?.click()}
+                >
+                  <input
+                    type="file"
+                    id="fileInput"
+                    className="hidden"
+                    onChange={handleFileChange}
+                    accept=".txt,.md,.json,.js,.ts,.tsx,.html,.css"
+                  />
+                  <span className={`material-icons text-4xl mb-2 transition-colors ${isDragging ? 'text-amber-500' : 'text-gray-400'}`}>upload_file</span>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                    Drop anchor file here
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    Or click to browse
+                  </p>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-4 px-2">
+                    Supports .txt, .md, and code files. This file grounds the AI's inference patterns.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col h-[326px] bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50 rounded-xl overflow-hidden">
+                  <div className="p-3 border-b border-amber-200 dark:border-amber-800/50 flex items-center justify-between bg-amber-100/50 dark:bg-amber-900/30">
+                    <div className="flex items-center overflow-hidden mr-2">
+                      <span className="material-icons text-amber-600 dark:text-amber-400 text-sm mr-2">description</span>
+                      <span className="text-xs font-bold text-amber-800 dark:text-amber-200 truncate">
+                        {config.fileContext.name}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={removeFile}
+                      className="p-1 hover:bg-amber-200 dark:hover:bg-amber-800 rounded-full text-amber-600 dark:text-amber-400 transition-colors"
+                      title="Remove file"
+                    >
+                      <span className="material-icons text-sm">close</span>
+                    </button>
+                  </div>
+                  <div className="flex-1 p-4 overflow-y-auto">
+                    <div className="text-[10px] font-mono text-amber-800/70 dark:text-amber-300/60 whitespace-pre-wrap line-clamp-[15]">
+                      {config.fileContext.content}
+                    </div>
+                  </div>
+                  <div className="p-3 bg-amber-100/30 dark:bg-amber-900/20 text-center">
+                    <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">
+                      Attached as Anchor Context
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
