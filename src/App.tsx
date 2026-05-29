@@ -13,8 +13,9 @@ const AgentApiSettings = lazy(() => import('./components/AgentApiSettings'));
 const SignalExtractor = lazy(() => import('./components/SignalExtractor'));
 const ArchitectureOrganization = lazy(() => import('./components/ArchitectureOrganization'));
 const RoadmapArchitect = lazy(() => import('./components/RoadmapArchitect'));
+const DesignArchitect = lazy(() => import('./components/DesignArchitect'));
 
-export type View = 'landing' | 'agentArchitect' | 'promptArchitect' | 'projectArchitect' | 'mindSeedArchitect' | 'agentApiSettings' | 'signalExtractor' | 'architectureOrganization' | 'roadmapArchitect';
+export type View = 'landing' | 'agentArchitect' | 'promptArchitect' | 'projectArchitect' | 'mindSeedArchitect' | 'agentApiSettings' | 'signalExtractor' | 'architectureOrganization' | 'roadmapArchitect' | 'designArchitect';
 
 const App: React.FC = () => {
   const [view, setView] = useState<View>('landing');
@@ -43,6 +44,8 @@ const App: React.FC = () => {
         return <ArchitectureOrganization />;
       case 'roadmapArchitect':
         return <RoadmapArchitect />;
+      case 'designArchitect':
+        return <DesignArchitect />;
       case 'landing':
       default:
         return <LandingPage onSelectView={setView} />;
@@ -60,6 +63,7 @@ const App: React.FC = () => {
         onSignalExtractorClick={() => setView('signalExtractor')}
         onArchitectureOrganizationClick={() => setView('architectureOrganization')}
         onRoadmapArchitectClick={() => setView('roadmapArchitect')}
+        onDesignArchitectClick={() => setView('designArchitect')}
         showHomeButton={view !== 'landing'}
       />
       <main className="container mx-auto p-4 md:p-8">

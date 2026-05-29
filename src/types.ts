@@ -181,11 +181,47 @@ export interface SavedSynthesis extends LibraryMetadata {
 export interface UnifiedItem {
     id: number | string;
     name: string;
-    type: 'agent' | 'prompt-standard' | 'prompt-system' | 'project' | 'mindseed' | 'signal' | 'synthesis' | 'roadmap' | 'legacy-prompt';
+    type: 'agent' | 'prompt-standard' | 'prompt-system' | 'project' | 'mindseed' | 'signal' | 'synthesis' | 'roadmap' | 'legacy-prompt' | 'design-conversation';
     original: any;
     createdAt: string;
     isStarred: boolean;
     isPinned: boolean;
     isArchived: boolean;
     category: string;
+}
+
+// ----------------------------------------------------------------------
+// Design Architect — Stitch-methodology prompt chaining conversation
+// ----------------------------------------------------------------------
+export type DesignStepType = 'start' | 'vibe' | 'refine' | 'theme' | 'images' | 'language';
+
+export interface DesignStep {
+  id: string;
+  conversationId?: number;
+  stepType: DesignStepType;
+  parentStepId: string | null;
+  branchLabel: string | null;
+  prompt: string;          // Accumulated prompt at this point (pre-computed)
+  userInput: string;       // Raw user input at this step
+  order: number;           // For deterministic ordering in flat storage
+  createdAt: string;
+}
+
+export interface DesignConversation extends LibraryMetadata {
+  id?: number;
+  name: string;
+  description?: string;
+  rootStepId: string;
+  steps: DesignStep[];
+  activeStepId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DesignTemplate extends LibraryMetadata {
+  id?: number;
+  name: string;
+  description: string;
+  steps: Omit<DesignStep, 'id' | 'conversationId' | 'createdAt' | 'order'>[];
+  createdAt: string;
 }

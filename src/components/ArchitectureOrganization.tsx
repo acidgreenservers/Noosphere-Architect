@@ -22,7 +22,8 @@ const TYPE_LABELS: Record<UnifiedItem['type'], string> = {
     'signal': 'Signals',
     'synthesis': 'Syntheses',
     'roadmap': 'Roadmaps',
-    'legacy-prompt': 'Legacy Prompts'
+    'legacy-prompt': 'Legacy Prompts',
+    'design-conversation': 'Design Conversations'
 };
 
 const TYPE_ICONS: Record<UnifiedItem['type'], string> = {
@@ -34,7 +35,8 @@ const TYPE_ICONS: Record<UnifiedItem['type'], string> = {
     'signal': 'signal_cellular_alt',
     'synthesis': 'auto_fix_high',
     'roadmap': 'map',
-    'legacy-prompt': 'history'
+    'legacy-prompt': 'history',
+    'design-conversation': 'design_services'
 };
 
 const ArchitectureOrganization: React.FC = () => {
@@ -58,7 +60,7 @@ const ArchitectureOrganization: React.FC = () => {
         const [
             agents, prompts, stdPrompts, sysPrompts,
             projects, seedsCogni, seedsLingua, seedsArch,
-            signals, syntheses, roadmaps
+            signals, syntheses, roadmaps, designConversations
         ] = await Promise.all([
             db.getAllAgents(),
             db.getAllPrompts(),
@@ -70,7 +72,8 @@ const ArchitectureOrganization: React.FC = () => {
             db.getAllMindSeeds('arch'),
             db.getAllSignals(),
             db.getAllSynthesis(),
-            db.getAllRoadmaps()
+            db.getAllRoadmaps(),
+            db.getAllDesignConversations()
         ]);
 
         const unified: UnifiedItem[] = [
@@ -84,7 +87,8 @@ const ArchitectureOrganization: React.FC = () => {
             ...seedsArch.map(i => ({ ...mapToUnified(i, 'mindseed') })),
             ...signals.map(i => ({ ...mapToUnified(i, 'signal') })),
             ...syntheses.map(i => ({ ...mapToUnified(i, 'synthesis') })),
-            ...roadmaps.map(i => ({ ...mapToUnified(i, 'roadmap') }))
+            ...roadmaps.map(i => ({ ...mapToUnified(i, 'roadmap') })),
+            ...designConversations.map(i => ({ ...mapToUnified(i, 'design-conversation') }))
         ];
 
         setItems(unified.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
@@ -163,6 +167,7 @@ const ArchitectureOrganization: React.FC = () => {
             case 'signal': await db.updateSignal(original); break;
             case 'synthesis': await db.updateSynthesis(original); break;
             case 'roadmap': await db.updateRoadmap(original); break;
+            case 'design-conversation': await db.updateDesignConversation(original); break;
         }
     };
 
@@ -224,6 +229,7 @@ const ArchitectureOrganization: React.FC = () => {
             case 'signal': await db.deleteSignal(id); break;
             case 'synthesis': await db.deleteSynthesis(id); break;
             case 'roadmap': await db.deleteRoadmap(id); break;
+            case 'design-conversation': await db.deleteDesignConversation(id); break;
         }
         setItems(prev => prev.filter(i => i.id !== item.id));
         setToast({ message: 'Item deleted', type: 'success' });

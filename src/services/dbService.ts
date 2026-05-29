@@ -1,7 +1,7 @@
 import { SavedAgent, SavedPrompt, AgentConfig, PromptConfig, SavedProject, ProjectConfig, SavedSignal, SignalConfig, SavedMindSeed, MindSeedConfig, SavedSynthesis, SavedRoadmap, RoadmapConfig, MindSeedType, PromptType } from '../types';
 
 const DB_NAME = 'NoosphereArchitectDB';
-const DB_VERSION = 13; // Incremented for Roadmap Architect store
+const DB_VERSION = 14; // Incremented for Design Architect store
 const AGENT_STORE = 'savedAgents';
 const PROMPT_STORE = 'savedPrompts'; // Legacy, keeping for migration or reference
 const STANDARD_PROMPT_STORE = 'standardPrompts';
@@ -27,6 +27,10 @@ const PROJECT_CONTEXT_STORE = 'projectContext';
 export const SYNTHESIS_STORE = 'savedSynthesis';
 const ROADMAP_STORE = 'savedRoadmaps';
 const ROADMAP_DRAFT_STORE = 'roadmapDraft';
+const DESIGN_CONVERSATION_STORE = 'designConversations';
+const DESIGN_STEP_STORE = 'designSteps';
+const DESIGN_TEMPLATE_STORE = 'designTemplates';
+const DESIGN_CONVERSATION_DRAFT_STORE = 'designConversationDraft';
 const SCHEMA_VERSION_STORE = '_schemaVersion'; // Internal store for migration verification
 
 
@@ -238,7 +242,7 @@ const initDB = (): Promise<IDBDatabase> => {
             // so this migration is deliberately minimal — it just marks completion.
             console.log("Migration to v12 complete: Schema version store initialized.");
         },
-        13: (db, tx) => {
+         13: (db, tx) => {
             if (!db.objectStoreNames.contains(ROADMAP_STORE)) {
                 const store = db.createObjectStore(ROADMAP_STORE, { keyPath: 'id', autoIncrement: true });
                 store.createIndex('name', 'name', { unique: false });
@@ -248,6 +252,30 @@ const initDB = (): Promise<IDBDatabase> => {
                 db.createObjectStore(ROADMAP_DRAFT_STORE, { keyPath: 'id' });
             }
             console.log("Migration to v13 complete: Roadmap store initialized.");
+        },
+        14: (db, tx) => {
+            if (!db.objectStoreNames.contains(DESIGN_CONVERSATION_STORE)) {
+                const store = db.createObjectStore(DESIGN_CONVERSATION_STORE, { keyPath: 'id', autoIncrement: true });
+                store.createIndex('name', 'name', { unique: false });
+                store.createIndex('createdAt', 'createdAt', { unique: false });
+                store.createIndex('updatedAt', 'updatedAt', { unique: false });
+            }
+            if (!db.objectStoreNames.contains(DESIGN_STEP_STORE)) {
+                const store = db.createObjectStore(DESIGN_STEP_STORE, { keyPath: 'id', autoIncrement: true });
+                store.createIndex('conversationId', 'conversationId', { unique: false });
+                store.createIndex('parentStepId', 'parentStepId', { unique: false });
+                store.createIndex('stepType', 'stepType', { unique: false });
+                store.createIndex('order', 'order', { unique: false });
+            }
+            if (!db.objectStoreNames.contains(DESIGN_TEMPLATE_STORE)) {
+                const store = db.createObjectStore(DESIGN_TEMPLATE_STORE, { keyPath: 'id', autoIncrement: true });
+                store.createIndex('name', 'name', { unique: false });
+                store.createIndex('createdAt', 'createdAt', { unique: false });
+            }
+            if (!db.objectStoreNames.contains(DESIGN_CONVERSATION_DRAFT_STORE)) {
+                db.createObjectStore(DESIGN_CONVERSATION_DRAFT_STORE, { keyPath: 'id' });
+            }
+            console.log("Migration to v14 complete: Design Architect stores initialized.");
         }
       };
 
@@ -317,9 +345,10 @@ export const checkDatabaseHealth = async (): Promise<{
     const db = await initDB();
 
     const expectedStores = [
-      AGENT_STORE, PROMPT_STORE, STANDARD_PROMPT_STORE, SYSTEM_PROMPT_STORE,
-      PROJECT_STORE, SIGNAL_STORE, COGNISEED_STORE, LINGUASEED_STORE, ARCHSEED_STORE,
-      SYNTHESIS_STORE, ROADMAP_STORE, SCHEMA_VERSION_STORE
+    AGENT_STORE, PROMPT_STORE, STANDARD_PROMPT_STORE, SYSTEM_PROMPT_STORE,
+    PROJECT_STORE, SIGNAL_STORE, COGNISEED_STORE, LINGUASEED_STORE, ARCHSEED_STORE,
+    SYNTHESIS_STORE, ROADMAP_STORE, SCHEMA_VERSION_STORE,
+    DESIGN_CONVERSATION_STORE, DESIGN_STEP_STORE, DESIGN_TEMPLATE_STORE
     ];
 
     expectedStores.forEach(storeName => {
@@ -1015,6 +1044,150 @@ export const getRoadmapDraft = (id: number): Promise<{id: number, config: Roadma
 export const clearRoadmapDraft = (id: number): Promise<void> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(ROADMAP_DRAFT_STORE, 'readwrite');
+        const request = store.delete(id);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+// ── Design Conversation CRUD ─────────────────────────────────────────
+
+export const addDesignConversation = (conversation: import('../types').DesignConversation): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(DESIGN_CONVERSATION_STORE, 'readwrite');
+        const request = store.add(conversation);
+        request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const getAllDesignConversations = (): Promise<import('../types').DesignConversation[]> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(DESIGN_CONVERSATION_STORE, 'readonly');
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result.sort((a: any, b: any) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()));
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const updateDesignConversation = (conversation: import('../types').DesignConversation): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(DESIGN_CONVERSATION_STORE, 'readwrite');
+        const request = store.put(conversation);
+        request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const deleteDesignConversation = (id: number): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(DESIGN_CONVERSATION_STORE, 'readwrite');
+        const request = store.delete(id);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+// ── Design Step CRUD ───────────────────────────────────────────────
+
+export const addDesignStep = (step: import('../types').DesignStep): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(DESIGN_STEP_STORE, 'readwrite');
+        const request = store.add(step);
+        request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const getAllDesignSteps = (): Promise<import('../types').DesignStep[]> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(DESIGN_STEP_STORE, 'readonly');
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const getDesignStepsByConversation = (conversationId: number): Promise<import('../types').DesignStep[]> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(DESIGN_STEP_STORE, 'readonly');
+        const index = store.index('conversationId');
+        const request = index.getAll(conversationId);
+        request.onsuccess = () => resolve(request.result.sort((a: any, b: any) => a.order - b.order));
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const updateDesignStep = (step: import('../types').DesignStep): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(DESIGN_STEP_STORE, 'readwrite');
+        const request = store.put(step);
+        request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const deleteDesignStep = (id: number): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(DESIGN_STEP_STORE, 'readwrite');
+        const request = store.delete(id);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+// ── Design Template CRUD ──────────────────────────────────────────
+
+export const addDesignTemplate = (template: import('../types').DesignTemplate): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(DESIGN_TEMPLATE_STORE, 'readwrite');
+        const request = store.add(template);
+        request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const getAllDesignTemplates = (): Promise<import('../types').DesignTemplate[]> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(DESIGN_TEMPLATE_STORE, 'readonly');
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const deleteDesignTemplate = (id: number): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(DESIGN_TEMPLATE_STORE, 'readwrite');
+        const request = store.delete(id);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+// ── Design Conversation Draft ──────────────────────────────────────
+
+export const saveDesignConversationDraft = (draft: { id: string; conversation: import('../types').DesignConversation }): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(DESIGN_CONVERSATION_DRAFT_STORE, 'readwrite');
+        const request = store.put(draft);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const getDesignConversationDraft = (id: string): Promise<{ id: string; conversation: import('../types').DesignConversation } | undefined> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(DESIGN_CONVERSATION_DRAFT_STORE, 'readonly');
+        const request = store.get(id);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const clearDesignConversationDraft = (id: string): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(DESIGN_CONVERSATION_DRAFT_STORE, 'readwrite');
         const request = store.delete(id);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
