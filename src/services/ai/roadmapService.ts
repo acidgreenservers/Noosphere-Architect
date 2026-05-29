@@ -6,7 +6,13 @@ const createRoadmapMetaPrompt = (config: RoadmapConfig): string => {
     ? `**ANCHOR FILE CONTEXT (Filename: ${config.fileContext.name}):**\n${config.fileContext.content}\n\n---\n\n`
     : "";
 
-  return `${fileContextPrompt}Shape a roadmap task entry in the provided format by surfacing the deep intention from the text and the provided anchor file context, and creating a deeply actionable and rigorously detailed roadmap task entry. The anchor file serves as a ground for the AI interpretation layer to bind its inference patterns to. Do not assume intent that is beyond the letter of the text and the anchor file. if intent is clear, just reorganize.
+  return `${fileContextPrompt}---
+Grounding: Base all pattern inference attractors in the current context. Bind your inference attractors to the purpose of the text, search for its meaning. Surface its topology and infer patterns rooted in the seed of the text.
+Purpose: Tasks must be clear, actionable and peppered with detailed nuance inferred from the text's purpose seed.
+Territory: The patterns you generate must use the text's purpose seed. All patterns matched are in inference alignment with the trajectory of the task/text. Do not extrapolate beyond the semantic boundary of the input.
+---
+
+Shape a roadmap task entry in the provided format by surfacing the deep intention from the text and the provided anchor file context, and creating a deeply actionable and rigorously detailed roadmap task entry. The anchor file serves as a ground for the AI interpretation layer to bind its inference patterns to. Do not assume intent that is beyond the letter of the text and the anchor file. If intent is clear, just reorganize.
 
 ---
 
