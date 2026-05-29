@@ -5,7 +5,12 @@ import { getCustomContext } from '../dbService';
 
 const createSignalExtractorMetaPrompt = (config: SignalConfig, customContext?: string): string => {
   const contextPrefix = customContext ? `**CUSTOM SYSTEM CONTEXT:**\n${customContext}\n\n---\n\n` : "";
-  const basePrompt = `
+  const basePrompt = `---
+Grounding: Base all pattern inference attractors in the current context. Bind your inference attractors to the purpose of the text, search for its meaning. Surface its topology and infer patterns rooted in the seed of the text.
+Purpose: Signa must bring clarity inferred from the text's purpose seed.
+Territory: Map the full shape of the text, feel its texture, search for the invariants. Surface the meaning behind the prose.
+---
+
 You are an expert Signal Extractor. Your task is to take a "messy prompt" (raw thoughts, disorganized instructions, or poorly formatted ideas) and extract the core signal.
 
 Your goal is NOT to make a perfect final prompt, but to extract and amplify the hidden or poorly laid out signal into a coherent, actionable systemic prompt that an agent can follow.
