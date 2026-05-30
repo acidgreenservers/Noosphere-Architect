@@ -1,7 +1,7 @@
 import { SavedAgent, SavedPrompt, AgentConfig, PromptConfig, SavedProject, ProjectConfig, SavedSignal, SignalConfig, SavedMindSeed, MindSeedConfig, SavedSynthesis, SavedRoadmap, RoadmapConfig, MindSeedType, PromptType } from '../types';
 
 const DB_NAME = 'NoosphereArchitectDB';
-const DB_VERSION = 13; // Incremented for Roadmap Architect store
+const DB_VERSION = 14;
 const AGENT_STORE = 'savedAgents';
 const PROMPT_STORE = 'savedPrompts'; // Legacy, keeping for migration or reference
 const STANDARD_PROMPT_STORE = 'standardPrompts';
@@ -248,6 +248,9 @@ const initDB = (): Promise<IDBDatabase> => {
                 db.createObjectStore(ROADMAP_DRAFT_STORE, { keyPath: 'id' });
             }
             console.log("Migration to v13 complete: Roadmap store initialized.");
+        },
+        14: (_db, _tx) => {
+            console.log("Migration to v14 complete: Schema version reconciled with existing DB state.");
         }
       };
 
