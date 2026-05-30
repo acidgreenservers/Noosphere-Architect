@@ -189,3 +189,10 @@ export interface UnifiedItem {
     isArchived: boolean;
     category: string;
 }
+
+// ----------------------------------------------------------------------
+// Export system types — used by ExportPopover, export utility, and
+// all components that wire export capabilities.
+// ----------------------------------------------------------------------
+export type ExportFormat = 'markdown' | 'html' | 'json';
+export type HtmlTheme = 'light' | 'dark';
