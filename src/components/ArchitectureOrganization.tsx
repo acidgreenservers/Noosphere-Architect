@@ -7,6 +7,7 @@ import * as db from '../services/dbService';
 import LibraryItem from './LibraryItem';
 import PreviewModal from './PreviewModal';
 import ExportPopover from './ExportPopover';
+import BatchExportPopover from './BatchExportPopover';
 import SynthesisWorkspace from './SynthesisWorkspace';
 import Modal from './Modal';
 import Toast from './Toast';
@@ -50,6 +51,7 @@ const ArchitectureOrganization: React.FC = () => {
     const [isSynthesisMode, setIsSynthesisMode] = useState(false);
     const [previewItem, setPreviewItem] = useState<UnifiedItem | null>(null);
     const [exportItem, setExportItem] = useState<UnifiedItem | null>(null);
+    const [batchExportOpen, setBatchExportOpen] = useState(false);
     const [editItem, setEditItem] = useState<UnifiedItem | null>(null);
     const [editContent, setEditContent] = useState('');
     const [editName, setEditName] = useState('');
@@ -480,6 +482,13 @@ const ArchitectureOrganization: React.FC = () => {
                                         </button>
                                     </div>
                                     <button
+                                        onClick={() => setBatchExportOpen(true)}
+                                        className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl transition-colors font-bold text-sm"
+                                    >
+                                        <span className="material-icons text-sm">folder_zip</span>
+                                        Batch Export
+                                    </button>
+                                    <button
                                         onClick={() => setIsSynthesisMode(true)}
                                         className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl transition-colors font-bold text-sm"
                                     >
@@ -572,6 +581,18 @@ const ArchitectureOrganization: React.FC = () => {
                     item={exportItem}
                     onExportComplete={(format) => {
                         setToast({ message: `Exported as ${format}`, type: 'success' });
+                    }}
+                />
+            )}
+
+            {batchExportOpen && (
+                <BatchExportPopover
+                    isOpen={batchExportOpen}
+                    onClose={() => setBatchExportOpen(false)}
+                    items={items.filter(i => selectedIds.has(String(i.id)))}
+                    onExportComplete={(format) => {
+                        setToast({ message: `Batch exported ${selectedIds.size} items as ${format}`, type: 'success' });
+                        setSelectedIds(new Set());
                     }}
                 />
             )}

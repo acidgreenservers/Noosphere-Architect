@@ -196,3 +196,74 @@ export function triggerDownload(result: ExportResult): void {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+// ── Sanitize a name for use as a filesystem directory/file ──────────────────────
+function sanitizeFsName(name: string): string {
+  return name.replace(/[^a-zA-Z0-9_\- ]/g, '_').slice(0, 60).trim();
+}
+
+// ── Build a single item's content blob for a given format ───────────────────────
+function buildItemBlob(
+  item: UnifiedItem,
+  format: ExportFormat,
+  htmlTheme: HtmlTheme
+): { content: string; filename: string } | null {
+  const raw = getPreviewContent(item);
+  if (!raw) return null;
+
+  const title = item.name;
+  const baseFilename = sanitizeFsName(title);
+  const extMap: Record<ExportFormat, string> = { markdown: '.md', html: '.html', json: '.json' };
+  const filename = `${baseFilename}${extMap[format]}`;
+  const md = resolveMarkdown(raw);
+
+  switch (format) {
+    case 'markdown':
+      return { content: md, filename };
+    case 'html': {
+      const html = buildHtmlDocument(md, title, htmlTheme);
+      return { content: html, filename };
+    }
+    case 'json': {
+      const json = JSON.stringify(
+        { title, exportedAt: new Date().toISOString(), tool: 'Noosphere-Architect', type: item.type, content: raw },
+        null, 2
+      );
+      return { content: json, filename };
+    }
+  }
+}
+
+// ── Build a batch zip export from multiple selected items ───────────────────────
+export async function buildBatchExport(
+  items: UnifiedItem[],
+  format: ExportFormat,
+  htmlTheme?: HtmlTheme
+): Promise<ExportResult | null> {
+  if (items.length === 0) return null;
+
+  const JSZip = (await import('jszip')).default;
+  const zip = new JSZip();
+  const theme = htmlTheme ?? 'light';
+
+  for (const item of items) {
+    const result = buildItemBlob(item, format, theme);
+    if (!result) continue;
+    const dirName = sanitizeFsName(item.name);
+    zip.file(`${dirName}/${result.filename}`, result.content);
+  }
+
+  // Add a manifest file
+  const manifest = items
+    .filter(i => getPreviewContent(i))
+    .map(i => `- ${i.name} (${i.type})`)
+    .join('\n');
+  zip.file('_manifest.txt', `Noosphere-Architect Batch Export\n${new Date().toISOString().slice(0, 10)}\nFormat: ${format}\n\n${manifest}`);
+
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const timestamp = new Date().toISOString().slice(0, 10);
+  const extMap: Record<ExportFormat, string> = { markdown: 'md', html: 'html', json: 'json' };
+  const filename = `batch-export-${timestamp}-${extMap[format]}.zip`;
+
+  return { blob, filename, format };
+}
