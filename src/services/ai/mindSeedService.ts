@@ -77,8 +77,8 @@ Generate ONLY the raw JSON object.
   return contextPrefix + basePrompt;
 };
 
-export const generateMindSeed = async (config: MindSeedConfig): Promise<GeneratedMindSeed> => {
+export const generateMindSeed = async (config: MindSeedConfig, signal?: AbortSignal): Promise<GeneratedMindSeed> => {
   const customContext = await getCustomContext('mindSeedContext');
   const prompt = createMindSeedMetaPrompt(config, customContext);
-  return handleAiCall<GeneratedMindSeed>(prompt, true, "generating MindSeed");
+  return handleAiCall<GeneratedMindSeed>(prompt, true, "generating MindSeed", signal);
 };

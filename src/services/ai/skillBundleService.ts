@@ -53,12 +53,12 @@ Generate ONLY the raw JSON object as described.
   return contextPrefix + basePrompt;
 };
 
-export const generateSkillBundle = async (config: AgentConfig): Promise<GeneratedFiles> => {
+export const generateSkillBundle = async (config: AgentConfig, signal?: AbortSignal): Promise<GeneratedFiles> => {
   if (!config.role.trim() || !config.scope.trim()) {
     throw new Error("Role and Scope are required to generate a Skill Bundle.");
   }
 
   const customContext = await getCustomContext('systemPromptContext');
   const metaPrompt = createSkillBundleMetaPrompt(config, customContext);
-  return handleAiCall<GeneratedFiles>(metaPrompt, true, "generating skill bundle");
+  return handleAiCall<GeneratedFiles>(metaPrompt, true, "generating skill bundle", signal);
 };

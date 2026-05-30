@@ -56,13 +56,13 @@ function validateExtractedSignal(raw: unknown): ExtractedSignal {
   return { promptSignal: obj.promptSignal, signalConstraints: obj.signalConstraints };
 }
 
-export const extractSignal = async (config: SignalConfig): Promise<ExtractedSignal> => {
+export const extractSignal = async (config: SignalConfig, signal?: AbortSignal): Promise<ExtractedSignal> => {
   if (!config.messyPrompt.trim()) {
     throw new Error("Input prompt cannot be empty.");
   }
 
   const customContext = await getCustomContext('signalContext');
   const prompt = createSignalExtractorMetaPrompt(config, customContext);
-  const raw = await handleAiCall<unknown>(prompt, true, "extracting signal");
+  const raw = await handleAiCall<unknown>(prompt, true, "extracting signal", signal);
   return validateExtractedSignal(raw);
 };

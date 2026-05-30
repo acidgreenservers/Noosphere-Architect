@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import { generateBasicPrompt } from '../services/ai/basicPromptService';
 import { generateStructuredSystemPrompt } from '../services/ai/structuredSystemPromptService';
 import { generateSkillBundle } from '../services/ai/skillBundleService';
+import { AbortError } from '../services/ai/openRouter';
 import { PromptConfig, SavedPrompt, PromptType, GeneratedPrompt, AgentConfig, GeneratedFiles } from '../types';
 import * as db from '../services/dbService';
 import JSZip from 'jszip';
@@ -63,6 +64,7 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
     const [error, setError] = useState<string | null>(null);
     const [loadingMessage, setLoadingMessage] = useState('');
     const loadingIntervalRef = useRef<number | null>(null);
+    const abortControllerRef = useRef<AbortController | null>(null);
 
 
     const [savedPrompts, setSavedPrompts] = useState<SavedPrompt[]>([]);
@@ -132,6 +134,11 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
     }, [promptConfig, skillConfig, draftStatus, activeTab]);
 
     const handleGenerate = useCallback(async () => {
+        // Cancel any in-flight request
+        abortControllerRef.current?.abort();
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
         setIsLoading(true);
         setError(null);
         setGeneratedPrompt(null);
@@ -152,22 +159,31 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
             if (activeTab === 'standard') {
                 if (!promptConfig.goal.trim()) throw new Error("Please enter a goal.");
                 // Utilize high-density reasoning topology for standard prompts
-                const result = await generateStructuredSystemPrompt(promptConfig);
-                setGeneratedPrompt(result);
+                const result = await generateStructuredSystemPrompt(promptConfig, controller.signal);
+                if (!controller.signal.aborted) setGeneratedPrompt(result);
             } else {
                 if (!skillConfig.role.trim() || !skillConfig.scope.trim()) throw new Error("Role and Scope are required.");
-                const result = await generateSkillBundle(skillConfig);
-                setGeneratedSkill(result);
+                const result = await generateSkillBundle(skillConfig, controller.signal);
+                if (!controller.signal.aborted) setGeneratedSkill(result);
             }
-            await db.clearTypedPromptDraft(activeTab, 1);
+            if (!controller.signal.aborted) await db.clearTypedPromptDraft(activeTab, 1);
         } catch (e: any) {
+            if (e instanceof AbortError || e?.name === 'AbortError') return;
             setError(e.message || 'Failed to generate. Please check your API key.');
         } finally {
             setIsLoading(false);
             if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
             setLoadingMessage('');
+            abortControllerRef.current = null;
         }
     }, [promptConfig, skillConfig, activeTab]);
+
+    // Abort on unmount
+    useEffect(() => {
+        return () => {
+            abortControllerRef.current?.abort();
+        };
+    }, []);
 
     const handleReset = () => {
         if (activeTab === 'standard') setPromptConfig({ goal: '', instructions: '' });

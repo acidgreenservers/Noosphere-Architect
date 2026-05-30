@@ -2,6 +2,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { ProjectConfig, GeneratedProjectFiles, SavedProject } from '../types';
 import { generateProjectFiles } from '../services/ai/projectFilesService';
+import { AbortError } from '../services/ai/openRouter';
 import * as db from '../services/dbService';
 import JSZip from 'jszip';
 import { sanitizeFilename } from '../utils/security';
@@ -26,6 +27,7 @@ const ProjectArchitect: React.FC = () => {
   const [loadedProjectName, setLoadedProjectName] = useState<string | undefined>(undefined);
   const [loadingMessage, setLoadingMessage] = useState('');
   const loadingIntervalRef = useRef<number | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
   const [searchTerm, setSearchText] = useState('');
@@ -75,6 +77,10 @@ const ProjectArchitect: React.FC = () => {
   }, [projectConfig, draftStatus]);
 
   const handleGenerate = useCallback(async () => {
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setIsLoading(true);
     setError(null);
     setGeneratedFiles(null);
@@ -92,10 +98,13 @@ const ProjectArchitect: React.FC = () => {
         setError("Project Title and Goal are required fields.");
         return;
       }
-      const files = await generateProjectFiles(projectConfig);
-      setGeneratedFiles(files);
-      await db.clearProjectDraft(1);
-    } catch (e) {
+      const files = await generateProjectFiles(projectConfig, controller.signal);
+      if (!controller.signal.aborted) {
+        setGeneratedFiles(files);
+        await db.clearProjectDraft(1);
+      }
+    } catch (e: any) {
+      if (e instanceof AbortError || e?.name === 'AbortError') return;
       setError('Failed to generate project files. Please check your API key and try again.');
     } finally {
       setIsLoading(false);
@@ -103,8 +112,16 @@ const ProjectArchitect: React.FC = () => {
         clearInterval(loadingIntervalRef.current);
       }
       setLoadingMessage('');
+      abortControllerRef.current = null;
     }
   }, [projectConfig]);
+
+  // Abort on unmount
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
   const handleReset = () => {
     setProjectConfig({

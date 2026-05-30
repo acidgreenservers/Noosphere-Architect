@@ -49,13 +49,13 @@ function validateGeneratedPrompt(raw: unknown): GeneratedPrompt {
   return { signal: obj.signal, prompt: obj.prompt };
 }
 
-export const generateAgentPersona = async (config: AgentConfig): Promise<GeneratedPrompt> => {
+export const generateAgentPersona = async (config: AgentConfig, signal?: AbortSignal): Promise<GeneratedPrompt> => {
   if (!config.role.trim() || !config.scope.trim()) {
     throw new Error("Agent Role and Scope are required.");
   }
 
   const customContext = await getCustomContext('agentContext');
   const metaPrompt = createAgentPersonaMetaPrompt(config, customContext);
-  const raw = await handleAiCall<unknown>(metaPrompt, true, "generating agent persona");
+  const raw = await handleAiCall<unknown>(metaPrompt, true, "generating agent persona", signal);
   return validateGeneratedPrompt(raw);
 };

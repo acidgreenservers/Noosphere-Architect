@@ -60,7 +60,7 @@ function validateGeneratedPrompt(raw: unknown): GeneratedPrompt {
   return { signal: obj.signal, prompt: obj.prompt };
 }
 
-export const generateBasicPrompt = async (config: PromptConfig): Promise<GeneratedPrompt> => {
+export const generateBasicPrompt = async (config: PromptConfig, signal?: AbortSignal): Promise<GeneratedPrompt> => {
   // Alias to structured system prompt to enforce "Truth in Connections" invariant across the project
-  return generateStructuredSystemPrompt(config);
+  return generateStructuredSystemPrompt(config, signal);
 };

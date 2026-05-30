@@ -1,9 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { MindSeedConfig, GeneratedMindSeed, SavedMindSeed, MindSeedType } from '../types';
 import { generateMindSeed } from '../services/ai/mindSeedService';
+import { AbortError } from '../services/ai/openRouter';
 import { addMindSeed, getAllMindSeeds, deleteMindSeed, updateMindSeed, getMindSeedDraft, saveMindSeedDraft, clearMindSeedDraft } from '../services/dbService';
 import { sanitizeFilename } from '../utils/security';
 import LoadingSpinner from './LoadingSpinner';
@@ -22,6 +23,7 @@ const MindSeedArchitect: React.FC = () => {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
+  const abortControllerRef = useRef<AbortController | null>(null);
   const [result, setResult] = useState<GeneratedMindSeed | null>(null);
   const [savedSeeds, setSavedSeeds] = useState<SavedMindSeed[]>([]);
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
@@ -82,6 +84,10 @@ const MindSeedArchitect: React.FC = () => {
       return;
     }
 
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
     setResult(null);
 
@@ -95,17 +101,28 @@ const MindSeedArchitect: React.FC = () => {
 
     try {
       const config: MindSeedConfig = { type: activeTab, text };
-      const generatedResult = await generateMindSeed(config);
-      setResult(generatedResult);
-      setToast({ message: "MindSeed generated successfully!", type: 'success' });
+      const generatedResult = await generateMindSeed(config, controller.signal);
+      if (!controller.signal.aborted) {
+        setResult(generatedResult);
+        setToast({ message: "MindSeed generated successfully!", type: 'success' });
+      }
     } catch (error: any) {
+      if (error instanceof AbortError || error?.name === 'AbortError') return;
       setToast({ message: error.message || "Failed to generate MindSeed", type: 'error' });
     } finally {
       clearInterval(interval);
       setLoading(false);
       setLoadingMessage('');
+      abortControllerRef.current = null;
     }
   };
+
+  // Abort on unmount
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
   const handleSave = async () => {
     if (!result) return;

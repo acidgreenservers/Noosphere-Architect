@@ -26,7 +26,7 @@ Shape a roadmap task entry in the provided format by surfacing the deep intentio
 ${config.rawText}`;
 };
 
-export const generateRoadmapTask = async (config: RoadmapConfig): Promise<string> => {
+export const generateRoadmapTask = async (config: RoadmapConfig, signal?: AbortSignal): Promise<string> => {
   if (!config.rawText.trim()) {
     throw new Error("Input text cannot be empty.");
   }
@@ -36,5 +36,5 @@ export const generateRoadmapTask = async (config: RoadmapConfig): Promise<string
   }
 
   const prompt = createRoadmapMetaPrompt(config);
-  return await handleAiCall<string>(prompt, false, "generating roadmap task");
+  return await handleAiCall<string>(prompt, false, "generating roadmap task", signal);
 };
