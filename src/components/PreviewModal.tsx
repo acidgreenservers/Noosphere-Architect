@@ -38,7 +38,6 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<string>('');
   const [copyStatus, setCopyStatus] = useState(false);
-  const [exportStatus, setExportStatus] = useState(false);
 
   useEffect(() => {
     if (isOpen && content && typeof content === 'object') {
@@ -46,7 +45,6 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
     }
     if (!isOpen) {
       setCopyStatus(false);
-      setExportStatus(false);
     }
   }, [isOpen, content]);
 
@@ -58,11 +56,6 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
     setTimeout(() => setCopyStatus(false), 2000);
   };
 
-  const handleExport = () => {
-    onExport();
-    setExportStatus(true);
-    setTimeout(() => setExportStatus(false), 2000);
-  };
 
   const renderContent = () => {
     if (mindSeed) {
@@ -232,16 +225,11 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
               {copyStatus && <span className="text-xs">Copied!</span>}
             </button>
             <button
-              onClick={handleExport}
-              className={`p-2 rounded-lg transition-all flex items-center gap-2 ${
-                exportStatus
-                ? 'text-green-600 bg-green-50 dark:bg-green-900/30 font-bold px-4'
-                : 'text-gray-500 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20'
-              }`}
+              onClick={onExport}
+              className="p-2 rounded-lg transition-all flex items-center gap-2 text-gray-500 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20"
               title="Export File"
             >
-              <span className={`material-icons ${exportStatus ? 'text-sm' : ''}`}>{exportStatus ? 'check_circle' : 'download'}</span>
-              {exportStatus && <span className="text-xs">Exported!</span>}
+              <span className="material-icons">download</span>
             </button>
             <button
               onClick={onClose}

@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     SavedAgent, SavedPrompt, SavedProject, SavedMindSeed, SavedSignal, SavedSynthesis,
-    LibraryMetadata, UnifiedItem
+    LibraryMetadata, UnifiedItem, ExportFormat
 } from '../types';
 import * as db from '../services/dbService';
 import LibraryItem from './LibraryItem';
 import PreviewModal from './PreviewModal';
+import ExportPopover from './ExportPopover';
+import BatchExportPopover from './BatchExportPopover';
 import SynthesisWorkspace from './SynthesisWorkspace';
 import Modal from './Modal';
 import Toast from './Toast';
+import { getPreviewContent, getExportFilename, buildExport, triggerDownload } from '../utils/export';
 
 type SortField = 'createdAt' | 'name' | 'type';
 type SortDirection = 'asc' | 'desc';
@@ -47,6 +50,8 @@ const ArchitectureOrganization: React.FC = () => {
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isSynthesisMode, setIsSynthesisMode] = useState(false);
     const [previewItem, setPreviewItem] = useState<UnifiedItem | null>(null);
+    const [exportItem, setExportItem] = useState<UnifiedItem | null>(null);
+    const [batchExportOpen, setBatchExportOpen] = useState(false);
     const [editItem, setEditItem] = useState<UnifiedItem | null>(null);
     const [editContent, setEditContent] = useState('');
     const [editName, setEditName] = useState('');
@@ -309,76 +314,6 @@ const ArchitectureOrganization: React.FC = () => {
             return sortDirection === 'asc' ? cmp : -cmp;
         });
 
-    const getPreviewContent = (item: UnifiedItem): string | Record<string, string> | undefined => {
-        const o = item.original;
-        if (item.type === 'mindseed') return undefined;
-        if (item.type === 'project') return {
-            'overview.md': o.files.overviewFile,
-            'standards.md': o.files.standardsFile,
-            'rules.md': o.files.rulesFile
-        };
-        if (item.type === 'signal') return `## User Prompt\n\n${o.config.messyPrompt}\n\n## Prompt Signal\n\n${o.promptSignal}\n\n## Signal Constraints\n\n${o.signalConstraints}`;
-        if (item.type === 'synthesis') return o.content;
-        if (item.type === 'roadmap') return o.generatedTask;
-        if (o.prompt) return o.prompt;
-        if (o.files) return {
-            'agent.md': o.files.agentFile,
-            'guidelines.md': o.files.projectGuidelines,
-            'constraints.md': o.files.constraintsFile,
-            'SKILL.md': o.files.skillFile
-        };
-        return '';
-    };
-
-    const getExportFilename = (item: UnifiedItem): string => {
-        const base = item.name.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 50);
-        const timestamp = new Date().toISOString().slice(0, 10);
-        switch (item.type) {
-            case 'mindseed': return `mindseed-${base}-${timestamp}.md`;
-            case 'project': return `project-${base}-${timestamp}.zip`;
-            case 'signal': return `signal-${base}-${timestamp}.md`;
-            case 'synthesis': return `synthesis-${base}-${timestamp}.md`;
-            case 'agent': return `agent-${base}-${timestamp}.md`;
-            case 'prompt-standard':
-            case 'prompt-system':
-            case 'legacy-prompt': return `prompt-${base}-${timestamp}.md`;
-            case 'roadmap': return `roadmap-${base}-${timestamp}.md`;
-            default: return `export-${base}-${timestamp}.md`;
-        }
-    };
-
-    const handleExport = (item: UnifiedItem) => {
-        const content = getPreviewContent(item);
-        if (!content) {
-            setToast({ message: 'Nothing to export for this item', type: 'error' });
-            return;
-        }
-
-        const filename = getExportFilename(item);
-        let blob: Blob;
-
-        if (typeof content === 'string') {
-            blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
-        } else if (typeof content === 'object') {
-            const combined = Object.entries(content)
-                .map(([name, text]) => `--- ${name} ---\n\n${text}`)
-                .join('\n\n');
-            blob = new Blob([combined], { type: 'text/markdown;charset=utf-8' });
-        } else {
-            blob = new Blob([JSON.stringify(content, null, 2)], { type: 'application/json;charset=utf-8' });
-        }
-
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        setToast({ message: `Exported "${filename}"`, type: 'success' });
-    };
 
     const renderSidebarButton = (id: string, label: string, icon: string) => {
         const isActive =
@@ -547,6 +482,13 @@ const ArchitectureOrganization: React.FC = () => {
                                         </button>
                                     </div>
                                     <button
+                                        onClick={() => setBatchExportOpen(true)}
+                                        className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl transition-colors font-bold text-sm"
+                                    >
+                                        <span className="material-icons text-sm">folder_zip</span>
+                                        Batch Export
+                                    </button>
+                                    <button
                                         onClick={() => setIsSynthesisMode(true)}
                                         className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl transition-colors font-bold text-sm"
                                     >
@@ -587,6 +529,7 @@ const ArchitectureOrganization: React.FC = () => {
                                         onToggleStar={() => handleToggleMetadata(item, 'isStarred')}
                                         onTogglePin={() => handleToggleMetadata(item, 'isPinned')}
                                         onToggleArchive={() => handleToggleMetadata(item, 'isArchived')}
+                                        onExport={() => setExportItem(item)}
                                         onEdit={() => handleOpenEdit(item)}
                                         onClick={() => toggleSelection(String(item.id))}
                                         isSelected={selectedIds.has(String(item.id))}
@@ -626,8 +569,31 @@ const ArchitectureOrganization: React.FC = () => {
                         const text = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
                         navigator.clipboard.writeText(text);
                     }}
-                    onExport={() => handleExport(previewItem)}
+                    onExport={() => setExportItem(previewItem)}
                     onDelete={() => handleDelete(previewItem)}
+                />
+            )}
+
+            {exportItem && (
+                <ExportPopover
+                    isOpen={!!exportItem}
+                    onClose={() => setExportItem(null)}
+                    item={exportItem}
+                    onExportComplete={(format) => {
+                        setToast({ message: `Exported as ${format}`, type: 'success' });
+                    }}
+                />
+            )}
+
+            {batchExportOpen && (
+                <BatchExportPopover
+                    isOpen={batchExportOpen}
+                    onClose={() => setBatchExportOpen(false)}
+                    items={items.filter(i => selectedIds.has(String(i.id)))}
+                    onExportComplete={(format) => {
+                        setToast({ message: `Batch exported ${selectedIds.size} items as ${format}`, type: 'success' });
+                        setSelectedIds(new Set());
+                    }}
                 />
             )}
 

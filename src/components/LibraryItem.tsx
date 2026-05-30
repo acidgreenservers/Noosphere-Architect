@@ -10,6 +10,7 @@ interface LibraryItemProps {
   onPreview: () => void;
   onEdit?: () => void;
   onDelete: () => void;
+  onExport?: () => void;
   onToggleStar?: () => void;
   onTogglePin?: () => void;
   onToggleArchive?: () => void;
@@ -27,6 +28,7 @@ const LibraryItem: React.FC<LibraryItemProps> = ({
   onPreview,
   onEdit,
   onDelete,
+  onExport,
   onToggleStar,
   onTogglePin,
   onToggleArchive,
@@ -104,32 +106,37 @@ const LibraryItem: React.FC<LibraryItemProps> = ({
         }`}
         style={{ clipPath: isRevealed ? 'inset(0 0 0 0)' : 'inset(0 0 0 100%)' }}
       >
-        <div className="flex items-center space-x-1 sm:space-x-3 overflow-x-auto no-scrollbar">
+        <div className="flex items-center space-x-0.5 sm:space-x-1 overflow-x-auto no-scrollbar">
           {onToggleStar && (
-            <button onClick={(e) => { e.stopPropagation(); onToggleStar(); }} className={`p-2 rounded-lg hover:bg-white/50 dark:hover:bg-gray-800/50 transition-colors ${metadata.isStarred ? 'text-amber-500' : 'text-gray-400 hover:text-amber-500'}`} title={metadata.isStarred ? 'Unstar' : 'Star'}>
-              <span className="material-icons text-2xl">{metadata.isStarred ? 'star' : 'star_outline'}</span>
+            <button onClick={(e) => { e.stopPropagation(); onToggleStar(); }} className={`p-1.5 rounded-lg hover:bg-white/50 dark:hover:bg-gray-800/50 transition-colors ${metadata.isStarred ? 'text-amber-500' : 'text-gray-400 hover:text-amber-500'}`} title={metadata.isStarred ? 'Unstar' : 'Star'}>
+              <span className="material-icons text-lg">{metadata.isStarred ? 'star' : 'star_outline'}</span>
             </button>
           )}
           {onTogglePin && (
-            <button onClick={(e) => { e.stopPropagation(); onTogglePin(); }} className={`p-2 rounded-lg hover:bg-white/50 dark:hover:bg-gray-800/50 transition-colors ${metadata.isPinned ? 'text-blue-500' : 'text-gray-400 hover:text-blue-500'}`} title={metadata.isPinned ? 'Unpin' : 'Pin'}>
-              <span className="material-icons text-2xl">push_pin</span>
+            <button onClick={(e) => { e.stopPropagation(); onTogglePin(); }} className={`p-1.5 rounded-lg hover:bg-white/50 dark:hover:bg-gray-800/50 transition-colors ${metadata.isPinned ? 'text-blue-500' : 'text-gray-400 hover:text-blue-500'}`} title={metadata.isPinned ? 'Unpin' : 'Pin'}>
+              <span className="material-icons text-lg">push_pin</span>
             </button>
           )}
-          <button onClick={(e) => { e.stopPropagation(); onPreview(); }} className="p-2 rounded-lg hover:bg-white/50 dark:hover:bg-gray-800/50 text-gray-500 hover:text-blue-500 transition-colors" title="Preview">
-            <span className="material-icons text-2xl">visibility</span>
+          <button onClick={(e) => { e.stopPropagation(); onPreview(); }} className="p-1.5 rounded-lg hover:bg-white/50 dark:hover:bg-gray-800/50 text-gray-500 hover:text-blue-500 transition-colors" title="Preview">
+            <span className="material-icons text-lg">visibility</span>
           </button>
-          {onEdit && (
-            <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="p-2 rounded-lg hover:bg-white/50 dark:hover:bg-gray-800/50 text-gray-500 hover:text-green-500 transition-colors" title="Edit">
-              <span className="material-icons text-2xl">edit</span>
+           {onEdit && (
+             <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="p-1.5 rounded-lg hover:bg-white/50 dark:hover:bg-gray-800/50 text-gray-500 hover:text-green-500 transition-colors" title="Edit">
+               <span className="material-icons text-lg">edit</span>
+             </button>
+           )}
+           {onExport && (
+             <button onClick={(e) => { e.stopPropagation(); onExport(); }} className="p-1.5 rounded-lg hover:bg-white/50 dark:hover:bg-gray-800/50 text-gray-500 hover:text-blue-500 transition-colors" title="Export">
+               <span className="material-icons text-lg">file_download</span>
+             </button>
+           )}
+            {onToggleArchive && (
+            <button onClick={(e) => { e.stopPropagation(); onToggleArchive(); }} className={`p-1.5 rounded-lg hover:bg-white/50 dark:hover:bg-gray-800/50 transition-colors ${metadata.isArchived ? 'text-purple-500' : 'text-gray-400 hover:text-purple-500'}`} title={metadata.isArchived ? 'Unarchive' : 'Archive'}>
+              <span className="material-icons text-lg">{metadata.isArchived ? 'unarchive' : 'archive'}</span>
             </button>
           )}
-           {onToggleArchive && (
-            <button onClick={(e) => { e.stopPropagation(); onToggleArchive(); }} className={`p-2 rounded-lg hover:bg-white/50 dark:hover:bg-gray-800/50 transition-colors ${metadata.isArchived ? 'text-purple-500' : 'text-gray-400 hover:text-purple-500'}`} title={metadata.isArchived ? 'Unarchive' : 'Archive'}>
-              <span className="material-icons text-2xl">{metadata.isArchived ? 'unarchive' : 'archive'}</span>
-            </button>
-          )}
-          <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="p-2 rounded-lg hover:bg-white/50 dark:hover:bg-gray-800/50 text-gray-500 hover:text-red-500 transition-colors" title="Delete">
-            <span className="material-icons text-2xl">delete</span>
+          <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="p-1.5 rounded-lg hover:bg-white/50 dark:hover:bg-gray-800/50 text-gray-500 hover:text-red-500 transition-colors" title="Delete">
+            <span className="material-icons text-lg">delete</span>
           </button>
         </div>
 

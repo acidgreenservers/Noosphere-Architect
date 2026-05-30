@@ -19,6 +19,7 @@ type StarredPinnedBarProps = {
     onToggleArchive: (item: UnifiedItem) => void;
     onDelete: (item: UnifiedItem) => void;
     onEdit: (item: UnifiedItem) => void;
+    onExport?: (item: UnifiedItem) => void;
     onSelect: (id: string) => void;
     selectedIds: Set<string>;
 };
@@ -38,6 +39,7 @@ export const StarredPinnedBar: React.FC<StarredPinnedBarProps> = ({
     onToggleArchive,
     onDelete,
     onEdit,
+    onExport,
     onSelect,
     selectedIds,
 }) => {
@@ -81,6 +83,7 @@ export const StarredPinnedBar: React.FC<StarredPinnedBarProps> = ({
                                     typeLabel={item.type.replace('prompt-', '')}
                                     onPreview={() => {}}
                                     onDelete={() => onDelete(item)}
+                                    onExport={onExport ? () => onExport(item) : undefined}
                                     onToggleStar={() => onToggleStar(item)}
                                     onTogglePin={() => onTogglePin(item)}
                                     onToggleArchive={() => onToggleArchive(item)}
