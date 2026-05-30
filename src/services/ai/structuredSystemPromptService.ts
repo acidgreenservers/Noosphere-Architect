@@ -117,13 +117,13 @@ function validateGeneratedPrompt(raw: unknown): GeneratedPrompt {
   return { signal: obj.signal, prompt: obj.prompt };
 }
 
-export const generateStructuredSystemPrompt = async (config: PromptConfig): Promise<GeneratedPrompt> => {
+export const generateStructuredSystemPrompt = async (config: PromptConfig, signal?: AbortSignal): Promise<GeneratedPrompt> => {
   if (!config.goal.trim()) {
     throw new Error("Prompt goal cannot be empty.");
   }
 
   const customContext = await getCustomContext('systemPromptContext');
   const metaPrompt = createSystemPromptMetaPrompt(config, customContext);
-  const raw = await handleAiCall<unknown>(metaPrompt, true, "generating system prompt");
+  const raw = await handleAiCall<unknown>(metaPrompt, true, "generating system prompt", signal);
   return validateGeneratedPrompt(raw);
 };

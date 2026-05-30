@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { generateRoadmapTask } from '../services/ai/roadmapService';
+import { AbortError } from '../services/ai/openRouter';
 import { RoadmapConfig, SavedRoadmap } from '../types';
 import { UnifiedItem } from '../types';
 import * as db from '../services/dbService';
@@ -22,6 +23,7 @@ const RoadmapArchitect: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loadingMessage, setLoadingMessage] = useState('');
   const loadingIntervalRef = useRef<number | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const [savedRoadmaps, setSavedRoadmaps] = useState<SavedRoadmap[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -75,6 +77,10 @@ const RoadmapArchitect: React.FC = () => {
   }, [config, draftStatus]);
 
   const handleGenerate = useCallback(async () => {
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setIsLoading(true);
     setError(null);
     setGeneratedTask(null);
@@ -100,10 +106,13 @@ const RoadmapArchitect: React.FC = () => {
         if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
         return;
       }
-      const task = await generateRoadmapTask(config);
-      setGeneratedTask(task);
-      await db.clearRoadmapDraft(1);
+      const task = await generateRoadmapTask(config, controller.signal);
+      if (!controller.signal.aborted) {
+        setGeneratedTask(task);
+        await db.clearRoadmapDraft(1);
+      }
     } catch (e: any) {
+      if (e instanceof AbortError || e?.name === 'AbortError') return;
       setError(e.message || 'Failed to generate roadmap task. Please check your API key and try again.');
     } finally {
       setIsLoading(false);
@@ -111,8 +120,16 @@ const RoadmapArchitect: React.FC = () => {
         clearInterval(loadingIntervalRef.current);
       }
       setLoadingMessage('');
+      abortControllerRef.current = null;
     }
   }, [config]);
+
+  // Abort on unmount
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
   const handleReset = () => {
     setConfig({ rawText: '' });

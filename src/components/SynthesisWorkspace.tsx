@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { SynthesisLine, SavedSynthesis } from '../types';
 import { extractSynthesisNodes, synthesizeNodes } from '../services/ai/synthesisService';
+import { AbortError } from '../services/ai/openRouter';
 import { addSynthesis } from '../services/dbService';
 import { getOpenRouterKey, getOpenRouterModel } from '../services/sessionService';
 import LoadingSpinner from './LoadingSpinner';
@@ -27,6 +28,7 @@ const SynthesisWorkspace: React.FC<SynthesisWorkspaceProps> = ({ sourceItems, on
     const [state, setState] = useState<WorkspaceState>('checking');
     const [lines, setLines] = useState<SynthesisLine[]>([]);
     const [loadingMessage, setLoadingMessage] = useState('');
+    const abortControllerRef = useRef<AbortController | null>(null);
     const [intent, setIntent] = useState('');
     const [result, setResult] = useState<string | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -54,6 +56,9 @@ const SynthesisWorkspace: React.FC<SynthesisWorkspaceProps> = ({ sourceItems, on
         }
 
         // AI is configured — proceed with extraction
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
         const prepareLines = async () => {
             setState('extracting');
             setLoadingMessage('Decompressing sources into reasoning nodes...');
@@ -61,13 +66,15 @@ const SynthesisWorkspace: React.FC<SynthesisWorkspaceProps> = ({ sourceItems, on
 
             try {
                 for (const item of sourceItems) {
+                    if (controller.signal.aborted) return;
+
                     const content = item.prompt || item.extractedSignal || item.content || item.generatedTask ||
                                    (item.files ? Object.values(item.files).join('\n\n') : '') ||
                                    (item.result?.seed ? `> ${item.result.seed}\n\nPattern: ${item.result.pattern}\n\nDeploy When: ${item.result.deployWhen}` : '');
 
                     if (!content) continue;
 
-                    const nodes = await extractSynthesisNodes(content);
+                    const nodes = await extractSynthesisNodes(content, controller.signal);
                     nodes.forEach((node, idx) => {
                         allLines.push({
                             id: `${item.id}-${idx}`,
@@ -78,15 +85,22 @@ const SynthesisWorkspace: React.FC<SynthesisWorkspaceProps> = ({ sourceItems, on
                         });
                     });
                 }
-                setLines(allLines);
-                setState('idle');
+                if (!controller.signal.aborted) {
+                    setLines(allLines);
+                    setState('idle');
+                }
             } catch (err: any) {
+                if (err instanceof AbortError || controller.signal.aborted) return;
                 setErrorMessage(err?.message || 'Failed to extract reasoning nodes from sources.');
                 setState('error');
             }
         };
 
         prepareLines();
+
+        return () => {
+            controller.abort();
+        };
     }, [sourceItems]);
 
     const handleSynthesize = async () => {
@@ -96,14 +110,21 @@ const SynthesisWorkspace: React.FC<SynthesisWorkspaceProps> = ({ sourceItems, on
             return;
         }
 
+        abortControllerRef.current?.abort();
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
         setState('synthesizing');
         setLoadingMessage('Synthesizing reasoning topology...');
         try {
-            const synthesized = await synthesizeNodes(selectedNodes, intent);
-            setResult(synthesized);
-            setState('result');
-            setToast({ message: 'Synthesis complete!', type: 'success' });
+            const synthesized = await synthesizeNodes(selectedNodes, intent, controller.signal);
+            if (!controller.signal.aborted) {
+                setResult(synthesized);
+                setState('result');
+                setToast({ message: 'Synthesis complete!', type: 'success' });
+            }
         } catch (err: any) {
+            if (err instanceof AbortError || err?.name === 'AbortError') return;
             setErrorMessage(err?.message || 'Synthesis failed.');
             setState('error');
         }

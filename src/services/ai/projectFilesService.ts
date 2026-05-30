@@ -48,8 +48,8 @@ Generate ONLY the raw JSON object as described.
   return contextPrefix + basePrompt;
 };
 
-export const generateProjectFiles = async (config: ProjectConfig): Promise<GeneratedProjectFiles> => {
+export const generateProjectFiles = async (config: ProjectConfig, signal?: AbortSignal): Promise<GeneratedProjectFiles> => {
   const customContext = await getCustomContext('projectContext');
   const prompt = createProjectFilesMetaPrompt(config, customContext);
-  return handleAiCall<GeneratedProjectFiles>(prompt, true, "generating project files");
+  return handleAiCall<GeneratedProjectFiles>(prompt, true, "generating project files", signal);
 };

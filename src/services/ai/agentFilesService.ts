@@ -55,8 +55,8 @@ Generate ONLY the raw JSON object as described.
   return contextPrefix + basePrompt;
 };
 
-export const generateAgentFiles = async (config: AgentConfig): Promise<GeneratedFiles> => {
+export const generateAgentFiles = async (config: AgentConfig, signal?: AbortSignal): Promise<GeneratedFiles> => {
   const customContext = await getCustomContext('agentContext');
   const prompt = createAgentFilesMetaPrompt(config, customContext);
-  return handleAiCall<GeneratedFiles>(prompt, true, "generating agent files");
+  return handleAiCall<GeneratedFiles>(prompt, true, "generating agent files", signal);
 };

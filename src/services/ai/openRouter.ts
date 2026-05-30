@@ -1,4 +1,3 @@
-
 import { getOpenRouterKey, getOpenRouterModel } from '../sessionService';
 
 export const getOpenRouterConfig = () => {
@@ -16,12 +15,24 @@ export const getOpenRouterConfig = () => {
   return null;
 };
 
-export const callOpenRouter = async (prompt: string, apiKey: string, model: string, expectJson: boolean = false): Promise<string> => {
+/**
+ * Raw fetch to OpenRouter. Accepts an optional AbortSignal for cancellation.
+ */
+export const callOpenRouter = async (
+  prompt: string,
+  apiKey: string,
+  model: string,
+  expectJson: boolean = false,
+  signal?: AbortSignal
+): Promise<string> => {
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    signal,
     method: "POST",
     headers: {
       "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      "HTTP-Referer": window.location.origin,
+      "X-Title": "Noosphere Architect",
     },
     body: JSON.stringify({
       model: model,
@@ -31,8 +42,10 @@ export const callOpenRouter = async (prompt: string, apiKey: string, model: stri
   });
 
   if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.error?.message || "OpenRouter API error");
+    const err = await response.json().catch(() => ({ error: { message: `HTTP ${response.status}` } }));
+    const error = new Error(err.error?.message || `OpenRouter API error (${response.status})`);
+    (error as any).status = response.status;
+    throw error;
   }
 
   const data = await response.json();
@@ -40,12 +53,69 @@ export const callOpenRouter = async (prompt: string, apiKey: string, model: stri
 };
 
 /**
- * Shared utility to handle AI calls with standardized error handling and JSON cleaning.
+ * Retryable status codes: rate-limit (429) and server errors (502, 503, 504).
+ */
+const RETRYABLE_STATUSES = new Set([429, 502, 503, 504]);
+const MAX_RETRIES = 3;
+const BASE_DELAY_MS = 1000;
+
+async function callOpenRouterWithRetry(
+  prompt: string,
+  apiKey: string,
+  model: string,
+  expectJson: boolean,
+  signal?: AbortSignal
+): Promise<string> {
+  let lastError: any = null;
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      return await callOpenRouter(prompt, apiKey, model, expectJson, signal);
+    } catch (err: any) {
+      // If the request was aborted, don't retry — just propagate
+      if (err.name === 'AbortError') {
+        throw err;
+      }
+
+      lastError = err;
+      const status = (err as any)?.status;
+
+      if (status && RETRYABLE_STATUSES.has(status)) {
+        if (attempt < MAX_RETRIES) {
+          const delay = BASE_DELAY_MS * Math.pow(2, attempt) + Math.random() * 1000;
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+      }
+
+      // Non-retryable or retries exhausted
+      break;
+    }
+  }
+
+  throw lastError;
+}
+
+/**
+ * AbortError class for typed catching downstream.
+ * Components can check `err.name === 'AbortError'` to silently swallow.
+ */
+export class AbortError extends Error {
+  constructor() {
+    super('Request was aborted');
+    this.name = 'AbortError';
+  }
+}
+
+/**
+ * Shared utility to handle AI calls with standardized error handling, JSON cleaning,
+ * cancellation support, and automatic retry for transient failures.
  */
 export const handleAiCall = async <T>(
   prompt: string,
   expectJson: boolean,
-  errorContext: string
+  errorContext: string,
+  signal?: AbortSignal
 ): Promise<T> => {
   try {
     const config = getOpenRouterConfig();
@@ -54,7 +124,13 @@ export const handleAiCall = async <T>(
       throw new Error("OpenRouter settings (API Key and Model) are required. Please configure them in the Agent API Settings.");
     }
 
-    const responseText = await callOpenRouter(prompt, config.apiKey, config.model, expectJson);
+    const responseText = await callOpenRouterWithRetry(
+      prompt,
+      config.apiKey,
+      config.model,
+      expectJson,
+      signal
+    );
 
     if (expectJson) {
       // Clean up potential markdown code blocks from OpenRouter response
@@ -64,6 +140,11 @@ export const handleAiCall = async <T>(
 
     return responseText as unknown as T;
   } catch (error: any) {
+    // If it's an abort, rethrow as typed AbortError
+    if (error.name === 'AbortError') {
+      throw new AbortError();
+    }
+
     console.error(`Error ${errorContext}:`, error);
     throw new Error(error.message || "Failed to communicate with the API.");
   }

@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { AgentConfig, GeneratedPrompt, SavedAgent } from '../types';
 import { generateAgentPersona } from '../services/ai/agentPersonaService';
+import { AbortError } from '../services/ai/openRouter';
 import * as db from '../services/dbService';
 import JSZip from 'jszip';
 import { sanitizeFilename } from '../utils/security';
@@ -47,6 +48,7 @@ const AgentArchitect: React.FC = () => {
   const [loadedAgentName, setLoadedAgentName] = useState<string | undefined>(undefined);
   const [loadingMessage, setLoadingMessage] = useState('');
   const loadingIntervalRef = useRef<number | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const [savedAgents, setSavedAgents] = useState<SavedAgent[]>([]);
   const [searchTerm, setSearchText] = useState('');
@@ -104,6 +106,11 @@ const AgentArchitect: React.FC = () => {
   }, [agentConfig, draftStatus]);
 
   const handleGenerate = useCallback(async () => {
+    // Cancel any in-flight request
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setIsLoading(true);
     setError(null);
     setGeneratedPrompt(null);
@@ -121,10 +128,15 @@ const AgentArchitect: React.FC = () => {
         setError("Agent Role and Scope are required fields.");
         return;
       }
-      const result = await generateAgentPersona(agentConfig);
-      setGeneratedPrompt(result);
-      await db.clearDraft(1);
-    } catch (e) {
+      const result = await generateAgentPersona(agentConfig, controller.signal);
+      // Only update state if this request wasn't superseded
+      if (!controller.signal.aborted) {
+        setGeneratedPrompt(result);
+        await db.clearDraft(1);
+      }
+    } catch (e: any) {
+      // Silently swallow abort errors
+      if (e instanceof AbortError || e?.name === 'AbortError') return;
       setError('Failed to generate agent persona. Please check your API key and try again.');
     } finally {
       setIsLoading(false);
@@ -132,8 +144,16 @@ const AgentArchitect: React.FC = () => {
         clearInterval(loadingIntervalRef.current);
       }
       setLoadingMessage('');
+      abortControllerRef.current = null;
     }
   }, [agentConfig]);
+
+  // Abort on unmount
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
   const handleReset = () => {
     setAgentConfig({ role: '', scope: '', goals: '', constraints: '' });

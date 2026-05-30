@@ -3,6 +3,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { extractSignal } from '../services/ai/signalService';
+import { AbortError } from '../services/ai/openRouter';
 import { SignalConfig, ExtractedSignal, SavedSignal, PromptConfig } from '../types';
 import * as db from '../services/dbService';
 import { sanitizeFilename } from '../utils/security';
@@ -25,6 +26,7 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
     const [error, setError] = useState<string | null>(null);
     const [loadingMessage, setLoadingMessage] = useState('');
     const loadingIntervalRef = useRef<number | null>(null);
+    const abortControllerRef = useRef<AbortController | null>(null);
 
     const [savedSignals, setSavedSignals] = useState<SavedSignal[]>([]);
     const [searchTerm, setSearchText] = useState('');
@@ -74,6 +76,10 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
     }, [config, draftStatus]);
 
     const handleGenerate = useCallback(async () => {
+        abortControllerRef.current?.abort();
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
         setIsLoading(true);
         setError(null);
         setResult(null);
@@ -93,10 +99,13 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
                 if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
                 return;
             }
-            const extracted = await extractSignal(config);
-            setResult(extracted);
-            await db.clearSignalDraft(1);
+            const extracted = await extractSignal(config, controller.signal);
+            if (!controller.signal.aborted) {
+                setResult(extracted);
+                await db.clearSignalDraft(1);
+            }
         } catch (e: any) {
+            if (e instanceof AbortError || e?.name === 'AbortError') return;
             setError(e.message || 'Failed to extract signal. Please check your API key and try again.');
         } finally {
             setIsLoading(false);
@@ -104,8 +113,16 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
                 clearInterval(loadingIntervalRef.current);
             }
             setLoadingMessage('');
+            abortControllerRef.current = null;
         }
     }, [config]);
+
+    // Abort on unmount
+    useEffect(() => {
+        return () => {
+            abortControllerRef.current?.abort();
+        };
+    }, []);
 
     const handleReset = () => {
         setConfig({ messyPrompt: '' });
