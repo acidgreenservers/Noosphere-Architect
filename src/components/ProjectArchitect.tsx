@@ -8,6 +8,7 @@ import JSZip from 'jszip';
 import { sanitizeFilename } from '../utils/security';
 import ProjectForm from './ProjectForm';
 import GeneratedProjectDisplay from './GeneratedProjectDisplay';
+import RoadmapArchitect from './RoadmapArchitect';
 import LoadingSpinner from './LoadingSpinner';
 import Modal from './Modal';
 import PreviewModal from './PreviewModal';
@@ -16,7 +17,10 @@ import Toast from './Toast';
 import { StarredPinnedBar } from './StarredPinnedBar';
 import { UnifiedItem } from '../types';
 
+type Tab = 'architect' | 'roadmap';
+
 const ProjectArchitect: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<Tab>('architect');
   const [projectConfig, setProjectConfig] = useState<ProjectConfig>({
     title: '', idea: '', vision: '', goal: '', rules: '',
     constraints: '', guidelines: '', roles: '', standards: '', consistency: ''
@@ -288,15 +292,53 @@ const ProjectArchitect: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto">
       <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8">
-        <ProjectForm 
-          projectConfig={projectConfig} 
-          setProjectConfig={setProjectConfig} 
-          onGenerate={handleGenerate}
-          onReset={handleReset}
-          isLoading={isLoading} 
-        />
+
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+            {activeTab === 'architect' ? 'Project Architect' : 'Roadmap Architect'}
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            {activeTab === 'architect'
+              ? 'Establish a high-level vision, standards, and rules for your project.'
+              : 'Transform raw vision text into deeply actionable, rigorously detailed roadmap task entries.'}
+          </p>
+        </div>
       </div>
+
+      {/* Tabs */}
+      <div className="border-b border-gray-200 dark:border-gray-700 mb-8">
+        <nav className="-mb-px flex space-x-8" aria-label="Project Tabs" role="tablist">
+          <button
+            role="tab"
+            aria-selected={activeTab === 'architect'}
+            onClick={() => setActiveTab('architect')}
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${activeTab === 'architect' ? 'text-green-500 border-green-500' : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}`}
+          >
+            Project Architect
+          </button>
+          <button
+            role="tab"
+            aria-selected={activeTab === 'roadmap'}
+            onClick={() => setActiveTab('roadmap')}
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${activeTab === 'roadmap' ? 'text-amber-500 border-amber-500' : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}`}
+          >
+            Roadmap Architect
+          </button>
+        </nav>
+      </div>
+
+      {activeTab === 'architect' ? (
+        <>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8">
+            <ProjectForm
+              projectConfig={projectConfig}
+              setProjectConfig={setProjectConfig}
+              onGenerate={handleGenerate}
+              onReset={handleReset}
+              isLoading={isLoading}
+            />
+          </div>
 
       {error && (
         <div className="mt-8 bg-red-100 dark:bg-red-900/50 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg relative" role="alert">
@@ -305,98 +347,102 @@ const ProjectArchitect: React.FC = () => {
         </div>
       )}
 
-      {isLoading && <LoadingSpinner message={loadingMessage} />}
+          {isLoading && <LoadingSpinner message={loadingMessage} />}
 
-      {generatedFiles && !isLoading && (
-        <div className="mt-8">
-          <GeneratedProjectDisplay files={generatedFiles} onSave={handleOpenSaveModal} projectName={loadedProjectName} />
-        </div>
-      )}
-      
-      {savedProjects.length > 0 && (
-        <div className="mt-12">
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-center">Saved Projects</h2>
-                <div className="flex space-x-2">
-                    <button onClick={handleExportAll} className="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/60 flex items-center">
-                        <span className="material-icons text-sm mr-1">download</span>
-                        Export All
-                    </button>
-                    <button onClick={handleClearAll} className="px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/60 flex items-center">
-                        <span className="material-icons text-sm mr-1">delete_sweep</span>
-                        Clear All
-                    </button>
+          {generatedFiles && !isLoading && (
+            <div className="mt-8">
+              <GeneratedProjectDisplay files={generatedFiles} onSave={handleOpenSaveModal} projectName={loadedProjectName} />
+            </div>
+          )}
+
+          {savedProjects.length > 0 && (
+            <div className="mt-12">
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold text-center">Saved Projects</h2>
+                    <div className="flex space-x-2">
+                        <button onClick={handleExportAll} className="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/60 flex items-center">
+                            <span className="material-icons text-sm mr-1">download</span>
+                            Export All
+                        </button>
+                        <button onClick={handleClearAll} className="px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/60 flex items-center">
+                            <span className="material-icons text-sm mr-1">delete_sweep</span>
+                            Clear All
+                        </button>
+                    </div>
                 </div>
-            </div>
 
-            <div className="mb-6 space-y-4">
-                <StarredPinnedBar
-                    type="starred"
-                    items={unifiedProjects}
-                    expanded={expandedSections.starredSection}
-                    onToggleExpand={() => setExpandedSections(prev => ({ ...prev, starredSection: !prev.starredSection }))}
-                    onToggleStar={(item) => handleUpdateMetadata(item.original, { isStarred: !item.original.isStarred })}
-                    onTogglePin={(item) => handleUpdateMetadata(item.original, { isPinned: !item.original.isPinned })}
-                    onToggleArchive={(item) => handleUpdateMetadata(item.original, { isArchived: true })}
-                    onDelete={(item) => handleDelete(item.original.id!)}
-                    onEdit={(item) => handleOpenEditModal(item.original)}
-                    onSelect={(id) => handleLoadSavedProject(savedProjects.find(p => `project-${p.id}` === id)!)}
-                    selectedIds={new Set()}
-                />
-                <StarredPinnedBar
-                    type="pinned"
-                    items={unifiedProjects}
-                    expanded={expandedSections.pinnedSection}
-                    onToggleExpand={() => setExpandedSections(prev => ({ ...prev, pinnedSection: !prev.pinnedSection }))}
-                    onToggleStar={(item) => handleUpdateMetadata(item.original, { isStarred: !item.original.isStarred })}
-                    onTogglePin={(item) => handleUpdateMetadata(item.original, { isPinned: !item.original.isPinned })}
-                    onToggleArchive={(item) => handleUpdateMetadata(item.original, { isArchived: true })}
-                    onDelete={(item) => handleDelete(item.original.id!)}
-                    onEdit={(item) => handleOpenEditModal(item.original)}
-                    onSelect={(id) => handleLoadSavedProject(savedProjects.find(p => `project-${p.id}` === id)!)}
-                    selectedIds={new Set()}
-                />
-            </div>
-
-            <div className="mb-4">
-                <div className="relative">
-                    <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
-                    <input
-                        type="text"
-                        placeholder="Search saved projects..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchText(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                <div className="mb-6 space-y-4">
+                    <StarredPinnedBar
+                        type="starred"
+                        items={unifiedProjects}
+                        expanded={expandedSections.starredSection}
+                        onToggleExpand={() => setExpandedSections(prev => ({ ...prev, starredSection: !prev.starredSection }))}
+                        onToggleStar={(item) => handleUpdateMetadata(item.original, { isStarred: !item.original.isStarred })}
+                        onTogglePin={(item) => handleUpdateMetadata(item.original, { isPinned: !item.original.isPinned })}
+                        onToggleArchive={(item) => handleUpdateMetadata(item.original, { isArchived: true })}
+                        onDelete={(item) => handleDelete(item.original.id!)}
+                        onEdit={(item) => handleOpenEditModal(item.original)}
+                        onSelect={(id) => handleLoadSavedProject(savedProjects.find(p => `project-${p.id}` === id)!)}
+                        selectedIds={new Set()}
+                    />
+                    <StarredPinnedBar
+                        type="pinned"
+                        items={unifiedProjects}
+                        expanded={expandedSections.pinnedSection}
+                        onToggleExpand={() => setExpandedSections(prev => ({ ...prev, pinnedSection: !prev.pinnedSection }))}
+                        onToggleStar={(item) => handleUpdateMetadata(item.original, { isStarred: !item.original.isStarred })}
+                        onTogglePin={(item) => handleUpdateMetadata(item.original, { isPinned: !item.original.isPinned })}
+                        onToggleArchive={(item) => handleUpdateMetadata(item.original, { isArchived: true })}
+                        onDelete={(item) => handleDelete(item.original.id!)}
+                        onEdit={(item) => handleOpenEditModal(item.original)}
+                        onSelect={(id) => handleLoadSavedProject(savedProjects.find(p => `project-${p.id}` === id)!)}
+                        selectedIds={new Set()}
                     />
                 </div>
-            </div>
-            <div className="space-y-4">
-                {savedProjects
-                    .filter(p => !p.isArchived && !p.isStarred && !p.isPinned && p.name.toLowerCase().includes(searchTerm.toLowerCase()))
-                    .map(project => (
-                        <LibraryItem
-                            key={project.id}
-                            name={project.name}
-                            createdAt={project.createdAt}
-                            metadata={project}
-                            icon="architecture"
-                            onPreview={() => setPreviewProject(project)}
-                            onEdit={() => handleOpenEditModal(project)}
-                            onDelete={() => handleDelete(project.id!)}
-                            onToggleStar={() => handleUpdateMetadata(project, { isStarred: !project.isStarred })}
-                            onTogglePin={() => handleUpdateMetadata(project, { isPinned: !project.isPinned })}
-                            onToggleArchive={() => handleUpdateMetadata(project, { isArchived: true })}
-                            onClick={() => handleLoadSavedProject(project)}
+
+                <div className="mb-4">
+                    <div className="relative">
+                        <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+                        <input
+                            type="text"
+                            placeholder="Search saved projects..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchText(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                         />
-                    ))}
-                {(savedProjects.filter(p => !p.isArchived && !p.isStarred && !p.isPinned && p.name.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && searchTerm) && (
-                    <div className="py-8 text-center text-gray-400 dark:text-gray-500">
-                        <span className="material-icons text-4xl mb-2">search_off</span>
-                        <p>No projects match your search</p>
                     </div>
-                )}
+                </div>
+                <div className="space-y-4">
+                    {savedProjects
+                        .filter(p => !p.isArchived && !p.isStarred && !p.isPinned && p.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                        .map(project => (
+                            <LibraryItem
+                                key={project.id}
+                                name={project.name}
+                                createdAt={project.createdAt}
+                                metadata={project}
+                                icon="architecture"
+                                onPreview={() => setPreviewProject(project)}
+                                onEdit={() => handleOpenEditModal(project)}
+                                onDelete={() => handleDelete(project.id!)}
+                                onToggleStar={() => handleUpdateMetadata(project, { isStarred: !project.isStarred })}
+                                onTogglePin={() => handleUpdateMetadata(project, { isPinned: !project.isPinned })}
+                                onToggleArchive={() => handleUpdateMetadata(project, { isArchived: true })}
+                                onClick={() => handleLoadSavedProject(project)}
+                            />
+                        ))}
+                    {(savedProjects.filter(p => !p.isArchived && !p.isStarred && !p.isPinned && p.name.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && searchTerm) && (
+                        <div className="py-8 text-center text-gray-400 dark:text-gray-500">
+                            <span className="material-icons text-4xl mb-2">search_off</span>
+                            <p>No projects match your search</p>
+                        </div>
+                    )}
+                </div>
             </div>
-        </div>
+          )}
+        </>
+      ) : (
+        <RoadmapArchitect />
       )}
 
       <Modal isOpen={!!pendingDraft} onClose={() => setPendingDraft(null)} title="Unsaved Draft Found">

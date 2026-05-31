@@ -47,7 +47,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ projectConfig, setProjectConf
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); onGenerate(); }} className="space-y-8">
-        <h2 className="text-3xl font-bold text-center text-gray-800 dark:text-gray-200">Architect a New Project</h2>
+        <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Define Project Blueprint</h3>
         
         <Fieldset legend="Core Concepts">
             <FormField id="title" label="Name / Title" tooltip="A clear, concise name for your project." required={true}>

@@ -324,13 +324,13 @@ const RoadmapArchitect: React.FC = () => {
       <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
 
       {/* Input Section */}
-      <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8 border border-gray-200 dark:border-gray-700/50">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8 border border-gray-200 dark:border-gray-700/50">
         <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="space-y-6">
           <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-            <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200 flex items-center">
+            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 flex items-center">
               <span className="material-icons mr-2 text-amber-500 dark:text-amber-400">map</span>
-              Roadmap Architect
-            </h2>
+              Define Roadmap Task
+            </h3>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
