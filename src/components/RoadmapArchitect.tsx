@@ -57,7 +57,15 @@ const RoadmapArchitect: React.FC = () => {
       isCheckingDraft.current = true;
 
       const draft = await db.getRoadmapDraft(1);
-      if (draft?.config && (draft.config.rawText || draft.config.fileContext)) {
+      if (draft?.config && (
+        draft.config.rawText ||
+        draft.config.fileContext ||
+        draft.config.project ||
+        draft.config.framework ||
+        draft.config.architecture ||
+        draft.config.purpose ||
+        draft.config.direction
+      )) {
         setPendingDraft(draft.config);
       } else {
         setDraftStatus('none');
@@ -69,7 +77,15 @@ const RoadmapArchitect: React.FC = () => {
   useEffect(() => {
     if (draftStatus === 'unloaded') return;
     const handler = setTimeout(() => {
-      if (config.rawText || config.fileContext) {
+      if (
+        config.rawText ||
+        config.fileContext ||
+        config.project ||
+        config.framework ||
+        config.architecture ||
+        config.purpose ||
+        config.direction
+      ) {
         db.saveRoadmapDraft({ id: 1, config });
       }
     }, 1500);
@@ -132,7 +148,14 @@ const RoadmapArchitect: React.FC = () => {
   }, []);
 
   const handleReset = () => {
-    setConfig({ rawText: '' });
+    setConfig({
+      rawText: '',
+      project: '',
+      framework: '',
+      architecture: '',
+      purpose: '',
+      direction: ''
+    });
     setGeneratedTask(null);
     setError(null);
     db.clearRoadmapDraft(1);
@@ -310,20 +333,90 @@ const RoadmapArchitect: React.FC = () => {
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2">
-              <label htmlFor="rawText" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Paste Vision / Context <span className="text-red-500 ml-1">*</span>
-              </label>
-              <textarea
-                id="rawText"
-                rows={12}
-                value={config.rawText}
-                onChange={(e) => setConfig(prev => ({ ...prev, rawText: e.target.value }))}
-                placeholder="Paste your raw thoughts, vision notes, requirements, or any unstructured text up to 20,000 characters..."
-                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent hover:ring-2 hover:ring-amber-500/20 text-gray-900 dark:text-gray-100"
-                required
-              />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="project" className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+                    Project
+                  </label>
+                  <input
+                    id="project"
+                    type="text"
+                    value={config.project || ''}
+                    onChange={(e) => setConfig(prev => ({ ...prev, project: e.target.value }))}
+                    placeholder="e.g. Noosphere-Architect"
+                    className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none transition text-sm text-gray-900 dark:text-gray-100"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="framework" className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+                    Framework
+                  </label>
+                  <input
+                    id="framework"
+                    type="text"
+                    value={config.framework || ''}
+                    onChange={(e) => setConfig(prev => ({ ...prev, framework: e.target.value }))}
+                    placeholder="e.g. React 19, Vite 6, Tailwind 4"
+                    className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none transition text-sm text-gray-900 dark:text-gray-100"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="architecture" className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+                    Architecture
+                  </label>
+                  <input
+                    id="architecture"
+                    type="text"
+                    value={config.architecture || ''}
+                    onChange={(e) => setConfig(prev => ({ ...prev, architecture: e.target.value }))}
+                    placeholder="e.g. Client-side SPA, IndexedDB"
+                    className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none transition text-sm text-gray-900 dark:text-gray-100"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="purpose" className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+                    Purpose
+                  </label>
+                  <input
+                    id="purpose"
+                    type="text"
+                    value={config.purpose || ''}
+                    onChange={(e) => setConfig(prev => ({ ...prev, purpose: e.target.value }))}
+                    placeholder="e.g. Architectural asset stewardship"
+                    className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none transition text-sm text-gray-900 dark:text-gray-100"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label htmlFor="direction" className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+                    Direction
+                  </label>
+                  <input
+                    id="direction"
+                    type="text"
+                    value={config.direction || ''}
+                    onChange={(e) => setConfig(prev => ({ ...prev, direction: e.target.value }))}
+                    placeholder="e.g. Enhance grounding with deep context inputs"
+                    className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none transition text-sm text-gray-900 dark:text-gray-100"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="rawText" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Paste Vision / Context <span className="text-red-500 ml-1">*</span>
+                </label>
+                <textarea
+                  id="rawText"
+                  rows={8}
+                  value={config.rawText}
+                  onChange={(e) => setConfig(prev => ({ ...prev, rawText: e.target.value }))}
+                  placeholder="Paste your raw thoughts, vision notes, requirements, or any unstructured text up to 20,000 characters..."
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent hover:ring-2 hover:ring-amber-500/20 text-gray-900 dark:text-gray-100"
+                  required
+                />
+              </div>
               <div className="flex justify-end mt-1">
                 <span className={`text-xs font-mono px-2 py-1 rounded ${
                   charCount > MAX_CHARS
@@ -335,7 +428,7 @@ const RoadmapArchitect: React.FC = () => {
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 lg:mt-[21px]">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Anchor File Context (Optional)
               </label>
@@ -344,7 +437,7 @@ const RoadmapArchitect: React.FC = () => {
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
-                  className={`border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer h-[326px] flex flex-col items-center justify-center ${
+                  className={`border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer h-[400px] flex flex-col items-center justify-center ${
                     isDragging
                       ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20'
                       : 'border-gray-300 dark:border-gray-600 hover:border-amber-500 dark:hover:border-amber-400 bg-gray-50/50 dark:bg-gray-900/20'
@@ -370,7 +463,7 @@ const RoadmapArchitect: React.FC = () => {
                   </p>
                 </div>
               ) : (
-                <div className="flex flex-col h-[326px] bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50 rounded-xl overflow-hidden">
+                <div className="flex flex-col h-[400px] bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50 rounded-xl overflow-hidden">
                   <div className="p-3 border-b border-amber-200 dark:border-amber-800/50 flex items-center justify-between bg-amber-100/50 dark:bg-amber-900/30">
                     <div className="flex items-center overflow-hidden mr-2">
                       <span className="material-icons text-amber-600 dark:text-amber-400 text-sm mr-2">description</span>
@@ -388,7 +481,7 @@ const RoadmapArchitect: React.FC = () => {
                     </button>
                   </div>
                   <div className="flex-1 p-4 overflow-y-auto">
-                    <div className="text-[10px] font-mono text-amber-800/70 dark:text-amber-300/60 whitespace-pre-wrap line-clamp-[15]">
+                    <div className="text-[10px] font-mono text-amber-800/70 dark:text-amber-300/60 whitespace-pre-wrap line-clamp-[20]">
                       {config.fileContext.content}
                     </div>
                   </div>

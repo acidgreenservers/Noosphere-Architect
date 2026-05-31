@@ -137,6 +137,11 @@ export interface SavedSignal extends LibraryMetadata {
 
 export interface RoadmapConfig {
   rawText: string;
+  project?: string;
+  framework?: string;
+  architecture?: string;
+  purpose?: string;
+  direction?: string;
   fileContext?: {
     name: string;
     content: string;

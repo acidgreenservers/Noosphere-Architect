@@ -6,7 +6,15 @@ const createRoadmapMetaPrompt = (config: RoadmapConfig): string => {
     ? `**ANCHOR FILE CONTEXT (Filename: ${config.fileContext.name}):**\n${config.fileContext.content}\n\n---\n\n`
     : "";
 
-  return `${fileContextPrompt}---
+  const projectContext = config.project ? `**Project:** ${config.project}\n` : "";
+  const frameworkContext = config.framework ? `**Framework:** ${config.framework}\n` : "";
+  const architectureContext = config.architecture ? `**Architecture:** ${config.architecture}\n` : "";
+  const purposeContext = config.purpose ? `**Purpose:** ${config.purpose}\n` : "";
+  const directionContext = config.direction ? `**Direction:** ${config.direction}\n` : "";
+
+  const userContext = [projectContext, frameworkContext, architectureContext, purposeContext, directionContext].filter(Boolean).join("");
+
+  return `${fileContextPrompt}${userContext ? userContext + "\n---\n\n" : ""}---
 Grounding: Base all pattern inference attractors in the current context. Bind your inference attractors to the purpose of the text, search for its meaning. Surface its topology and infer patterns rooted in the seed of the text.
 Purpose: Tasks must be clear, actionable and peppered with detailed nuance inferred from the text's purpose seed.
 Territory: The patterns you generate must use the text's purpose seed. All patterns matched are in inference alignment with the trajectory of the task/text. Do not extrapolate beyond the semantic boundary of the input.
