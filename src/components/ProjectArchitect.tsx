@@ -36,6 +36,8 @@ const ProjectArchitect: React.FC = () => {
   const loadingIntervalRef = useRef<number | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  const [isDragging, setIsDragging] = useState(false);
+
   const [generationStages, setGenerationStages] = useState<GenerationStage[]>([
     { key: 'project', label: 'PROJECT.md', status: 'waiting' },
     { key: 'architecture', label: 'ARCHITECTURE.md', status: 'waiting' },
@@ -89,6 +91,61 @@ const ProjectArchitect: React.FC = () => {
     }, 1500);
     return () => clearTimeout(handler);
   }, [projectConfig, draftStatus]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      readFile(file);
+    }
+  };
+
+  const readFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      setProjectConfig(prev => ({
+        ...prev,
+        fileContext: {
+          name: file.name,
+          content: content
+        }
+      }));
+    };
+    reader.onerror = () => {
+      setError('Failed to read the file. Please try again.');
+    };
+    reader.readAsText(file);
+  };
+
+  const removeFile = () => {
+    setProjectConfig(prev => {
+      const newConfig = { ...prev };
+      delete newConfig.fileContext;
+      return newConfig;
+    });
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      readFile(file);
+    }
+  };
 
   const handleGenerate = useCallback(async () => {
     abortControllerRef.current?.abort();
@@ -378,6 +435,13 @@ const ProjectArchitect: React.FC = () => {
               onGenerate={handleGenerate}
               onReset={handleReset}
               isLoading={isLoading}
+              fileContext={projectConfig.fileContext}
+              isDragging={isDragging}
+              onFileChange={handleFileChange}
+              onRemoveFile={removeFile}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
             />
           </div>
 

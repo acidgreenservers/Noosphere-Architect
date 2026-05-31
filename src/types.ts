@@ -78,6 +78,11 @@ export interface ProjectConfig {
     targetAudience: string;
     keyConstraints: string;
     successCriteria: string;
+    // File context — uploaded file for AI to synthesize from
+    fileContext?: {
+        name: string;
+        content: string;
+    };
     // Legacy fields — kept for backward compatibility with saved projects
     // These are no longer used in the form but preserved in stored data
     rules: string;
