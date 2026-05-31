@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ProjectConfig } from '../types';
 
@@ -19,7 +18,7 @@ const Tooltip: React.FC<{ text: string }> = ({ text }) => (
 const FormField: React.FC<{id: string, label: string, tooltip: string, required: boolean, children: React.ReactNode}> = ({id, label, tooltip, required, children}) => (
     <div className="mb-4">
         <label htmlFor={id} className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            {label} {required ? <span className="text-red-500 ml-1">*</span> : '(Optional)'}
+            {label} {required ? <span className="text-red-500 ml-1">*</span> : ''}
             <div className="group relative flex items-center ml-2">
                 <span className="material-icons text-gray-400 dark:text-gray-500 text-base cursor-help">info_outline</span>
                 <Tooltip text={tooltip} />
@@ -49,8 +48,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ projectConfig, setProjectConf
     <form onSubmit={(e) => { e.preventDefault(); onGenerate(); }} className="space-y-8">
         <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Define Project Blueprint</h3>
         
-        <Fieldset legend="Core Concepts">
-            <FormField id="title" label="Name / Title" tooltip="A clear, concise name for your project." required={true}>
+        <Fieldset legend="Core Identity">
+            <FormField id="title" label="Project Name / Title" tooltip="A clear, concise name for your project. This becomes the title of PROJECT.md." required={true}>
                  <input
                     type="text"
                     id="title"
@@ -80,29 +79,38 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ projectConfig, setProjectConf
             <FormField id="vision" label="Project Vision" tooltip="The long-term aspiration or impact of the project." required={false}>
                 <textarea rows={2} id="vision" name="vision" value={projectConfig.vision} onChange={handleChange} placeholder="What is the ultimate future state this project enables?" className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20" />
             </FormField>
-        </Fieldset>
-
-        <Fieldset legend="Operational Rules">
-            <FormField id="rules" label="Project Rules" tooltip="Core principles or commandments that must be followed." required={false}>
-                <textarea rows={3} id="rules" name="rules" value={projectConfig.rules} onChange={handleChange} placeholder="e.g., 1. All code must be reviewed. 2. User privacy is paramount." className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20" />
-            </FormField>
-            <FormField id="constraints" label="Project Constraints" tooltip="Specific limitations (e.g., budget, technology, timeline)." required={false}>
-                <textarea rows={3} id="constraints" name="constraints" value={projectConfig.constraints} onChange={handleChange} placeholder="e.g., Must use the existing Python backend. Cannot access external APIs without approval." className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20" />
-            </FormField>
-            <FormField id="guidelines" label="Guidelines & Guardrails" tooltip="Best practices and safety measures to keep the project on track." required={false}>
-                <textarea rows={3} id="guidelines" name="guidelines" value={projectConfig.guidelines} onChange={handleChange} placeholder="e.g., AI-generated content should be clearly marked. Avoid generating content on sensitive topics." className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20" />
+            <FormField id="targetAudience" label="Target Audience" tooltip="Who the project serves — primary users, stakeholders, or consumers." required={false}>
+                <textarea rows={2} id="targetAudience" name="targetAudience" value={projectConfig.targetAudience} onChange={handleChange} placeholder="e.g., Frontend developers building data-intensive dashboards" className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20" />
             </FormField>
         </Fieldset>
 
-        <Fieldset legend="Team & Standards">
-             <FormField id="roles" label="Project Developer Roles" tooltip="Define the key roles and their primary responsibilities." required={false}>
-                <textarea rows={3} id="roles" name="roles" value={projectConfig.roles} onChange={handleChange} placeholder="e.g., Lead AI Engineer: Manages model integration. Frontend Dev: Builds UI components." className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20" />
+        <Fieldset legend="Technical Foundation">
+            <FormField id="techStack" label="Tech Stack & Framework" tooltip="Languages, frameworks, infrastructure choices, and key libraries." required={false}>
+                <textarea rows={3} id="techStack" name="techStack" value={projectConfig.techStack} onChange={handleChange} placeholder="e.g., Python 3.12, FastAPI, PostgreSQL 16, React 19, Docker, GitHub Actions" className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20" />
             </FormField>
-             <FormField id="standards" label="Project Standards" tooltip="Technical standards for code, documentation, and testing." required={false}>
-                <textarea rows={3} id="standards" name="standards" value={projectConfig.standards} onChange={handleChange} placeholder="e.g., All functions must have docstrings. Unit test coverage must be > 80%." className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20" />
+            <FormField id="architecture" label="Architecture" tooltip="High-level structural approach — patterns, deployment model, system organization." required={false}>
+                <textarea rows={3} id="architecture" name="architecture" value={projectConfig.architecture} onChange={handleChange} placeholder="e.g., Microservices with event-driven communication. Deployed via Kubernetes. API-first design." className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20" />
             </FormField>
-             <FormField id="consistency" label="Project Consistency" tooltip="Rules for maintaining consistency in UI, API design, etc." required={false}>
-                <textarea rows={3} id="consistency" name="consistency" value={projectConfig.consistency} onChange={handleChange} placeholder="e.g., All API endpoints must be versioned. UI components must adhere to the design system." className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20" />
+            <FormField id="guidingPrinciples" label="Guiding Principles" tooltip="Values and philosophy that shape decision-making across the project." required={false}>
+                <textarea rows={3} id="guidingPrinciples" name="guidingPrinciples" value={projectConfig.guidingPrinciples} onChange={handleChange} placeholder="e.g., Simplicity over complexity. Data at rest must be encrypted. Prefer boring technology." className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20" />
+            </FormField>
+        </Fieldset>
+
+        <Fieldset legend="Security & Accessibility">
+            <FormField id="securityPosition" label="Security Position" tooltip="Security principles, threat model scope, compliance requirements, and data handling stance." required={false}>
+                <textarea rows={3} id="securityPosition" name="securityPosition" value={projectConfig.securityPosition} onChange={handleChange} placeholder="e.g., SOC 2 compliance required. All secrets managed via vault. Input sanitization mandatory." className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20" />
+            </FormField>
+            <FormField id="accessibilityPosition" label="Accessibility Position" tooltip="Inclusive design stance and accessibility targets." required={false}>
+                <textarea rows={3} id="accessibilityPosition" name="accessibilityPosition" value={projectConfig.accessibilityPosition} onChange={handleChange} placeholder="e.g., WCAG 2.2 AA compliance. Screen reader support. Color contrast ratios must meet standards." className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20" />
+            </FormField>
+        </Fieldset>
+
+        <Fieldset legend="Constraints & Success">
+            <FormField id="keyConstraints" label="Key Constraints" tooltip="Boundaries, limitations, and non-negotiables the project must respect." required={false}>
+                <textarea rows={3} id="keyConstraints" name="keyConstraints" value={projectConfig.keyConstraints} onChange={handleChange} placeholder="e.g., Must run on existing infrastructure. Cannot exceed $500/mo in operational costs." className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20" />
+            </FormField>
+            <FormField id="successCriteria" label="Success Criteria" tooltip="How you know the project is working — measurable outcomes." required={false}>
+                <textarea rows={3} id="successCriteria" name="successCriteria" value={projectConfig.successCriteria} onChange={handleChange} placeholder="e.g., 99.9% uptime in first quarter. All critical paths covered by tests. < 200ms P95 response time." className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20" />
             </FormField>
         </Fieldset>
       
