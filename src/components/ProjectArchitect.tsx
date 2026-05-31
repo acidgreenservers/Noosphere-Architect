@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { ProjectConfig, GeneratedProjectFiles, SavedProject } from '../types';
+import { ProjectConfig, GeneratedProjectFiles, SavedProject, GenerationStage, StageStatus } from '../types';
 import { generateProjectFiles } from '../services/ai/projectFilesService';
 import { AbortError } from '../services/ai/openRouter';
 import * as db from '../services/dbService';
@@ -9,6 +9,7 @@ import { sanitizeFilename } from '../utils/security';
 import ProjectForm from './ProjectForm';
 import GeneratedProjectDisplay from './GeneratedProjectDisplay';
 import RoadmapArchitect from './RoadmapArchitect';
+import AgentJobArchitect from './AgentJobArchitect';
 import LoadingSpinner from './LoadingSpinner';
 import Modal from './Modal';
 import PreviewModal from './PreviewModal';
@@ -17,13 +18,15 @@ import Toast from './Toast';
 import { StarredPinnedBar } from './StarredPinnedBar';
 import { UnifiedItem } from '../types';
 
-type Tab = 'architect' | 'roadmap';
+type Tab = 'architect' | 'roadmap' | 'agentJob';
 
 const ProjectArchitect: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('architect');
   const [projectConfig, setProjectConfig] = useState<ProjectConfig>({
-    title: '', idea: '', vision: '', goal: '', rules: '',
-    constraints: '', guidelines: '', roles: '', standards: '', consistency: ''
+    title: '', idea: '', vision: '', goal: '',
+    techStack: '', architecture: '', securityPosition: '', accessibilityPosition: '',
+    guidingPrinciples: '', targetAudience: '', keyConstraints: '', successCriteria: '',
+    rules: '', constraints: '', guidelines: '', roles: '', standards: '', consistency: ''
   });
   const [generatedFiles, setGeneratedFiles] = useState<GeneratedProjectFiles | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -32,6 +35,13 @@ const ProjectArchitect: React.FC = () => {
   const [loadingMessage, setLoadingMessage] = useState('');
   const loadingIntervalRef = useRef<number | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  const [generationStages, setGenerationStages] = useState<GenerationStage[]>([
+    { key: 'project', label: 'PROJECT.md', status: 'waiting' },
+    { key: 'architecture', label: 'ARCHITECTURE.md', status: 'waiting' },
+    { key: 'security', label: 'SECURITY.md', status: 'waiting' },
+  ]);
+  const [overallProgress, setOverallProgress] = useState(0);
 
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
   const [searchTerm, setSearchText] = useState('');
@@ -88,21 +98,38 @@ const ProjectArchitect: React.FC = () => {
     setIsLoading(true);
     setError(null);
     setGeneratedFiles(null);
+    setGenerationStages([
+      { key: 'project', label: 'PROJECT.md', status: 'active' },
+      { key: 'architecture', label: 'ARCHITECTURE.md', status: 'waiting' },
+      { key: 'security', label: 'SECURITY.md', status: 'waiting' },
+    ]);
+    setOverallProgress(5);
     
-    const messages = ['Architecting project vision...', 'Defining standards & roles...', 'Establishing rules & guardrails...'];
-    let messageIndex = 0;
-    setLoadingMessage(messages[0]);
-    loadingIntervalRef.current = window.setInterval(() => {
-      messageIndex = (messageIndex + 1) % messages.length;
-      setLoadingMessage(messages[messageIndex]);
-    }, 2000);
+    const stageMessages: Record<number, string> = {
+      0: 'Synthesizing project identity into PROJECT.md...',
+      1: 'Mapping architecture into ARCHITECTURE.md...',
+      2: 'Framing security posture into SECURITY.md...',
+    };
+    setLoadingMessage(stageMessages[0]);
 
     try {
       if (!projectConfig.title || !projectConfig.goal) {
         setError("Project Title and Goal are required fields.");
         return;
       }
-      const files = await generateProjectFiles(projectConfig, controller.signal);
+      const files = await generateProjectFiles(projectConfig, controller.signal, (stageIndex: number) => {
+        // Update stage statuses
+        setGenerationStages(prev => prev.map((stage, i) => {
+          if (i === stageIndex) return { ...stage, status: 'complete' as StageStatus };
+          if (i === stageIndex + 1) return { ...stage, status: 'active' as StageStatus };
+          return stage;
+        }));
+        // Update progress: each stage is ~31%, starting at 5%
+        const progress = 5 + (stageIndex + 1) * 31;
+        setOverallProgress(Math.min(progress, 95));
+        // Update loading message to next stage
+        setLoadingMessage(stageMessages[stageIndex + 1] || 'Finalizing...');
+      });
       if (!controller.signal.aborted) {
         setGeneratedFiles(files);
         await db.clearProjectDraft(1);
@@ -111,6 +138,8 @@ const ProjectArchitect: React.FC = () => {
       if (e instanceof AbortError || e?.name === 'AbortError') return;
       setError('Failed to generate project files. Please check your API key and try again.');
     } finally {
+      setGenerationStages(prev => prev.map(s => ({ ...s, status: 'complete' as StageStatus })));
+      setOverallProgress(100);
       setIsLoading(false);
       if(loadingIntervalRef.current) {
         clearInterval(loadingIntervalRef.current);
@@ -129,8 +158,10 @@ const ProjectArchitect: React.FC = () => {
 
   const handleReset = () => {
     setProjectConfig({
-      title: '', idea: '', vision: '', goal: '', rules: '',
-      constraints: '', guidelines: '', roles: '', standards: '', consistency: ''
+      title: '', idea: '', vision: '', goal: '',
+      techStack: '', architecture: '', securityPosition: '', accessibilityPosition: '',
+      guidingPrinciples: '', targetAudience: '', keyConstraints: '', successCriteria: '',
+      rules: '', constraints: '', guidelines: '', roles: '', standards: '', consistency: ''
     });
     setGeneratedFiles(null);
     setError(null);
@@ -296,11 +327,13 @@ const ProjectArchitect: React.FC = () => {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-            {activeTab === 'architect' ? 'Project Architect' : 'Roadmap Architect'}
+            {activeTab === 'architect' ? 'Project Architect' : activeTab === 'agentJob' ? 'Agent Job Architect' : 'Roadmap Architect'}
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             {activeTab === 'architect'
               ? 'Establish a high-level vision, standards, and rules for your project.'
+              : activeTab === 'agentJob'
+              ? 'Author an employer handbook for an AI agent-employee — defining their role, authority, and how they operate within the project workplace.'
               : 'Transform raw vision text into deeply actionable, rigorously detailed roadmap task entries.'}
           </p>
         </div>
@@ -316,6 +349,14 @@ const ProjectArchitect: React.FC = () => {
             className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${activeTab === 'architect' ? 'text-green-500 border-green-500' : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}`}
           >
             Project Architect
+          </button>
+          <button
+            role="tab"
+            aria-selected={activeTab === 'agentJob'}
+            onClick={() => setActiveTab('agentJob')}
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${activeTab === 'agentJob' ? 'text-indigo-500 border-indigo-500' : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}`}
+          >
+            Agent Job Architect
           </button>
           <button
             role="tab"
@@ -347,7 +388,57 @@ const ProjectArchitect: React.FC = () => {
         </div>
       )}
 
-          {isLoading && <LoadingSpinner message={loadingMessage} />}
+          {/* Progressive Loading Bar */}
+          {isLoading && (
+            <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8">
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-6">Generating Project Files</h3>
+              
+              {/* Stage indicators */}
+              <div className="space-y-3 mb-6">
+                {generationStages.map((stage, idx) => (
+                  <div key={stage.key} className="flex items-center space-x-3">
+                    {/* Status icon */}
+                    <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-500 ${
+                      stage.status === 'complete' ? 'bg-green-500 text-white' :
+                      stage.status === 'active' ? 'bg-blue-500 text-white animate-pulse' :
+                      'bg-gray-200 dark:bg-gray-700 text-gray-400'
+                    }`}>
+                      {stage.status === 'complete' ? '✓' :
+                       stage.status === 'active' ? '●' :
+                       '○'}
+                    </div>
+                    {/* Label */}
+                    <span className={`text-sm font-medium ${
+                      stage.status === 'complete' ? 'text-green-600 dark:text-green-400' :
+                      stage.status === 'active' ? 'text-blue-600 dark:text-blue-400' :
+                      'text-gray-400 dark:text-gray-500'
+                    }`}>
+                      {stage.label}
+                    </span>
+                    {/* Status text */}
+                    <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto">
+                      {stage.status === 'complete' ? 'Complete' :
+                       stage.status === 'active' ? 'Generating...' :
+                       'Waiting'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Progress bar */}
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
+                <div
+                  className="bg-blue-500 h-2.5 rounded-full transition-all duration-700 ease-out"
+                  style={{ width: `${overallProgress}%` }}
+                />
+              </div>
+              
+              {/* Status message */}
+              <p className="mt-3 text-sm text-gray-500 dark:text-gray-400 text-center">
+                {loadingMessage}
+              </p>
+            </div>
+          )}
 
           {generatedFiles && !isLoading && (
             <div className="mt-8">
@@ -441,6 +532,8 @@ const ProjectArchitect: React.FC = () => {
             </div>
           )}
         </>
+      ) : activeTab === 'agentJob' ? (
+        <AgentJobArchitect />
       ) : (
         <RoadmapArchitect />
       )}

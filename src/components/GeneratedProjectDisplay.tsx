@@ -26,22 +26,22 @@ const GeneratedProjectDisplay: React.FC<GeneratedProjectDisplayProps> = ({ files
   const [exportAllText, setExportAllText] = useState('Export All');
 
   const tabs: { id: Tab; label: string; icon: string }[] = [
-    { id: 'overviewFile', label: 'Overview', icon: 'visibility' },
-    { id: 'standardsFile', label: 'Standards', icon: 'integration_instructions' },
-    { id: 'rulesFile', label: 'Rules', icon: 'gavel' },
+    { id: 'overviewFile', label: 'PROJECT.md', icon: 'description' },
+    { id: 'standardsFile', label: 'ARCHITECTURE.md', icon: 'account_tree' },
+    { id: 'rulesFile', label: 'SECURITY.md', icon: 'security' },
   ];
 
   const handleCopyAll = () => {
     const allContent = `
---- FILE: project-overview.md ---
+--- FILE: PROJECT.md ---
 
 ${files.overviewFile}
 
---- FILE: development-standards.md ---
+--- FILE: ARCHITECTURE.md ---
 
 ${files.standardsFile}
 
---- FILE: rules-and-guardrails.md ---
+--- FILE: SECURITY.md ---
 
 ${files.rulesFile}
     `.trim();
@@ -54,9 +54,9 @@ ${files.rulesFile}
     // Sanitize the project name for use as a filename prefix to prevent path traversal or invalid filenames
     const prefix = sanitizeFilename(projectName || 'project-export');
     const filesToExport = {
-        [`${prefix}-overview.md`]: files.overviewFile,
-        [`${prefix}-standards.md`]: files.standardsFile,
-        [`${prefix}-rules.md`]: files.rulesFile,
+        [`${prefix}-PROJECT.md`]: files.overviewFile,
+        [`${prefix}-ARCHITECTURE.md`]: files.standardsFile,
+        [`${prefix}-SECURITY.md`]: files.rulesFile,
     };
 
     for (const [filename, content] of Object.entries(filesToExport)) {

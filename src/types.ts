@@ -68,6 +68,18 @@ export interface ProjectConfig {
     idea: string;
     vision: string;
     goal: string;
+    // Core identity — PROJECT.md fields
+    techStack: string;
+    architecture: string;
+    securityPosition: string;
+    accessibilityPosition: string;
+    // Project context fields
+    guidingPrinciples: string;
+    targetAudience: string;
+    keyConstraints: string;
+    successCriteria: string;
+    // Legacy fields — kept for backward compatibility with saved projects
+    // These are no longer used in the form but preserved in stored data
     rules: string;
     constraints: string;
     guidelines: string;
@@ -77,9 +89,9 @@ export interface ProjectConfig {
 }
 
 export interface GeneratedProjectFiles {
-    overviewFile: string;
-    standardsFile: string;
-    rulesFile: string;
+    overviewFile: string;   // Now outputs as PROJECT.md
+    standardsFile: string;  // Now outputs as ARCHITECTURE.md
+    rulesFile: string;      // Now outputs as SECURITY.md
 }
 
 export interface SavedProject extends LibraryMetadata {
@@ -161,6 +173,35 @@ export interface SavedRoadmap extends LibraryMetadata {
   createdAt: string;
 }
 
+// ----------------------------------------------------------------------
+// Agent Job Architect types
+// ----------------------------------------------------------------------
+export interface AgentJobConfig {
+  jobTitle: string;
+  department: string;
+  reportsTo: string;
+  mission: string;
+  responsibilities: string;
+  qualifications: string;
+  operatingPrinciples: string;
+  authority: string;
+  escalationPath: string;
+  successCriteria: string;
+  constraints: string;
+}
+
+export interface GeneratedAgentJobFile {
+  agentsFile: string;
+}
+
+export interface SavedAgentJob extends LibraryMetadata {
+  id?: number;
+  name: string;
+  config: AgentJobConfig;
+  files: GeneratedAgentJobFile;
+  createdAt: string;
+}
+
 export interface SynthesisLine {
   id: string;
   content: string;
@@ -186,7 +227,7 @@ export interface SavedSynthesis extends LibraryMetadata {
 export interface UnifiedItem {
     id: number | string;
     name: string;
-    type: 'agent' | 'prompt-standard' | 'prompt-system' | 'project' | 'mindseed' | 'signal' | 'synthesis' | 'roadmap' | 'legacy-prompt';
+    type: 'agent' | 'prompt-standard' | 'prompt-system' | 'project' | 'mindseed' | 'signal' | 'synthesis' | 'roadmap' | 'legacy-prompt' | 'agentJob';
     original: any;
     createdAt: string;
     isStarred: boolean;
@@ -201,3 +242,14 @@ export interface UnifiedItem {
 // ----------------------------------------------------------------------
 export type ExportFormat = 'markdown' | 'html' | 'json';
 export type HtmlTheme = 'light' | 'dark';
+
+// ----------------------------------------------------------------------
+// Generation progress tracking
+// ----------------------------------------------------------------------
+export type StageStatus = 'waiting' | 'active' | 'complete' | 'error';
+
+export interface GenerationStage {
+  key: string;
+  label: string;
+  status: StageStatus;
+}
