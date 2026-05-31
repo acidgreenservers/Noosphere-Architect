@@ -7,6 +7,14 @@ interface ProjectFormProps {
   onGenerate: () => void;
   onReset: () => void;
   isLoading: boolean;
+  // File upload props
+  fileContext?: { name: string; content: string };
+  isDragging?: boolean;
+  onFileChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onRemoveFile?: () => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDragLeave?: (e: React.DragEvent) => void;
+  onDrop?: (e: React.DragEvent) => void;
 }
 
 const Tooltip: React.FC<{ text: string }> = ({ text }) => (
@@ -36,7 +44,7 @@ const Fieldset: React.FC<{legend: string, children: React.ReactNode}> = ({legend
 );
 
 
-const ProjectForm: React.FC<ProjectFormProps> = ({ projectConfig, setProjectConfig, onGenerate, onReset, isLoading }) => {
+const ProjectForm: React.FC<ProjectFormProps> = ({ projectConfig, setProjectConfig, onGenerate, onReset, isLoading, fileContext, isDragging, onFileChange, onRemoveFile, onDragOver, onDragLeave, onDrop }) => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setProjectConfig(prev => ({ ...prev, [name]: value }));
@@ -112,6 +120,74 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ projectConfig, setProjectConf
             <FormField id="successCriteria" label="Success Criteria" tooltip="How you know the project is working — measurable outcomes." required={false}>
                 <textarea rows={3} id="successCriteria" name="successCriteria" value={projectConfig.successCriteria} onChange={handleChange} placeholder="e.g., 99.9% uptime in first quarter. All critical paths covered by tests. < 200ms P95 response time." className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20" />
             </FormField>
+        </Fieldset>
+      
+        <Fieldset legend="Anchor File Context">
+          <div className="space-y-2">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+              Optionally upload a file for the AI to read and synthesize information from alongside your form inputs.
+            </p>
+            {!fileContext ? (
+              <div
+                onDragOver={onDragOver}
+                onDragLeave={onDragLeave}
+                onDrop={onDrop}
+                className={`border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer ${
+                  isDragging
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                    : 'border-gray-300 dark:border-gray-600 hover:border-blue-500 dark:hover:border-blue-400 bg-gray-50/50 dark:bg-gray-900/20'
+                }`}
+                onClick={() => document.getElementById('projectFileInput')?.click()}
+              >
+                <input
+                  type="file"
+                  id="projectFileInput"
+                  className="hidden"
+                  onChange={onFileChange}
+                  accept=".txt,.md,.json,.js,.ts,.tsx,.html,.css"
+                />
+                <span className={`material-icons text-4xl mb-2 transition-colors ${isDragging ? 'text-blue-500' : 'text-gray-400'}`}>upload_file</span>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                  Drop a file here
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  Or click to browse
+                </p>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-4 px-2">
+                  Supports .txt, .md, and code files. The AI will read and synthesize from this context.
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/50 rounded-xl overflow-hidden">
+                <div className="p-3 border-b border-blue-200 dark:border-blue-800/50 flex items-center justify-between bg-blue-100/50 dark:bg-blue-900/30">
+                  <div className="flex items-center overflow-hidden mr-2">
+                    <span className="material-icons text-blue-600 dark:text-blue-400 text-sm mr-2">description</span>
+                    <span className="text-xs font-bold text-blue-800 dark:text-blue-200 truncate">
+                      {fileContext.name}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onRemoveFile}
+                    className="p-1 hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full text-blue-600 dark:text-blue-400 transition-colors"
+                    title="Remove file"
+                  >
+                    <span className="material-icons text-sm">close</span>
+                  </button>
+                </div>
+                <div className="p-4 max-h-32 overflow-y-auto">
+                  <div className="text-[10px] font-mono text-blue-800/70 dark:text-blue-300/60 whitespace-pre-wrap line-clamp-[10]">
+                    {fileContext.content}
+                  </div>
+                </div>
+                <div className="p-3 bg-blue-100/30 dark:bg-blue-900/20 text-center">
+                  <span className="text-[10px] font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider">
+                    Attached as AI Context
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
         </Fieldset>
       
         <div className="flex flex-col sm:flex-row items-center justify-end space-y-4 sm:space-y-0 sm:space-x-4 pt-4">

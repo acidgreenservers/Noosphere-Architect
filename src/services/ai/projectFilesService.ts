@@ -2,13 +2,21 @@ import { ProjectConfig, GeneratedProjectFiles } from '../../types';
 import { handleAiCall } from './openRouter';
 import { getCustomContext } from '../dbService';
 
+const getFileContextPrefix = (config: ProjectConfig): string => {
+  if (!config.fileContext?.content) return "";
+  const fileName = config.fileContext.name;
+  const content = config.fileContext.content;
+  return `**ADDITIONAL FILE CONTEXT (${fileName}):**\n${content}\n\n---\n\n`;
+};
+
 /**
  * Generate PROJECT.md — the project's core identity document.
  * Synthesizes title, idea, vision, goal, target audience, and guiding principles.
  */
 const generateProjectMd = async (config: ProjectConfig, customContext: string | undefined, signal?: AbortSignal): Promise<string> => {
   const contextPrefix = customContext ? `**CUSTOM SYSTEM CONTEXT:**\n${customContext}\n\n---\n\n` : "";
-  const prompt = `${contextPrefix}You are a senior technical writer crafting a top-level PROJECT.md document for a software project. This document sits at the project root and serves as the authoritative reference for the project's identity, purpose, and direction.
+  const filePrefix = getFileContextPrefix(config);
+  const prompt = `${contextPrefix}${filePrefix}You are a senior technical writer crafting a top-level PROJECT.md document for a software project. This document sits at the project root and serves as the authoritative reference for the project's identity, purpose, and direction.
 
 Write in clear, confident prose. Synthesize the provided fields into a cohesive document. Use markdown formatting. Do not use bullet lists for key sections — write in short, flowing paragraphs.
 
@@ -66,7 +74,8 @@ Generate ONLY the PROJECT.md content as a plain Markdown string. Do not wrap in 
  */
 const generateArchitectureMd = async (config: ProjectConfig, customContext: string | undefined, signal?: AbortSignal): Promise<string> => {
   const contextPrefix = customContext ? `**CUSTOM SYSTEM CONTEXT:**\n${customContext}\n\n---\n\n` : "";
-  const prompt = `${contextPrefix}You are a senior software architect writing an ARCHITECTURE.md document. This document describes the technical foundation, structural decisions, and patterns of a project.
+  const filePrefix = getFileContextPrefix(config);
+  const prompt = `${contextPrefix}${filePrefix}You are a senior software architect writing an ARCHITECTURE.md document. This document describes the technical foundation, structural decisions, and patterns of a project.
 
 Write in clear, authoritative prose. Use markdown formatting. Do not use bullet lists for key sections — write in short, flowing paragraphs that teach as much as they document.
 
@@ -123,7 +132,8 @@ Generate ONLY the ARCHITECTURE.md content as a plain Markdown string. Do not wra
  */
 const generateSecurityMd = async (config: ProjectConfig, customContext: string | undefined, signal?: AbortSignal): Promise<string> => {
   const contextPrefix = customContext ? `**CUSTOM SYSTEM CONTEXT:**\n${customContext}\n\n---\n\n` : "";
-  const prompt = `${contextPrefix}You are a security engineer writing a SECURITY.md document for a software project. This document communicates the security posture, practices, and expectations to everyone who works on or with the project.
+  const filePrefix = getFileContextPrefix(config);
+  const prompt = `${contextPrefix}${filePrefix}You are a security engineer writing a SECURITY.md document for a software project. This document communicates the security posture, practices, and expectations to everyone who works on or with the project.
 
 Write in clear, measured prose. Use markdown formatting. Do not use bullet lists for key sections — write in short, flowing paragraphs that build confidence through clarity.
 
