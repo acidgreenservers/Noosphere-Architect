@@ -161,6 +161,35 @@ export interface SavedRoadmap extends LibraryMetadata {
   createdAt: string;
 }
 
+// ----------------------------------------------------------------------
+// Agent Job Architect types
+// ----------------------------------------------------------------------
+export interface AgentJobConfig {
+  jobTitle: string;
+  department: string;
+  reportsTo: string;
+  mission: string;
+  responsibilities: string;
+  qualifications: string;
+  operatingPrinciples: string;
+  authority: string;
+  escalationPath: string;
+  successCriteria: string;
+  constraints: string;
+}
+
+export interface GeneratedAgentJobFile {
+  agentsFile: string;
+}
+
+export interface SavedAgentJob extends LibraryMetadata {
+  id?: number;
+  name: string;
+  config: AgentJobConfig;
+  files: GeneratedAgentJobFile;
+  createdAt: string;
+}
+
 export interface SynthesisLine {
   id: string;
   content: string;
@@ -186,7 +215,7 @@ export interface SavedSynthesis extends LibraryMetadata {
 export interface UnifiedItem {
     id: number | string;
     name: string;
-    type: 'agent' | 'prompt-standard' | 'prompt-system' | 'project' | 'mindseed' | 'signal' | 'synthesis' | 'roadmap' | 'legacy-prompt';
+    type: 'agent' | 'prompt-standard' | 'prompt-system' | 'project' | 'mindseed' | 'signal' | 'synthesis' | 'roadmap' | 'legacy-prompt' | 'agentJob';
     original: any;
     createdAt: string;
     isStarred: boolean;

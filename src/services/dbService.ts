@@ -1,7 +1,7 @@
-import { SavedAgent, SavedPrompt, AgentConfig, PromptConfig, SavedProject, ProjectConfig, SavedSignal, SignalConfig, SavedMindSeed, MindSeedConfig, SavedSynthesis, SavedRoadmap, RoadmapConfig, MindSeedType, PromptType } from '../types';
+import { SavedAgent, SavedPrompt, AgentConfig, PromptConfig, SavedProject, ProjectConfig, SavedSignal, SignalConfig, SavedMindSeed, MindSeedConfig, SavedSynthesis, SavedRoadmap, RoadmapConfig, SavedAgentJob, AgentJobConfig, MindSeedType, PromptType } from '../types';
 
 const DB_NAME = 'NoosphereArchitectDB';
-const DB_VERSION = 14;
+const DB_VERSION = 15;
 const AGENT_STORE = 'savedAgents';
 const PROMPT_STORE = 'savedPrompts'; // Legacy, keeping for migration or reference
 const STANDARD_PROMPT_STORE = 'standardPrompts';
@@ -27,6 +27,8 @@ const PROJECT_CONTEXT_STORE = 'projectContext';
 export const SYNTHESIS_STORE = 'savedSynthesis';
 const ROADMAP_STORE = 'savedRoadmaps';
 const ROADMAP_DRAFT_STORE = 'roadmapDraft';
+const AGENT_JOB_STORE = 'savedAgentJobs';
+const AGENT_JOB_DRAFT_STORE = 'agentJobDraft';
 const SCHEMA_VERSION_STORE = '_schemaVersion'; // Internal store for migration verification
 
 
@@ -251,6 +253,17 @@ const initDB = (): Promise<IDBDatabase> => {
         },
         14: (_db, _tx) => {
             console.log("Migration to v14 complete: Schema version reconciled with existing DB state.");
+        },
+        15: (db, tx) => {
+            if (!db.objectStoreNames.contains(AGENT_JOB_STORE)) {
+                const store = db.createObjectStore(AGENT_JOB_STORE, { keyPath: 'id', autoIncrement: true });
+                store.createIndex('name', 'name', { unique: false });
+                store.createIndex('createdAt', 'createdAt', { unique: false });
+            }
+            if (!db.objectStoreNames.contains(AGENT_JOB_DRAFT_STORE)) {
+                db.createObjectStore(AGENT_JOB_DRAFT_STORE, { keyPath: 'id' });
+            }
+            console.log("Migration to v15 complete: Agent Job store initialized.");
         }
       };
 
@@ -322,7 +335,7 @@ export const checkDatabaseHealth = async (): Promise<{
     const expectedStores = [
       AGENT_STORE, PROMPT_STORE, STANDARD_PROMPT_STORE, SYSTEM_PROMPT_STORE,
       PROJECT_STORE, SIGNAL_STORE, COGNISEED_STORE, LINGUASEED_STORE, ARCHSEED_STORE,
-      SYNTHESIS_STORE, ROADMAP_STORE, SCHEMA_VERSION_STORE
+      SYNTHESIS_STORE, ROADMAP_STORE, AGENT_JOB_STORE, SCHEMA_VERSION_STORE
     ];
 
     expectedStores.forEach(storeName => {
@@ -1018,6 +1031,79 @@ export const getRoadmapDraft = (id: number): Promise<{id: number, config: Roadma
 export const clearRoadmapDraft = (id: number): Promise<void> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(ROADMAP_DRAFT_STORE, 'readwrite');
+        const request = store.delete(id);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+// Agent Job Functions
+export const addAgentJob = (job: SavedAgentJob): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(AGENT_JOB_STORE, 'readwrite');
+        const request = store.add(job);
+        request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const getAllAgentJobs = (): Promise<SavedAgentJob[]> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(AGENT_JOB_STORE, 'readonly');
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const updateAgentJob = (job: SavedAgentJob): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(AGENT_JOB_STORE, 'readwrite');
+        const request = store.put(job);
+        request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const deleteAgentJob = (id: number): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(AGENT_JOB_STORE, 'readwrite');
+        const request = store.delete(id);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const clearAllAgentJobs = (): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(AGENT_JOB_STORE, 'readwrite');
+        const request = store.clear();
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const saveAgentJobDraft = (draft: {id: number, config: AgentJobConfig}): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(AGENT_JOB_DRAFT_STORE, 'readwrite');
+        const request = store.put(draft);
+        request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const getAgentJobDraft = (id: number): Promise<{id: number, config: AgentJobConfig} | undefined> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(AGENT_JOB_DRAFT_STORE, 'readonly');
+        const request = store.get(id);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const clearAgentJobDraft = (id: number): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(AGENT_JOB_DRAFT_STORE, 'readwrite');
         const request = store.delete(id);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);

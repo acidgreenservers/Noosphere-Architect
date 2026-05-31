@@ -29,6 +29,7 @@ export function getPreviewContent(item: UnifiedItem): string | Record<string, st
   if (item.type === 'signal') return `## User Prompt\n\n${o.config.messyPrompt}\n\n## Prompt Signal\n\n${o.promptSignal}\n\n## Signal Constraints\n\n${o.signalConstraints}`;
   if (item.type === 'synthesis') return o.content;
   if (item.type === 'roadmap') return o.generatedTask;
+  if (item.type === 'agentJob') return o.files.agentsFile;
   if (o.prompt) return o.prompt;
   if (o.files) return {
     'agent.md': o.files.agentFile,

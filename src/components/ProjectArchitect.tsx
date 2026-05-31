@@ -9,6 +9,7 @@ import { sanitizeFilename } from '../utils/security';
 import ProjectForm from './ProjectForm';
 import GeneratedProjectDisplay from './GeneratedProjectDisplay';
 import RoadmapArchitect from './RoadmapArchitect';
+import AgentJobArchitect from './AgentJobArchitect';
 import LoadingSpinner from './LoadingSpinner';
 import Modal from './Modal';
 import PreviewModal from './PreviewModal';
@@ -17,7 +18,7 @@ import Toast from './Toast';
 import { StarredPinnedBar } from './StarredPinnedBar';
 import { UnifiedItem } from '../types';
 
-type Tab = 'architect' | 'roadmap';
+type Tab = 'architect' | 'roadmap' | 'agentJob';
 
 const ProjectArchitect: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('architect');
@@ -296,11 +297,13 @@ const ProjectArchitect: React.FC = () => {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-            {activeTab === 'architect' ? 'Project Architect' : 'Roadmap Architect'}
+            {activeTab === 'architect' ? 'Project Architect' : activeTab === 'agentJob' ? 'Agent Job Architect' : 'Roadmap Architect'}
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             {activeTab === 'architect'
               ? 'Establish a high-level vision, standards, and rules for your project.'
+              : activeTab === 'agentJob'
+              ? 'Author an employer handbook for an AI agent-employee — defining their role, authority, and how they operate within the project workplace.'
               : 'Transform raw vision text into deeply actionable, rigorously detailed roadmap task entries.'}
           </p>
         </div>
@@ -316,6 +319,14 @@ const ProjectArchitect: React.FC = () => {
             className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${activeTab === 'architect' ? 'text-green-500 border-green-500' : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}`}
           >
             Project Architect
+          </button>
+          <button
+            role="tab"
+            aria-selected={activeTab === 'agentJob'}
+            onClick={() => setActiveTab('agentJob')}
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${activeTab === 'agentJob' ? 'text-indigo-500 border-indigo-500' : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}`}
+          >
+            Agent Job Architect
           </button>
           <button
             role="tab"
@@ -441,6 +452,8 @@ const ProjectArchitect: React.FC = () => {
             </div>
           )}
         </>
+      ) : activeTab === 'agentJob' ? (
+        <AgentJobArchitect />
       ) : (
         <RoadmapArchitect />
       )}
