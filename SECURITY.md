@@ -2,19 +2,19 @@
 
 ## Supported Versions
 
-| Version | Supported          |
-| ------- | ------------------ |
-| main    | ✅ Security updates |
-| < 1.0   | ⚠️ Best-effort     |
+| Version | Supported |
+| :--- | :--- |
+| main | ✅ Security updates |
+| < 1.0 | ⚠️ Best-effort |
 
 ## Reporting a Vulnerability
 
-- **Contact:** Please report security vulnerabilities via a GitHub Security
+* **Contact:** Please report security vulnerabilities via a GitHub Security
   Advisory (preferred) or by contacting the maintainers through the
   organization.
-- **Privacy:** Please do not publicly disclose vulnerabilities until a fix is
+* **Privacy:** Please do not publicly disclose vulnerabilities until a fix is
   released.
-- **Response Target:** We aim to acknowledge reports within 48 hours.
+* **Response Target:** We aim to acknowledge reports within 48 hours.
 
 ## Security Posture
 
@@ -30,22 +30,22 @@ specific model/budget limits.
 The application uses **IndexedDB** for local persistence. To protect your data,
 the application supports encryption at rest:
 
-- Use `VITE_ENCRYPTION_KEY` in your `.env` file to provide a secret key.
-- This key is used to obfuscate data before it is written to the browser's
+* Use `VITE_ENCRYPTION_KEY` in your `.env` file to provide a secret key.
+* This key is used to obfuscate data before it is written to the browser's
   storage.
 
 ### Sensitive Data Handling
 
-- **No Secrets in Code:** We use environment variables for configuration.
-- **Input Sanitization:** AI-generated content is sanitized for display,
+* **No Secrets in Code:** We use environment variables for configuration.
+* **Input Sanitization:** AI-generated content is sanitized for display,
   especially when rendering Markdown.
-- **No PII:** The application does not collect or transmit personally
+* **No PII:** The application does not collect or transmit personally
   identifiable information (PII) beyond what is required by the OpenRouter API.
 
 ## Hardening Checklist
 
-- [x] Input validation for AI services
-- [x] Response sanitization (Markdown/JSON)
-- [x] CSRF/XSS protection (inherent to React/modern browser)
-- [x] Secure external links (`rel='noopener noreferrer'`)
-- [x] Dependencies scanned for vulnerabilities
+* [x] Input validation for AI services
+* [x] Response sanitization (Markdown/JSON)
+* [x] CSRF/XSS protection (inherent to React/modern browser)
+* [x] Secure external links (`rel='noopener noreferrer'`)
+* [x] Dependencies scanned for vulnerabilities

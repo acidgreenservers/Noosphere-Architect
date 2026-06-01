@@ -1,6 +1,4 @@
-# Noosphere-Architect 📘
-
-### Prompting Across Substrates
+# Noosphere-Architect <small>— Prompting Across Substrates</small> 📘
 
 [![Deploy to GitHub Pages](https://github.com/acidgreenservers/Noosphere-Architect/actions/workflows/deploy.yml/badge.svg)](https://github.com/acidgreenservers/Noosphere-Architect/actions/workflows/deploy.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
@@ -18,13 +16,14 @@ substrate, accelerating the path from concept to code.
 
 ## 🚀 Getting Started
 
-> The commands below are verified for this repository.
+> The commands below are verified for this repo. If your platform differs, see
+> **Troubleshooting**.
 
 ### Prerequisites
 
-- **Node.js:** >= 20.x
-- **npm:** (included with Node)
-- **OpenRouter API Key:** Required for AI generation features.
+* **Node.js:** >= 20.x
+* **npm:** (included with Node)
+* **OpenRouter API Key:** Required for AI generation features.
 
 ### 1) Setup
 
@@ -50,8 +49,7 @@ cp .env.example .env
 npm run dev
 ```
 
-The application will be available at `http://localhost:3000/Noosphere-Architect/`
-(or the port specified in your console).
+The application will be available at `http://localhost:3000/Noosphere-Architect/`.
 
 ### 4) Configure AI
 
@@ -84,9 +82,9 @@ Falsifiable, Decompressible).
 <details>
 <summary>Prompt & Skill Architect (Dual-Tabbed Precision)</summary>
 
-- **Standard Prompt:** Refine messy thoughts into high-density reasoning
+* **Standard Prompt:** Refine messy thoughts into high-density reasoning
   prompts.
-- **Skill Architect:** Generate 4-file bundles (Persona, Guidelines,
+* **Skill Architect:** Generate 4-file bundles (Persona, Guidelines,
   Constraints, Skills) for specialized agent roles.
 
 </details>
@@ -120,10 +118,11 @@ under a unified metadata schema. Synthesize new insights using the
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for the ASCII blueprint and component
 interactions.
 
-## 🔒 Security
+## ⚙️ Configuration
 
-See [SECURITY.md](./SECURITY.md) for reporting vulnerabilities and our security
-posture.
+| Key | Description | Default |
+| :--- | :--- | :--- |
+| `VITE_ENCRYPTION_KEY` | Key for IndexedDB obfuscation | (required) |
 
 ## 🧪 Testing & Quality
 
@@ -132,6 +131,18 @@ npm test            # Run Vitest unit tests
 npm run test:e2e    # Run Playwright E2E tests (requires dev server running)
 npm run lint        # TypeScript check
 ```
+
+## 🔒 Security
+
+See [SECURITY.md](./SECURITY.md) for reporting vulnerabilities and our security
+posture.
+
+## 🧩 Contributing
+
+1. Fork the repository.
+2. Create a feature branch.
+3. Ensure tests pass (`npm test`).
+4. Submit a PR.
 
 ## 📄 License
 

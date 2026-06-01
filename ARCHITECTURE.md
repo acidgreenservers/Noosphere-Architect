@@ -61,23 +61,23 @@
 
 ## Key Decisions & Patterns
 
-- **Modular AI Services:** Each tool has a dedicated service in
+* **Modular AI Services:** Each tool has a dedicated service in
   `src/services/ai/` to maintain clean boundaries.
-- **IndexedDB Migration Registry:** `dbService.ts` implements a versioned
+* **IndexedDB Migration Registry:** `dbService.ts` implements a versioned
   migration system (currently v13) to ensure data integrity as the schema
   evolves.
-- **Code Splitting:** `React.lazy` is used in `App.tsx` for all major tool
+* **Code Splitting:** `React.lazy` is used in `App.tsx` for all major tool
   components to keep the initial bundle size minimal.
-- **Metadata Unification:** All architectural assets share a common metadata
+* **Metadata Unification:** All architectural assets share a common metadata
   schema (starred, pinned, archived, category) managed by
   `ArchitectureOrganization`.
-- **Encryption at Rest:** Sensitive data in IndexedDB is obfuscated using a
+* **Encryption at Rest:** Sensitive data in IndexedDB is obfuscated using a
   user-provided `VITE_ENCRYPTION_KEY`.
 
 ## Repos & Conventions
 
-- **Frontend:** `/src/components` (UI), `/src/services` (Logic).
-- **Types:** `/src/types.ts` (Canonical source of truth for interfaces).
-- **Tests:** `/tests/unit` (Vitest), `/tests/e2e` (Playwright).
-- **CI/CD:** `.github/workflows/deploy.yml` (Automated build and deploy to GH
+* **Frontend:** `/src/components` (UI), `/src/services` (Logic).
+* **Types:** `/src/types.ts` (Canonical source of truth for interfaces).
+* **Tests:** `/tests/unit` (Vitest), `/tests/e2e` (Playwright).
+* **CI/CD:** `.github/workflows/deploy.yml` (Automated build and deploy to GH
   Pages).
