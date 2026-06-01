@@ -62,54 +62,9 @@ const ArchitectureOrganization: React.FC = () => {
     const [expandedSection, setExpandedSection] = useState<string | null>('Views');
     
     const loadAllData = useCallback(async () => {
-        const [
-            agents, prompts, stdPrompts, sysPrompts,
-            projects, seedsCogni, seedsLingua, seedsArch,
-            signals, syntheses, roadmaps, agentJobs
-        ] = await Promise.all([
-            db.getAllAgents(),
-            db.getAllPrompts(),
-            db.getAllTypedPrompts('standard'),
-            db.getAllTypedPrompts('system'),
-            db.getAllProjects(),
-            db.getAllMindSeeds('cogni'),
-            db.getAllMindSeeds('lingua'),
-            db.getAllMindSeeds('arch'),
-            db.getAllSignals(),
-            db.getAllSynthesis(),
-            db.getAllRoadmaps(),
-            db.getAllAgentJobs()
-        ]);
-
-        const unified: UnifiedItem[] = [
-            ...agents.map(i => ({ ...mapToUnified(i, 'agent') })),
-            ...prompts.map(i => ({ ...mapToUnified(i, 'legacy-prompt') })),
-            ...stdPrompts.map(i => ({ ...mapToUnified(i, 'prompt-standard') })),
-            ...sysPrompts.map(i => ({ ...mapToUnified(i, 'prompt-system') })),
-            ...projects.map(i => ({ ...mapToUnified(i, 'project') })),
-            ...seedsCogni.map(i => ({ ...mapToUnified(i, 'mindseed') })),
-            ...seedsLingua.map(i => ({ ...mapToUnified(i, 'mindseed') })),
-            ...seedsArch.map(i => ({ ...mapToUnified(i, 'mindseed') })),
-            ...signals.map(i => ({ ...mapToUnified(i, 'signal') })),
-            ...syntheses.map(i => ({ ...mapToUnified(i, 'synthesis') })),
-            ...roadmaps.map(i => ({ ...mapToUnified(i, 'roadmap') })),
-            ...agentJobs.map(i => ({ ...mapToUnified(i, 'agentJob') }))
-        ];
-
-        setItems(unified.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        const unified = await db.getAllUnifiedItems();
+        setItems(unified);
     }, []);
-
-    const mapToUnified = (item: any, type: UnifiedItem['type']): UnifiedItem => ({
-        id: `${type}-${item.id}`,
-        name: item.name || (item.result?.seed) || 'Untitled',
-        type,
-        original: item,
-        createdAt: item.createdAt,
-        isStarred: !!item.isStarred,
-        isPinned: !!item.isPinned,
-        isArchived: !!item.isArchived,
-        category: item.category || ''
-    });
 
     useEffect(() => {
         loadAllData();
@@ -148,32 +103,16 @@ const ArchitectureOrganization: React.FC = () => {
     }
 
     const handleToggleMetadata = async (item: UnifiedItem, field: keyof LibraryMetadata) => {
-        const updatedOriginal = { ...item.original, [field]: !item.original[field] };
-        await saveItem(item.type, updatedOriginal);
-        setItems(prev => prev.map(i => i.id === item.id ? { ...i, [field]: updatedOriginal[field], original: updatedOriginal } : i));
-        if (previewItem?.id === item.id) setPreviewItem({ ...item, [field]: updatedOriginal[field], original: updatedOriginal });
+        const newValue = !item[field as keyof UnifiedItem];
+        await db.updateUnifiedItemMetadata(item, { [field]: newValue });
+        setItems(prev => prev.map(i => i.id === item.id ? { ...i, [field]: newValue, original: { ...i.original, [field]: newValue } } : i));
+        if (previewItem?.id === item.id) setPreviewItem({ ...item, [field]: newValue, original: { ...item.original, [field]: newValue } });
     };
 
     const handleUpdateCategory = async (item: UnifiedItem, category: string) => {
-        const updatedOriginal = { ...item.original, category };
-        await saveItem(item.type, updatedOriginal);
-        setItems(prev => prev.map(i => i.id === item.id ? { ...i, category, original: updatedOriginal } : i));
-        if (previewItem?.id === item.id) setPreviewItem({ ...item, category, original: updatedOriginal });
-    };
-
-    const saveItem = async (type: UnifiedItem['type'], original: any) => {
-        switch (type) {
-            case 'agent': await db.updateAgent(original); break;
-            case 'legacy-prompt': await db.updatePrompt(original); break;
-            case 'prompt-standard': await db.updateTypedPrompt('standard', original); break;
-            case 'prompt-system': await db.updateTypedPrompt('system', original); break;
-            case 'project': await db.updateProject(original); break;
-            case 'mindseed': await db.updateMindSeed(original); break;
-            case 'signal': await db.updateSignal(original); break;
-            case 'synthesis': await db.updateSynthesis(original); break;
-            case 'roadmap': await db.updateRoadmap(original); break;
-            case 'agentJob': await db.updateAgentJob(original); break;
-        }
+        await db.updateUnifiedItemMetadata(item, { category });
+        setItems(prev => prev.map(i => i.id === item.id ? { ...i, category, original: { ...i.original, category } } : i));
+        if (previewItem?.id === item.id) setPreviewItem({ ...item, category, original: { ...item.original, category } });
     };
 
     const handleOpenEdit = (item: UnifiedItem) => {
@@ -214,7 +153,20 @@ const ArchitectureOrganization: React.FC = () => {
             }
         }
 
-        await saveItem(editItem.type, updatedOriginal);
+        // Use individual update functions as they already handle encryption
+        switch (editItem.type) {
+            case 'agent': await db.updateAgent(updatedOriginal); break;
+            case 'legacy-prompt': await db.updatePrompt(updatedOriginal); break;
+            case 'prompt-standard': await db.updateTypedPrompt('standard', updatedOriginal); break;
+            case 'prompt-system': await db.updateTypedPrompt('system', updatedOriginal); break;
+            case 'project': await db.updateProject(updatedOriginal); break;
+            case 'mindseed': await db.updateMindSeed(updatedOriginal); break;
+            case 'signal': await db.updateSignal(updatedOriginal); break;
+            case 'synthesis': await db.updateSynthesis(updatedOriginal); break;
+            case 'roadmap': await db.updateRoadmap(updatedOriginal); break;
+            case 'agentJob': await db.updateAgentJob(updatedOriginal); break;
+        }
+
         setItems(prev => prev.map(i => i.id === editItem.id ? { ...i, name: editName, original: updatedOriginal } : i));
         setEditItem(null);
         setToast({ message: 'Item updated', type: 'success' });
@@ -223,19 +175,7 @@ const ArchitectureOrganization: React.FC = () => {
     const handleDelete = async (item: UnifiedItem) => {
         if (!window.confirm(`Are you sure you want to delete "${item.name}"?`)) return;
 
-        const id = item.original.id;
-        switch (item.type) {
-            case 'agent': await db.deleteAgent(id); break;
-            case 'legacy-prompt': await db.deletePrompt(id); break;
-            case 'prompt-standard': await db.deleteTypedPrompt('standard', id); break;
-            case 'prompt-system': await db.deleteTypedPrompt('system', id); break;
-            case 'project': await db.deleteProject(id); break;
-            case 'mindseed': await db.deleteMindSeed(id, item.original.config.type); break;
-            case 'signal': await db.deleteSignal(id); break;
-            case 'synthesis': await db.deleteSynthesis(id); break;
-            case 'roadmap': await db.deleteRoadmap(id); break;
-            case 'agentJob': await db.deleteAgentJob(id); break;
-        }
+        await db.deleteUnifiedItem(item);
         setItems(prev => prev.filter(i => i.id !== item.id));
         setToast({ message: 'Item deleted', type: 'success' });
         setPreviewItem(null);

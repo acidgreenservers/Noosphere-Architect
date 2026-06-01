@@ -1,4 +1,5 @@
-import { SavedAgent, SavedPrompt, AgentConfig, PromptConfig, SavedProject, ProjectConfig, SavedSignal, SignalConfig, SavedMindSeed, MindSeedConfig, SavedSynthesis, SavedRoadmap, RoadmapConfig, SavedAgentJob, AgentJobConfig, MindSeedType, PromptType } from '../types';
+import { SavedAgent, SavedPrompt, AgentConfig, PromptConfig, SavedProject, ProjectConfig, SavedSignal, SignalConfig, SavedMindSeed, MindSeedConfig, SavedSynthesis, SavedRoadmap, RoadmapConfig, SavedAgentJob, AgentJobConfig, MindSeedType, PromptType, UnifiedItem } from '../types';
+import { encryptData, decryptData } from '../utils/encryption';
 
 const DB_NAME = 'NoosphereArchitectDB';
 const DB_VERSION = 15;
@@ -35,7 +36,7 @@ const SCHEMA_VERSION_STORE = '_schemaVersion'; // Internal store for migration v
 let dbInstance: IDBDatabase | null = null;
 let initPromise: Promise<IDBDatabase> | null = null; // Concurrency guard
 
-const initDB = (): Promise<IDBDatabase> => {
+export const initDB = (): Promise<IDBDatabase> => {
   // Deduplicate concurrent init calls
   if (initPromise) return initPromise;
 
@@ -391,11 +392,104 @@ const getStore = async (storeName: string, mode: IDBTransactionMode) => {
   return tx.objectStore(storeName);
 };
 
+/**
+ * Helper to encrypt a sensitive field (object or string).
+ */
+const encryptField = (field: any): string => {
+    if (!field) return '';
+    const str = typeof field === 'string' ? field : JSON.stringify(field);
+    return encryptData(str);
+};
+
+/**
+ * Helper to decrypt a sensitive field with graceful fallback for legacy plain-text data.
+ */
+const decryptField = (ciphertext: string, isObject: boolean = false): any => {
+    if (!ciphertext) return isObject ? undefined : '';
+
+    // Attempt decryption
+    const decrypted = decryptData(ciphertext);
+
+    // If decryption failed or returned empty (likely because it was already plain text),
+    // or if the ciphertext doesn't look like an encrypted string (CryptoJS typically starts with U2FsdGVkX1)
+    if ((!decrypted && ciphertext) || !ciphertext.startsWith('U2FsdGVkX1')) {
+        if (isObject && typeof ciphertext === 'string') {
+            try { return JSON.parse(ciphertext); } catch { return undefined; }
+        }
+        return ciphertext;
+    }
+
+    if (isObject) {
+        try {
+            return JSON.parse(decrypted);
+        } catch (e) {
+            // One last fallback: maybe the ciphertext was actually a JSON string that wasn't encrypted
+            try { return JSON.parse(ciphertext); } catch {
+                console.error("Failed to parse decrypted object", e);
+                return undefined;
+            }
+        }
+    }
+    return decrypted;
+};
+
+/**
+ * Generic entity processor to reduce code duplication and unify stewardship patterns.
+ */
+const processEntity = (entity: any, schema: string[], transform: (val: any, isObj: boolean) => any): any => {
+    if (!entity) return entity;
+    const result = { ...entity };
+    const objectFields = new Set(['config', 'files', 'result']);
+
+    schema.forEach(field => {
+        if (result[field] !== undefined && result[field] !== null) {
+            result[field] = transform(result[field], objectFields.has(field));
+        }
+    });
+    return result;
+};
+
+const SCHEMAS = {
+    agent: ['config', 'prompt', 'signal', 'files'],
+    prompt: ['config', 'prompt', 'signal', 'files'],
+    project: ['config', 'files'],
+    signal: ['config', 'extractedSignal', 'promptSignal', 'signalConstraints'],
+    mindseed: ['config', 'result'],
+    roadmap: ['config', 'generatedTask'],
+    agentJob: ['config', 'files'],
+    synthesis: ['content']
+};
+
+const encryptAgent = (agent: SavedAgent) => processEntity(agent, SCHEMAS.agent, encryptField);
+const decryptAgent = (data: any) => processEntity(data, SCHEMAS.agent, (v, isObj) => decryptField(v, isObj)) as SavedAgent;
+
+const encryptPrompt = (prompt: SavedPrompt) => processEntity(prompt, SCHEMAS.prompt, encryptField);
+const decryptPrompt = (data: any) => processEntity(data, SCHEMAS.prompt, (v, isObj) => decryptField(v, isObj)) as SavedPrompt;
+
+const encryptProject = (project: SavedProject) => processEntity(project, SCHEMAS.project, encryptField);
+const decryptProject = (data: any) => processEntity(data, SCHEMAS.project, (v, isObj) => decryptField(v, isObj)) as SavedProject;
+
+const encryptSignal = (signal: SavedSignal) => processEntity(signal, SCHEMAS.signal, encryptField);
+const decryptSignal = (data: any) => processEntity(data, SCHEMAS.signal, (v, isObj) => decryptField(v, isObj)) as SavedSignal;
+
+const encryptMindSeed = (seed: SavedMindSeed) => processEntity(seed, SCHEMAS.mindseed, encryptField);
+const decryptMindSeed = (data: any) => processEntity(data, SCHEMAS.mindseed, (v, isObj) => decryptField(v, isObj)) as SavedMindSeed;
+
+const encryptRoadmap = (roadmap: SavedRoadmap) => processEntity(roadmap, SCHEMAS.roadmap, encryptField);
+const decryptRoadmap = (data: any) => processEntity(data, SCHEMAS.roadmap, (v, isObj) => decryptField(v, isObj)) as SavedRoadmap;
+
+const encryptAgentJob = (job: SavedAgentJob) => processEntity(job, SCHEMAS.agentJob, encryptField);
+const decryptAgentJob = (data: any) => processEntity(data, SCHEMAS.agentJob, (v, isObj) => decryptField(v, isObj)) as SavedAgentJob;
+
+const encryptSynthesis = (synthesis: SavedSynthesis) => processEntity(synthesis, SCHEMAS.synthesis, encryptField);
+const decryptSynthesis = (data: any) => processEntity(data, SCHEMAS.synthesis, (v, isObj) => decryptField(v, isObj)) as SavedSynthesis;
+
 // Agent Draft Functions
 export const saveDraft = (draft: {id: number, config: AgentConfig}): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(AGENT_DRAFT_STORE, 'readwrite');
-        const request = store.put(draft);
+        const encryptedDraft = { ...draft, config: encryptField(draft.config) };
+        const request = store.put(encryptedDraft);
         request.onsuccess = () => resolve(request.result as number);
         request.onerror = () => reject(request.error);
     });
@@ -405,7 +499,7 @@ export const saveDraft = (draft: {id: number, config: AgentConfig}): Promise<num
 export const addSynthesis = (synthesis: SavedSynthesis): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(SYNTHESIS_STORE, 'readwrite');
-        const request = store.add(synthesis);
+        const request = store.add(encryptSynthesis(synthesis));
         request.onsuccess = () => resolve(request.result as number);
         request.onerror = () => reject(request.error);
     });
@@ -415,7 +509,10 @@ export const getAllSynthesis = (): Promise<SavedSynthesis[]> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(SYNTHESIS_STORE, 'readonly');
         const request = store.getAll();
-        request.onsuccess = () => resolve(request.result.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        request.onsuccess = () => {
+            const results = (request.result as any[]).map(decryptSynthesis);
+            resolve(results.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -423,7 +520,7 @@ export const getAllSynthesis = (): Promise<SavedSynthesis[]> => {
 export const updateSynthesis = (synthesis: SavedSynthesis): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(SYNTHESIS_STORE, 'readwrite');
-        const request = store.put(synthesis);
+        const request = store.put(encryptSynthesis(synthesis));
         request.onsuccess = () => resolve(request.result as number);
         request.onerror = () => reject(request.error);
     });
@@ -452,7 +549,8 @@ export const saveTypedPromptDraft = (type: PromptType, draft: {id: number, confi
     return new Promise(async (resolve, reject) => {
         const storeName = type === 'standard' ? STANDARD_PROMPT_DRAFT_STORE : SYSTEM_PROMPT_DRAFT_STORE;
         const store = await getStore(storeName, 'readwrite');
-        const request = store.put(draft);
+        const encryptedDraft = { ...draft, config: encryptField(draft.config) };
+        const request = store.put(encryptedDraft);
         request.onsuccess = () => resolve(request.result as number);
         request.onerror = () => reject(request.error);
     });
@@ -463,7 +561,10 @@ export const getTypedPromptDraft = (type: PromptType, id: number): Promise<{id: 
         const storeName = type === 'standard' ? STANDARD_PROMPT_DRAFT_STORE : SYSTEM_PROMPT_DRAFT_STORE;
         const store = await getStore(storeName, 'readonly');
         const request = store.get(id);
-        request.onsuccess = () => resolve(request.result);
+        request.onsuccess = () => {
+            if (!request.result) return resolve(undefined);
+            resolve({ ...request.result, config: decryptField(request.result.config, true) });
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -482,7 +583,8 @@ export const clearTypedPromptDraft = (type: PromptType, id: number): Promise<voi
 export const saveMindSeedDraft = (draft: {id: number, config: MindSeedConfig}): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(MINDSEED_DRAFT_STORE, 'readwrite');
-        const request = store.put(draft);
+        const encryptedDraft = { ...draft, config: encryptField(draft.config) };
+        const request = store.put(encryptedDraft);
         request.onsuccess = () => resolve(request.result as number);
         request.onerror = () => reject(request.error);
     });
@@ -497,7 +599,7 @@ export const addTypedPrompt = (type: PromptType, prompt: SavedPrompt): Promise<n
     return new Promise(async (resolve, reject) => {
         const storeName = getPromptStoreName(type);
         const store = await getStore(storeName, 'readwrite');
-        const request = store.add(prompt);
+        const request = store.add(encryptPrompt(prompt));
         request.onsuccess = () => resolve(request.result as number);
         request.onerror = () => reject(request.error);
     });
@@ -508,7 +610,10 @@ export const getAllTypedPrompts = (type: PromptType): Promise<SavedPrompt[]> => 
         const storeName = getPromptStoreName(type);
         const store = await getStore(storeName, 'readonly');
         const request = store.getAll();
-        request.onsuccess = () => resolve(request.result.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        request.onsuccess = () => {
+            const results = (request.result as any[]).map(decryptPrompt);
+            resolve(results.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -517,7 +622,7 @@ export const updateTypedPrompt = (type: PromptType, prompt: SavedPrompt): Promis
     return new Promise(async (resolve, reject) => {
         const storeName = getPromptStoreName(type);
         const store = await getStore(storeName, 'readwrite');
-        const request = store.put(prompt);
+        const request = store.put(encryptPrompt(prompt));
         request.onsuccess = () => resolve(request.result as number);
         request.onerror = () => reject(request.error);
     });
@@ -547,7 +652,10 @@ export const getMindSeedDraft = (id: number): Promise<{id: number, config: MindS
     return new Promise(async (resolve, reject) => {
         const store = await getStore(MINDSEED_DRAFT_STORE, 'readonly');
         const request = store.get(id);
-        request.onsuccess = () => resolve(request.result);
+        request.onsuccess = () => {
+            if (!request.result) return resolve(undefined);
+            resolve({ ...request.result, config: decryptField(request.result.config, true) });
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -575,7 +683,7 @@ export const addMindSeed = (mindSeed: SavedMindSeed): Promise<number> => {
         try {
             const storeName = getMindSeedStoreName(mindSeed.config.type);
             const store = await getStore(storeName, 'readwrite');
-            const request = store.add(mindSeed);
+            const request = store.add(encryptMindSeed(mindSeed));
             request.onsuccess = async () => {
                 const id = request.result as number;
                 // Atomic verification: check if it was correctly written
@@ -596,7 +704,7 @@ export type ContextStoreName = 'agentContext' | 'mindSeedContext' | 'signalConte
 export const saveCustomContext = (storeName: ContextStoreName, context: string): Promise<void> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(storeName, 'readwrite');
-        const request = store.put({ id: 'current', context });
+        const request = store.put({ id: 'current', context: encryptField(context) });
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
     });
@@ -606,7 +714,7 @@ export const getCustomContext = (storeName: ContextStoreName): Promise<string | 
     return new Promise(async (resolve, reject) => {
         const store = await getStore(storeName, 'readonly');
         const request = store.get('current');
-        request.onsuccess = () => resolve(request.result?.context);
+        request.onsuccess = () => resolve(decryptField(request.result?.context));
         request.onerror = () => reject(request.error);
     });
 };
@@ -626,7 +734,10 @@ export const getAllMindSeeds = (type: MindSeedType): Promise<SavedMindSeed[]> =>
             const storeName = getMindSeedStoreName(type);
             const store = await getStore(storeName, 'readonly');
             const request = store.getAll();
-            request.onsuccess = () => resolve(request.result.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+            request.onsuccess = () => {
+                const results = (request.result as any[]).map(decryptMindSeed);
+                resolve(results.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+            };
             request.onerror = () => reject(request.error);
         } catch (error) {
             reject(error);
@@ -639,7 +750,7 @@ export const updateMindSeed = (mindSeed: SavedMindSeed): Promise<number> => {
         try {
             const storeName = getMindSeedStoreName(mindSeed.config.type);
             const store = await getStore(storeName, 'readwrite');
-            const request = store.put(mindSeed);
+            const request = store.put(encryptMindSeed(mindSeed));
             request.onsuccess = () => resolve(request.result as number);
             request.onerror = () => reject(request.error);
         } catch (error) {
@@ -680,7 +791,10 @@ export const getDraft = (id: number): Promise<{id: number, config: AgentConfig} 
     return new Promise(async (resolve, reject) => {
         const store = await getStore(AGENT_DRAFT_STORE, 'readonly');
         const request = store.get(id);
-        request.onsuccess = () => resolve(request.result);
+        request.onsuccess = () => {
+            if (!request.result) return resolve(undefined);
+            resolve({ ...request.result, config: decryptField(request.result.config, true) });
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -698,7 +812,8 @@ export const clearDraft = (id: number): Promise<void> => {
 export const savePromptDraft = (draft: {id: number, config: PromptConfig}): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(PROMPT_DRAFT_STORE, 'readwrite');
-        const request = store.put(draft);
+        const encryptedDraft = { ...draft, config: encryptField(draft.config) };
+        const request = store.put(encryptedDraft);
         request.onsuccess = () => resolve(request.result as number);
         request.onerror = () => reject(request.error);
     });
@@ -708,7 +823,10 @@ export const getPromptDraft = (id: number): Promise<{id: number, config: PromptC
     return new Promise(async (resolve, reject) => {
         const store = await getStore(PROMPT_DRAFT_STORE, 'readonly');
         const request = store.get(id);
-        request.onsuccess = () => resolve(request.result);
+        request.onsuccess = () => {
+            if (!request.result) return resolve(undefined);
+            resolve({ ...request.result, config: decryptField(request.result.config, true) });
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -726,7 +844,8 @@ export const clearPromptDraft = (id: number): Promise<void> => {
 export const saveProjectDraft = (draft: {id: number, config: ProjectConfig}): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(PROJECT_DRAFT_STORE, 'readwrite');
-        const request = store.put(draft);
+        const encryptedDraft = { ...draft, config: encryptField(draft.config) };
+        const request = store.put(encryptedDraft);
         request.onsuccess = () => resolve(request.result as number);
         request.onerror = () => reject(request.error);
     });
@@ -736,7 +855,10 @@ export const getProjectDraft = (id: number): Promise<{id: number, config: Projec
     return new Promise(async (resolve, reject) => {
         const store = await getStore(PROJECT_DRAFT_STORE, 'readonly');
         const request = store.get(id);
-        request.onsuccess = () => resolve(request.result);
+        request.onsuccess = () => {
+            if (!request.result) return resolve(undefined);
+            resolve({ ...request.result, config: decryptField(request.result.config, true) });
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -754,7 +876,8 @@ export const clearProjectDraft = (id: number): Promise<void> => {
 export const saveSignalDraft = (draft: {id: number, config: SignalConfig}): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(SIGNAL_DRAFT_STORE, 'readwrite');
-        const request = store.put(draft);
+        const encryptedDraft = { ...draft, config: encryptField(draft.config) };
+        const request = store.put(encryptedDraft);
         request.onsuccess = () => resolve(request.result as number);
         request.onerror = () => reject(request.error);
     });
@@ -764,7 +887,10 @@ export const getSignalDraft = (id: number): Promise<{id: number, config: SignalC
     return new Promise(async (resolve, reject) => {
         const store = await getStore(SIGNAL_DRAFT_STORE, 'readonly');
         const request = store.get(id);
-        request.onsuccess = () => resolve(request.result);
+        request.onsuccess = () => {
+            if (!request.result) return resolve(undefined);
+            resolve({ ...request.result, config: decryptField(request.result.config, true) });
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -783,7 +909,7 @@ export const clearSignalDraft = (id: number): Promise<void> => {
 export const addAgent = (agent: SavedAgent): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(AGENT_STORE, 'readwrite');
-        const request = store.add(agent);
+        const request = store.add(encryptAgent(agent));
         request.onsuccess = () => resolve(request.result as number);
         request.onerror = () => reject(request.error);
     });
@@ -793,7 +919,7 @@ export const addAgent = (agent: SavedAgent): Promise<number> => {
 export const addSignal = (signal: SavedSignal): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(SIGNAL_STORE, 'readwrite');
-        const request = store.add(signal);
+        const request = store.add(encryptSignal(signal));
         request.onsuccess = () => resolve(request.result as number);
         request.onerror = () => reject(request.error);
     });
@@ -803,7 +929,10 @@ export const getAllSignals = (): Promise<SavedSignal[]> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(SIGNAL_STORE, 'readonly');
         const request = store.getAll();
-        request.onsuccess = () => resolve(request.result.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        request.onsuccess = () => {
+            const results = (request.result as any[]).map(decryptSignal);
+            resolve(results.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -811,7 +940,7 @@ export const getAllSignals = (): Promise<SavedSignal[]> => {
 export const updateSignal = (signal: SavedSignal): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(SIGNAL_STORE, 'readwrite');
-        const request = store.put(signal);
+        const request = store.put(encryptSignal(signal));
         request.onsuccess = () => resolve(request.result as number);
         request.onerror = () => reject(request.error);
     });
@@ -839,7 +968,10 @@ export const getAllAgents = (): Promise<SavedAgent[]> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(AGENT_STORE, 'readonly');
         const request = store.getAll();
-        request.onsuccess = () => resolve(request.result.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        request.onsuccess = () => {
+            const results = (request.result as any[]).map(decryptAgent);
+            resolve(results.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -847,7 +979,7 @@ export const getAllAgents = (): Promise<SavedAgent[]> => {
 export const updateAgent = (agent: SavedAgent): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(AGENT_STORE, 'readwrite');
-        const request = store.put(agent);
+        const request = store.put(encryptAgent(agent));
         request.onsuccess = () => resolve(request.result as number);
         request.onerror = () => reject(request.error);
     });
@@ -876,7 +1008,7 @@ export const clearAllAgents = (): Promise<void> => {
 export const addPrompt = (prompt: SavedPrompt): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(PROMPT_STORE, 'readwrite');
-        const request = store.add(prompt);
+        const request = store.add(encryptPrompt(prompt));
         request.onsuccess = () => resolve(request.result as number);
         request.onerror = () => reject(request.error);
     });
@@ -886,7 +1018,10 @@ export const getAllPrompts = (): Promise<SavedPrompt[]> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(PROMPT_STORE, 'readonly');
         const request = store.getAll();
-        request.onsuccess = () => resolve(request.result.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        request.onsuccess = () => {
+            const results = (request.result as any[]).map(decryptPrompt);
+            resolve(results.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -894,7 +1029,7 @@ export const getAllPrompts = (): Promise<SavedPrompt[]> => {
 export const updatePrompt = (prompt: SavedPrompt): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(PROMPT_STORE, 'readwrite');
-        const request = store.put(prompt);
+        const request = store.put(encryptPrompt(prompt));
         request.onsuccess = () => resolve(request.result as number);
         request.onerror = () => reject(request.error);
     });
@@ -922,7 +1057,7 @@ export const clearAllPrompts = (): Promise<void> => {
 export const addProject = (project: SavedProject): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(PROJECT_STORE, 'readwrite');
-        const request = store.add(project);
+        const request = store.add(encryptProject(project));
         request.onsuccess = () => resolve(request.result as number);
         request.onerror = () => reject(request.error);
     });
@@ -932,7 +1067,10 @@ export const getAllProjects = (): Promise<SavedProject[]> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(PROJECT_STORE, 'readonly');
         const request = store.getAll();
-        request.onsuccess = () => resolve(request.result.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        request.onsuccess = () => {
+            const results = (request.result as any[]).map(decryptProject);
+            resolve(results.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -940,7 +1078,7 @@ export const getAllProjects = (): Promise<SavedProject[]> => {
 export const updateProject = (project: SavedProject): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(PROJECT_STORE, 'readwrite');
-        const request = store.put(project);
+        const request = store.put(encryptProject(project));
         request.onsuccess = () => resolve(request.result as number);
         request.onerror = () => reject(request.error);
     });
@@ -968,7 +1106,7 @@ export const clearAllProjects = (): Promise<void> => {
 export const addRoadmap = (roadmap: SavedRoadmap): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(ROADMAP_STORE, 'readwrite');
-        const request = store.add(roadmap);
+        const request = store.add(encryptRoadmap(roadmap));
         request.onsuccess = () => resolve(request.result as number);
         request.onerror = () => reject(request.error);
     });
@@ -978,7 +1116,10 @@ export const getAllRoadmaps = (): Promise<SavedRoadmap[]> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(ROADMAP_STORE, 'readonly');
         const request = store.getAll();
-        request.onsuccess = () => resolve(request.result.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        request.onsuccess = () => {
+            const results = (request.result as any[]).map(decryptRoadmap);
+            resolve(results.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -986,7 +1127,7 @@ export const getAllRoadmaps = (): Promise<SavedRoadmap[]> => {
 export const updateRoadmap = (roadmap: SavedRoadmap): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(ROADMAP_STORE, 'readwrite');
-        const request = store.put(roadmap);
+        const request = store.put(encryptRoadmap(roadmap));
         request.onsuccess = () => resolve(request.result as number);
         request.onerror = () => reject(request.error);
     });
@@ -1013,7 +1154,8 @@ export const clearAllRoadmaps = (): Promise<void> => {
 export const saveRoadmapDraft = (draft: {id: number, config: RoadmapConfig}): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(ROADMAP_DRAFT_STORE, 'readwrite');
-        const request = store.put(draft);
+        const encryptedDraft = { ...draft, config: encryptField(draft.config) };
+        const request = store.put(encryptedDraft);
         request.onsuccess = () => resolve(request.result as number);
         request.onerror = () => reject(request.error);
     });
@@ -1023,7 +1165,10 @@ export const getRoadmapDraft = (id: number): Promise<{id: number, config: Roadma
     return new Promise(async (resolve, reject) => {
         const store = await getStore(ROADMAP_DRAFT_STORE, 'readonly');
         const request = store.get(id);
-        request.onsuccess = () => resolve(request.result);
+        request.onsuccess = () => {
+            if (!request.result) return resolve(undefined);
+            resolve({ ...request.result, config: decryptField(request.result.config, true) });
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -1041,7 +1186,7 @@ export const clearRoadmapDraft = (id: number): Promise<void> => {
 export const addAgentJob = (job: SavedAgentJob): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(AGENT_JOB_STORE, 'readwrite');
-        const request = store.add(job);
+        const request = store.add(encryptAgentJob(job));
         request.onsuccess = () => resolve(request.result as number);
         request.onerror = () => reject(request.error);
     });
@@ -1051,7 +1196,10 @@ export const getAllAgentJobs = (): Promise<SavedAgentJob[]> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(AGENT_JOB_STORE, 'readonly');
         const request = store.getAll();
-        request.onsuccess = () => resolve(request.result.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        request.onsuccess = () => {
+            const results = (request.result as any[]).map(decryptAgentJob);
+            resolve(results.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -1059,7 +1207,7 @@ export const getAllAgentJobs = (): Promise<SavedAgentJob[]> => {
 export const updateAgentJob = (job: SavedAgentJob): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(AGENT_JOB_STORE, 'readwrite');
-        const request = store.put(job);
+        const request = store.put(encryptAgentJob(job));
         request.onsuccess = () => resolve(request.result as number);
         request.onerror = () => reject(request.error);
     });
@@ -1083,10 +1231,102 @@ export const clearAllAgentJobs = (): Promise<void> => {
     });
 };
 
+// ── Unified Library Operations ──────────────────────────────────────────────
+
+const mapToUnified = (item: any, type: UnifiedItem['type']): UnifiedItem => ({
+    id: `${type}-${item.id}`,
+    name: item.name || (item.result?.seed) || 'Untitled',
+    type,
+    original: item,
+    createdAt: item.createdAt,
+    isStarred: !!item.isStarred,
+    isPinned: !!item.isPinned,
+    isArchived: !!item.isArchived,
+    category: item.category || ''
+});
+
+export const getAllUnifiedItems = async (): Promise<UnifiedItem[]> => {
+    const [
+        agents, prompts, stdPrompts, sysPrompts,
+        projects, seedsCogni, seedsLingua, seedsArch,
+        signals, syntheses, roadmaps, agentJobs
+    ] = await Promise.all([
+        getAllAgents(),
+        getAllPrompts(),
+        getAllTypedPrompts('standard'),
+        getAllTypedPrompts('system'),
+        getAllProjects(),
+        getAllMindSeeds('cogni'),
+        getAllMindSeeds('lingua'),
+        getAllMindSeeds('arch'),
+        getAllSignals(),
+        getAllSynthesis(),
+        getAllRoadmaps(),
+        getAllAgentJobs()
+    ]);
+
+    const unified: UnifiedItem[] = [
+        ...agents.map(i => mapToUnified(i, 'agent')),
+        ...prompts.map(i => mapToUnified(i, 'legacy-prompt')),
+        ...stdPrompts.map(i => mapToUnified(i, 'prompt-standard')),
+        ...sysPrompts.map(i => mapToUnified(i, 'prompt-system')),
+        ...projects.map(i => mapToUnified(i, 'project')),
+        ...seedsCogni.map(i => mapToUnified(i, 'mindseed')),
+        ...seedsLingua.map(i => mapToUnified(i, 'mindseed')),
+        ...seedsArch.map(i => mapToUnified(i, 'mindseed')),
+        ...signals.map(i => mapToUnified(i, 'signal')),
+        ...syntheses.map(i => mapToUnified(i, 'synthesis')),
+        ...roadmaps.map(i => mapToUnified(i, 'roadmap')),
+        ...agentJobs.map(i => mapToUnified(i, 'agentJob'))
+    ];
+
+    return unified.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+};
+
+export const updateUnifiedItemMetadata = async (item: UnifiedItem, metadata: Partial<UnifiedItem>): Promise<void> => {
+    const updatedOriginal = {
+        ...item.original,
+        isStarred: metadata.isStarred !== undefined ? metadata.isStarred : item.original.isStarred,
+        isPinned: metadata.isPinned !== undefined ? metadata.isPinned : item.original.isPinned,
+        isArchived: metadata.isArchived !== undefined ? metadata.isArchived : item.original.isArchived,
+        category: metadata.category !== undefined ? metadata.category : item.original.category
+    };
+
+    switch (item.type) {
+        case 'agent': await updateAgent(updatedOriginal); break;
+        case 'legacy-prompt': await updatePrompt(updatedOriginal); break;
+        case 'prompt-standard': await updateTypedPrompt('standard', updatedOriginal); break;
+        case 'prompt-system': await updateTypedPrompt('system', updatedOriginal); break;
+        case 'project': await updateProject(updatedOriginal); break;
+        case 'mindseed': await updateMindSeed(updatedOriginal); break;
+        case 'signal': await updateSignal(updatedOriginal); break;
+        case 'synthesis': await updateSynthesis(updatedOriginal); break;
+        case 'roadmap': await updateRoadmap(updatedOriginal); break;
+        case 'agentJob': await updateAgentJob(updatedOriginal); break;
+    }
+};
+
+export const deleteUnifiedItem = async (item: UnifiedItem): Promise<void> => {
+    const id = item.original.id;
+    switch (item.type) {
+        case 'agent': await deleteAgent(id); break;
+        case 'legacy-prompt': await deletePrompt(id); break;
+        case 'prompt-standard': await deleteTypedPrompt('standard', id); break;
+        case 'prompt-system': await deleteTypedPrompt('system', id); break;
+        case 'project': await deleteProject(id); break;
+        case 'mindseed': await deleteMindSeed(id, item.original.config.type); break;
+        case 'signal': await deleteSignal(id); break;
+        case 'synthesis': await deleteSynthesis(id); break;
+        case 'roadmap': await deleteRoadmap(id); break;
+        case 'agentJob': await deleteAgentJob(id); break;
+    }
+};
+
 export const saveAgentJobDraft = (draft: {id: number, config: AgentJobConfig}): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(AGENT_JOB_DRAFT_STORE, 'readwrite');
-        const request = store.put(draft);
+        const encryptedDraft = { ...draft, config: encryptField(draft.config) };
+        const request = store.put(encryptedDraft);
         request.onsuccess = () => resolve(request.result as number);
         request.onerror = () => reject(request.error);
     });
@@ -1096,7 +1336,10 @@ export const getAgentJobDraft = (id: number): Promise<{id: number, config: Agent
     return new Promise(async (resolve, reject) => {
         const store = await getStore(AGENT_JOB_DRAFT_STORE, 'readonly');
         const request = store.get(id);
-        request.onsuccess = () => resolve(request.result);
+        request.onsuccess = () => {
+            if (!request.result) return resolve(undefined);
+            resolve({ ...request.result, config: decryptField(request.result.config, true) });
+        };
         request.onerror = () => reject(request.error);
     });
 };
