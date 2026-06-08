@@ -61,6 +61,7 @@ const AgentArchitect: React.FC = () => {
   const [modalInput, setModalInput] = useState<{ name: string; prompt: string }>({ name: '', prompt: '' });
   const [previewAgent, setPreviewAgent] = useState<SavedAgent | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isClearAllConfirmOpen, setIsClearAllConfirmOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     starredSection: true,
     pinnedSection: true,
@@ -80,19 +81,18 @@ const AgentArchitect: React.FC = () => {
 
         const draft = await db.getDraft(1);
         if (draft?.config && Object.values(draft.config).some(v => v)) {
-            if (window.confirm("An unsaved draft was found. Do you want to load it?")) {
-                setAgentConfig(draft.config);
-                setDraftStatus('loaded');
-            } else {
-                await db.clearDraft(1);
-                setDraftStatus('none');
-            }
+            // Unsaved drafts are now handled via the shared Modal pattern
+            // but since AgentArchitect already has a draft status logic,
+            // we will keep the pendingDraft state but use a Modal for it.
+            setPendingDraft(draft.config);
         } else {
             setDraftStatus('none');
         }
     };
     loadDraft();
   }, [loadSavedAgents]);
+
+  const [pendingDraft, setPendingDraft] = useState<AgentConfig | null>(null);
 
   useEffect(() => {
     if (draftStatus === 'unloaded') return;
@@ -220,15 +220,14 @@ const AgentArchitect: React.FC = () => {
   };
 
   const handleClearAll = async () => {
-    if (window.confirm('Are you sure you want to delete ALL saved agents? This action cannot be undone.')) {
-        try {
-            await db.clearAllAgents();
-            setSavedAgents([]);
-            setSuccessMessage('All agents have been deleted.');
-        } catch (err) {
-            setError('Failed to clear all agents.');
-            console.error(err);
-        }
+    try {
+        await db.clearAllAgents();
+        setSavedAgents([]);
+        setSuccessMessage('All agents have been deleted.');
+        setIsClearAllConfirmOpen(false);
+    } catch (err) {
+        setError('Failed to clear all agents.');
+        console.error(err);
     }
   };
 
@@ -297,6 +296,20 @@ const AgentArchitect: React.FC = () => {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     setSuccessMessage('All agents exported as ZIP!');
+  };
+
+  const handleAcceptDraft = () => {
+    if (pendingDraft) {
+        setAgentConfig(pendingDraft);
+        setDraftStatus('loaded');
+        setPendingDraft(null);
+    }
+  };
+
+  const handleDeclineDraft = async () => {
+    await db.clearDraft(1);
+    setDraftStatus('none');
+    setPendingDraft(null);
   };
 
   const handleLoadSavedAgent = (agent: SavedAgent) => {
@@ -412,7 +425,7 @@ const AgentArchitect: React.FC = () => {
                         <span className="material-icons text-sm mr-1">download</span>
                         Export All
                     </button>
-                    <button onClick={handleClearAll} className="px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/60 flex items-center">
+                    <button onClick={() => setIsClearAllConfirmOpen(true)} className="px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/60 flex items-center">
                         <span className="material-icons text-sm mr-1">delete_sweep</span>
                         Clear All
                     </button>
@@ -529,12 +542,44 @@ const AgentArchitect: React.FC = () => {
           onDelete={() => setIsDeleteConfirmOpen(true)}
       />
 
+      <Modal isOpen={isClearAllConfirmOpen} onClose={() => setIsClearAllConfirmOpen(false)} title="Confirm Clear All">
+          <div className="space-y-4">
+              <p className="text-gray-600 dark:text-gray-400">Are you sure you want to delete ALL saved agents? This action cannot be undone.</p>
+              <div className="flex justify-end space-x-2">
+                  <button onClick={() => setIsClearAllConfirmOpen(false)} className="px-4 py-2 border dark:border-gray-600 rounded-lg transition-colors">Cancel</button>
+                  <button onClick={handleClearAll} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">Clear All</button>
+              </div>
+          </div>
+      </Modal>
+
       <Modal isOpen={isDeleteConfirmOpen} onClose={() => setIsDeleteConfirmOpen(false)} title="Confirm Deletion">
           <div className="space-y-4">
               <p className="text-gray-600 dark:text-gray-400">Are you sure you want to delete <strong>{previewAgent?.name}</strong>? This action cannot be undone.</p>
               <div className="flex justify-end space-x-2">
-                  <button onClick={() => setIsDeleteConfirmOpen(false)} className="px-4 py-2 border dark:border-gray-600 rounded-lg">Cancel</button>
-                  <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded-lg">Delete</button>
+                  <button onClick={() => setIsDeleteConfirmOpen(false)} className="px-4 py-2 border dark:border-gray-600 rounded-lg transition-colors">Cancel</button>
+                  <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">Delete</button>
+              </div>
+          </div>
+      </Modal>
+
+      <Modal isOpen={!!pendingDraft} onClose={() => setPendingDraft(null)} title="Unsaved Draft Found">
+          <div className="space-y-4">
+              <p className="text-gray-600 dark:text-gray-400">
+                  An unsaved agent architect draft was found. Would you like to restore it?
+              </p>
+              <div className="flex justify-end space-x-3 mt-6">
+                  <button
+                      onClick={handleDeclineDraft}
+                      className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  >
+                      Discard
+                  </button>
+                  <button
+                      onClick={handleAcceptDraft}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                  >
+                      Restore Draft
+                  </button>
               </div>
           </div>
       </Modal>

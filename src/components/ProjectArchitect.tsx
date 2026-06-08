@@ -55,6 +55,9 @@ const ProjectArchitect: React.FC = () => {
   const [modalState, setModalState] = useState<{ mode: 'save' | 'edit'; project?: SavedProject } | null>(null);
   const [modalInput, setModalInput] = useState<{ name: string; files: GeneratedProjectFiles | null }>({ name: '', files: null });
   const [previewProject, setPreviewProject] = useState<SavedProject | null>(null);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isClearAllConfirmOpen, setIsClearAllConfirmOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     starredSection: true,
     pinnedSection: true,
@@ -268,27 +271,33 @@ const ProjectArchitect: React.FC = () => {
     setModalState(null);
   };
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm('Are you sure you want to delete this project?')) {
-      try {
-        await db.deleteProject(id);
-        setSavedProjects(prev => prev.filter(p => p.id !== id));
-        setSuccessMessage('Project deleted successfully!');
-      } catch (err) {
-        setError('Failed to delete project.');
-      }
+  const handleDelete = (id: number) => {
+    setDeleteTarget(id);
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (deleteTarget === null) return;
+    try {
+      await db.deleteProject(deleteTarget);
+      setSavedProjects(prev => prev.filter(p => p.id !== deleteTarget));
+      setSuccessMessage('Project deleted successfully!');
+      setIsDeleteConfirmOpen(false);
+      setDeleteTarget(null);
+      setPreviewProject(null);
+    } catch (err) {
+      setError('Failed to delete project.');
     }
   };
 
   const handleClearAll = async () => {
-    if (window.confirm('Are you sure you want to delete ALL saved projects? This action cannot be undone.')) {
-      try {
-        await db.clearAllProjects();
-        setSavedProjects([]);
-        setSuccessMessage('All projects have been deleted.');
-      } catch (err) {
-        setError('Failed to clear all projects.');
-      }
+    try {
+      await db.clearAllProjects();
+      setSavedProjects([]);
+      setSuccessMessage('All projects have been deleted.');
+      setIsClearAllConfirmOpen(false);
+    } catch (err) {
+      setError('Failed to clear all projects.');
     }
   };
 
@@ -625,7 +634,7 @@ const ProjectArchitect: React.FC = () => {
       </Modal>
 
       <PreviewModal
-        isOpen={!!previewProject}
+        isOpen={!!previewProject && !isDeleteConfirmOpen}
         onClose={() => setPreviewProject(null)}
         title={`Preview: ${previewProject?.name}`}
         content={previewProject ? {
@@ -650,10 +659,29 @@ const ProjectArchitect: React.FC = () => {
         onDelete={() => {
             if (previewProject?.id) {
                 handleDelete(previewProject.id);
-                setPreviewProject(null);
             }
         }}
       />
+
+      <Modal isOpen={isClearAllConfirmOpen} onClose={() => setIsClearAllConfirmOpen(false)} title="Confirm Clear All">
+          <div className="space-y-4">
+              <p className="text-gray-600 dark:text-gray-400">Are you sure you want to delete ALL saved projects? This action cannot be undone.</p>
+              <div className="flex justify-end space-x-2">
+                  <button onClick={() => setIsClearAllConfirmOpen(false)} className="px-4 py-2 border dark:border-gray-600 rounded-lg transition-colors">Cancel</button>
+                  <button onClick={handleClearAll} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">Clear All</button>
+              </div>
+          </div>
+      </Modal>
+
+      <Modal isOpen={isDeleteConfirmOpen} onClose={() => { setIsDeleteConfirmOpen(false); setDeleteTarget(null); }} title="Confirm Deletion">
+          <div className="space-y-4">
+              <p className="text-gray-600 dark:text-gray-400">Are you sure you want to delete this project? This action cannot be undone.</p>
+              <div className="flex justify-end space-x-2">
+                  <button onClick={() => { setIsDeleteConfirmOpen(false); setDeleteTarget(null); }} className="px-4 py-2 border dark:border-gray-600 rounded-lg transition-colors">Cancel</button>
+                  <button onClick={confirmDelete} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">Delete</button>
+              </div>
+          </div>
+      </Modal>
 
       <Modal isOpen={!!modalState} onClose={() => setModalState(null)} title={modalState?.mode === 'edit' ? 'Edit Project' : 'Save Project Blueprint'}>
           {modalState && <div className="space-y-4">

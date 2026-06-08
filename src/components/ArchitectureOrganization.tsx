@@ -55,6 +55,8 @@ const ArchitectureOrganization: React.FC = () => {
     const [exportItem, setExportItem] = useState<UnifiedItem | null>(null);
     const [batchExportOpen, setBatchExportOpen] = useState(false);
     const [editItem, setEditItem] = useState<UnifiedItem | null>(null);
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState<UnifiedItem | null>(null);
     const [editContent, setEditContent] = useState('');
     const [editName, setEditName] = useState('');
     const [bulkCategoryInput, setBulkCategoryInput] = useState('');
@@ -172,13 +174,19 @@ const ArchitectureOrganization: React.FC = () => {
         setToast({ message: 'Item updated', type: 'success' });
     };
 
-    const handleDelete = async (item: UnifiedItem) => {
-        if (!window.confirm(`Are you sure you want to delete "${item.name}"?`)) return;
+    const handleDelete = (item: UnifiedItem) => {
+        setDeleteTarget(item);
+        setIsDeleteConfirmOpen(true);
+    };
 
-        await db.deleteUnifiedItem(item);
-        setItems(prev => prev.filter(i => i.id !== item.id));
+    const confirmDelete = async () => {
+        if (!deleteTarget) return;
+        await db.deleteUnifiedItem(deleteTarget);
+        setItems(prev => prev.filter(i => i.id !== deleteTarget.id));
         setToast({ message: 'Item deleted', type: 'success' });
         setPreviewItem(null);
+        setIsDeleteConfirmOpen(false);
+        setDeleteTarget(null);
     };
 
     const sidebarCount = (filterId: string): number => {
@@ -550,6 +558,16 @@ const ArchitectureOrganization: React.FC = () => {
                     onSaveSuccess={() => loadAllData()}
                 />
             )}
+
+            <Modal isOpen={isDeleteConfirmOpen} onClose={() => { setIsDeleteConfirmOpen(false); setDeleteTarget(null); }} title="Confirm Deletion">
+                <div className="space-y-4">
+                    <p className="text-gray-600 dark:text-gray-400">Are you sure you want to delete <strong>{deleteTarget?.name}</strong>? This action cannot be undone.</p>
+                    <div className="flex justify-end space-x-2">
+                        <button onClick={() => { setIsDeleteConfirmOpen(false); setDeleteTarget(null); }} className="px-4 py-2 border dark:border-gray-600 rounded-lg transition-colors">Cancel</button>
+                        <button onClick={confirmDelete} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">Delete</button>
+                    </div>
+                </div>
+            </Modal>
 
             <Modal isOpen={!!editItem} onClose={() => setEditItem(null)} title={`Edit ${editItem?.type}`}>
                 <div className="space-y-4">

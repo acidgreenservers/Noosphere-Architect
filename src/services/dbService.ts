@@ -439,7 +439,7 @@ const decryptField = (ciphertext: string, isObject: boolean = false): any => {
 const processEntity = (entity: any, schema: string[], transform: (val: any, isObj: boolean) => any): any => {
     if (!entity) return entity;
     const result = { ...entity };
-    const objectFields = new Set(['config', 'files', 'result']);
+    const objectFields = new Set(['config', 'files', 'result', 'history', 'lines', 'lineage']);
 
     schema.forEach(field => {
         if (result[field] !== undefined && result[field] !== null) {
@@ -451,13 +451,13 @@ const processEntity = (entity: any, schema: string[], transform: (val: any, isOb
 
 const SCHEMAS = {
     agent: ['config', 'prompt', 'signal', 'files'],
-    prompt: ['config', 'prompt', 'signal', 'files'],
+    prompt: ['config', 'prompt', 'signal', 'files', 'history'],
     project: ['config', 'files'],
     signal: ['config', 'extractedSignal', 'promptSignal', 'signalConstraints'],
     mindseed: ['config', 'result'],
     roadmap: ['config', 'generatedTask'],
     agentJob: ['config', 'files'],
-    synthesis: ['content']
+    synthesis: ['content', 'lines', 'lineage']
 };
 
 const encryptAgent = (agent: SavedAgent) => processEntity(agent, SCHEMAS.agent, encryptField);
@@ -500,7 +500,12 @@ export const addSynthesis = (synthesis: SavedSynthesis): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(SYNTHESIS_STORE, 'readwrite');
         const request = store.add(encryptSynthesis(synthesis));
-        request.onsuccess = () => resolve(request.result as number);
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error("Verification failed after synthesis write."));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -521,7 +526,12 @@ export const updateSynthesis = (synthesis: SavedSynthesis): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(SYNTHESIS_STORE, 'readwrite');
         const request = store.put(encryptSynthesis(synthesis));
-        request.onsuccess = () => resolve(request.result as number);
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error("Verification failed after synthesis update."));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -600,7 +610,12 @@ export const addTypedPrompt = (type: PromptType, prompt: SavedPrompt): Promise<n
         const storeName = getPromptStoreName(type);
         const store = await getStore(storeName, 'readwrite');
         const request = store.add(encryptPrompt(prompt));
-        request.onsuccess = () => resolve(request.result as number);
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error(`Verification failed after ${type} prompt write.`));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -623,7 +638,12 @@ export const updateTypedPrompt = (type: PromptType, prompt: SavedPrompt): Promis
         const storeName = getPromptStoreName(type);
         const store = await getStore(storeName, 'readwrite');
         const request = store.put(encryptPrompt(prompt));
-        request.onsuccess = () => resolve(request.result as number);
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error(`Verification failed after ${type} prompt update.`));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -751,7 +771,12 @@ export const updateMindSeed = (mindSeed: SavedMindSeed): Promise<number> => {
             const storeName = getMindSeedStoreName(mindSeed.config.type);
             const store = await getStore(storeName, 'readwrite');
             const request = store.put(encryptMindSeed(mindSeed));
-            request.onsuccess = () => resolve(request.result as number);
+            request.onsuccess = () => {
+                const id = request.result as number;
+                const getReq = store.get(id);
+                getReq.onsuccess = () => resolve(id);
+                getReq.onerror = () => reject(new Error("Verification failed after mindseed update."));
+            };
             request.onerror = () => reject(request.error);
         } catch (error) {
             reject(error);
@@ -910,7 +935,12 @@ export const addAgent = (agent: SavedAgent): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(AGENT_STORE, 'readwrite');
         const request = store.add(encryptAgent(agent));
-        request.onsuccess = () => resolve(request.result as number);
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error("Verification failed after agent write."));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -920,7 +950,12 @@ export const addSignal = (signal: SavedSignal): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(SIGNAL_STORE, 'readwrite');
         const request = store.add(encryptSignal(signal));
-        request.onsuccess = () => resolve(request.result as number);
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error("Verification failed after signal write."));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -941,7 +976,12 @@ export const updateSignal = (signal: SavedSignal): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(SIGNAL_STORE, 'readwrite');
         const request = store.put(encryptSignal(signal));
-        request.onsuccess = () => resolve(request.result as number);
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error("Verification failed after signal update."));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -980,7 +1020,12 @@ export const updateAgent = (agent: SavedAgent): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(AGENT_STORE, 'readwrite');
         const request = store.put(encryptAgent(agent));
-        request.onsuccess = () => resolve(request.result as number);
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error("Verification failed after agent update."));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -1009,7 +1054,12 @@ export const addPrompt = (prompt: SavedPrompt): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(PROMPT_STORE, 'readwrite');
         const request = store.add(encryptPrompt(prompt));
-        request.onsuccess = () => resolve(request.result as number);
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error("Verification failed after legacy prompt write."));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -1030,7 +1080,12 @@ export const updatePrompt = (prompt: SavedPrompt): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(PROMPT_STORE, 'readwrite');
         const request = store.put(encryptPrompt(prompt));
-        request.onsuccess = () => resolve(request.result as number);
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error("Verification failed after legacy prompt update."));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -1058,7 +1113,12 @@ export const addProject = (project: SavedProject): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(PROJECT_STORE, 'readwrite');
         const request = store.add(encryptProject(project));
-        request.onsuccess = () => resolve(request.result as number);
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error("Verification failed after project write."));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -1079,7 +1139,12 @@ export const updateProject = (project: SavedProject): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(PROJECT_STORE, 'readwrite');
         const request = store.put(encryptProject(project));
-        request.onsuccess = () => resolve(request.result as number);
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error("Verification failed after project update."));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -1107,7 +1172,12 @@ export const addRoadmap = (roadmap: SavedRoadmap): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(ROADMAP_STORE, 'readwrite');
         const request = store.add(encryptRoadmap(roadmap));
-        request.onsuccess = () => resolve(request.result as number);
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error("Verification failed after roadmap write."));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -1128,7 +1198,12 @@ export const updateRoadmap = (roadmap: SavedRoadmap): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(ROADMAP_STORE, 'readwrite');
         const request = store.put(encryptRoadmap(roadmap));
-        request.onsuccess = () => resolve(request.result as number);
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error("Verification failed after roadmap update."));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -1187,7 +1262,12 @@ export const addAgentJob = (job: SavedAgentJob): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(AGENT_JOB_STORE, 'readwrite');
         const request = store.add(encryptAgentJob(job));
-        request.onsuccess = () => resolve(request.result as number);
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error("Verification failed after agent job write."));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -1208,7 +1288,12 @@ export const updateAgentJob = (job: SavedAgentJob): Promise<number> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(AGENT_JOB_STORE, 'readwrite');
         const request = store.put(encryptAgentJob(job));
-        request.onsuccess = () => resolve(request.result as number);
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error("Verification failed after agent job update."));
+        };
         request.onerror = () => reject(request.error);
     });
 };
