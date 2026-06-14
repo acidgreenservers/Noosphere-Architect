@@ -1,8 +1,8 @@
-import { SavedAgent, SavedPrompt, AgentConfig, PromptConfig, SavedProject, ProjectConfig, SavedSignal, SignalConfig, SavedMindSeed, MindSeedConfig, SavedSynthesis, SavedRoadmap, RoadmapConfig, SavedAgentJob, AgentJobConfig, MindSeedType, PromptType, UnifiedItem } from '../types';
+import { SavedAgent, SavedPrompt, AgentConfig, PromptConfig, SavedProject, ProjectConfig, SavedSignal, SignalConfig, SavedMindSeed, MindSeedConfig, SavedSynthesis, SavedRoadmap, RoadmapConfig, SavedAgentJob, AgentJobConfig, MindSeedType, PromptType, UnifiedItem, CompressionConfig, SavedCompressedSignal } from '../types';
 import { encryptData, decryptData } from '../utils/encryption';
 
 const DB_NAME = 'NoosphereArchitectDB';
-const DB_VERSION = 15;
+const DB_VERSION = 16;
 const AGENT_STORE = 'savedAgents';
 const PROMPT_STORE = 'savedPrompts'; // Legacy, keeping for migration or reference
 const STANDARD_PROMPT_STORE = 'standardPrompts';
@@ -12,6 +12,7 @@ const SIGNAL_STORE = 'savedSignals';
 const COGNISEED_STORE = 'cogniseeds';
 const LINGUASEED_STORE = 'linguaseeds';
 const ARCHSEED_STORE = 'archseeds';
+const COMPRESSED_SIGNAL_STORE = 'savedCompressedSignals';
 const AGENT_DRAFT_STORE = 'agentDraft';
 const PROMPT_DRAFT_STORE = 'promptDraft'; // Legacy
 const STANDARD_PROMPT_DRAFT_STORE = 'standardPromptDraft';
@@ -19,12 +20,14 @@ const SYSTEM_PROMPT_DRAFT_STORE = 'systemPromptDraft';
 const PROJECT_DRAFT_STORE = 'projectDraft';
 const SIGNAL_DRAFT_STORE = 'signalDraft';
 const MINDSEED_DRAFT_STORE = 'mindSeedDraft';
+const COMPRESSED_SIGNAL_DRAFT_STORE = 'compressedSignalDraft';
 const AGENT_CONTEXT_STORE = 'agentContext';
 const MINDSEED_CONTEXT_STORE = 'mindSeedContext';
 const SIGNAL_CONTEXT_STORE = 'signalContext';
 const PROMPT_CONTEXT_STORE = 'promptContext';
 const SYSTEM_PROMPT_CONTEXT_STORE = 'systemPromptContext';
 const PROJECT_CONTEXT_STORE = 'projectContext';
+const COMPRESSED_SIGNAL_CONTEXT_STORE = 'compressedSignalContext';
 export const SYNTHESIS_STORE = 'savedSynthesis';
 const ROADMAP_STORE = 'savedRoadmaps';
 const ROADMAP_DRAFT_STORE = 'roadmapDraft';
@@ -265,6 +268,20 @@ export const initDB = (): Promise<IDBDatabase> => {
                 db.createObjectStore(AGENT_JOB_DRAFT_STORE, { keyPath: 'id' });
             }
             console.log("Migration to v15 complete: Agent Job store initialized.");
+        },
+        16: (db, tx) => {
+            if (!db.objectStoreNames.contains(COMPRESSED_SIGNAL_STORE)) {
+                const store = db.createObjectStore(COMPRESSED_SIGNAL_STORE, { keyPath: 'id', autoIncrement: true });
+                store.createIndex('name', 'name', { unique: false });
+                store.createIndex('createdAt', 'createdAt', { unique: false });
+            }
+            if (!db.objectStoreNames.contains(COMPRESSED_SIGNAL_DRAFT_STORE)) {
+                db.createObjectStore(COMPRESSED_SIGNAL_DRAFT_STORE, { keyPath: 'id' });
+            }
+            if (!db.objectStoreNames.contains(COMPRESSED_SIGNAL_CONTEXT_STORE)) {
+                db.createObjectStore(COMPRESSED_SIGNAL_CONTEXT_STORE, { keyPath: 'id' });
+            }
+            console.log("Migration to v16 complete: Compressed Signal stores initialized.");
         }
       };
 
@@ -347,6 +364,17 @@ export const checkDatabaseHealth = async (): Promise<{
         diagnostics.healthy = false;
         diagnostics.errors.push(`Missing expected store: ${storeName}`);
       }
+    });
+
+    const v16Stores = [COMPRESSED_SIGNAL_STORE, COMPRESSED_SIGNAL_DRAFT_STORE, COMPRESSED_SIGNAL_CONTEXT_STORE];
+    v16Stores.forEach(storeName => {
+        if (db.objectStoreNames.contains(storeName)) {
+            diagnostics.storesPresent.push(storeName);
+        } else {
+            diagnostics.storesMissing.push(storeName);
+            diagnostics.healthy = false;
+            diagnostics.errors.push(`Missing expected v16 store: ${storeName}`);
+        }
     });
 
     // Read schema version store
@@ -457,7 +485,8 @@ const SCHEMAS = {
     mindseed: ['config', 'result'],
     roadmap: ['config', 'generatedTask'],
     agentJob: ['config', 'files'],
-    synthesis: ['content', 'lines', 'lineage']
+    synthesis: ['content', 'lines', 'lineage'],
+    compression: ['config', 'result']
 };
 
 const encryptAgent = (agent: SavedAgent) => processEntity(agent, SCHEMAS.agent, encryptField);
@@ -483,6 +512,9 @@ const decryptAgentJob = (data: any) => processEntity(data, SCHEMAS.agentJob, (v,
 
 const encryptSynthesis = (synthesis: SavedSynthesis) => processEntity(synthesis, SCHEMAS.synthesis, encryptField);
 const decryptSynthesis = (data: any) => processEntity(data, SCHEMAS.synthesis, (v, isObj) => decryptField(v, isObj)) as SavedSynthesis;
+
+const encryptCompressedSignal = (signal: SavedCompressedSignal) => processEntity(signal, SCHEMAS.compression, encryptField);
+const decryptCompressedSignal = (data: any) => processEntity(data, SCHEMAS.compression, (v, isObj) => decryptField(v, isObj)) as SavedCompressedSignal;
 
 // Agent Draft Functions
 export const saveDraft = (draft: {id: number, config: AgentConfig}): Promise<number> => {
@@ -719,7 +751,7 @@ export const addMindSeed = (mindSeed: SavedMindSeed): Promise<number> => {
 };
 
 // Custom Context Functions
-export type ContextStoreName = 'agentContext' | 'mindSeedContext' | 'signalContext' | 'promptContext' | 'systemPromptContext' | 'projectContext';
+export type ContextStoreName = 'agentContext' | 'mindSeedContext' | 'signalContext' | 'promptContext' | 'systemPromptContext' | 'projectContext' | 'compressedSignalContext';
 
 export const saveCustomContext = (storeName: ContextStoreName, context: string): Promise<void> => {
     return new Promise(async (resolve, reject) => {
@@ -1167,6 +1199,96 @@ export const clearAllProjects = (): Promise<void> => {
     });
 };
 
+// Compressed Signal Functions
+export const addCompressedSignal = (signal: SavedCompressedSignal): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(COMPRESSED_SIGNAL_STORE, 'readwrite');
+        const request = store.add(encryptCompressedSignal(signal));
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error("Verification failed after compressed signal write."));
+        };
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const getAllCompressedSignals = (): Promise<SavedCompressedSignal[]> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(COMPRESSED_SIGNAL_STORE, 'readonly');
+        const request = store.getAll();
+        request.onsuccess = () => {
+            const results = (request.result as any[]).map(decryptCompressedSignal);
+            resolve(results.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        };
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const updateCompressedSignal = (signal: SavedCompressedSignal): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(COMPRESSED_SIGNAL_STORE, 'readwrite');
+        const request = store.put(encryptCompressedSignal(signal));
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error("Verification failed after compressed signal update."));
+        };
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const deleteCompressedSignal = (id: number): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(COMPRESSED_SIGNAL_STORE, 'readwrite');
+        const request = store.delete(id);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const clearAllCompressedSignals = (): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(COMPRESSED_SIGNAL_STORE, 'readwrite');
+        const request = store.clear();
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const saveCompressedSignalDraft = (draft: {id: number, config: CompressionConfig}): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(COMPRESSED_SIGNAL_DRAFT_STORE, 'readwrite');
+        const encryptedDraft = { ...draft, config: encryptField(draft.config) };
+        const request = store.put(encryptedDraft);
+        request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const getCompressedSignalDraft = (id: number): Promise<{id: number, config: CompressionConfig} | undefined> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(COMPRESSED_SIGNAL_DRAFT_STORE, 'readonly');
+        const request = store.get(id);
+        request.onsuccess = () => {
+            if (!request.result) return resolve(undefined);
+            resolve({ ...request.result, config: decryptField(request.result.config, true) });
+        };
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const clearCompressedSignalDraft = (id: number): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(COMPRESSED_SIGNAL_DRAFT_STORE, 'readwrite');
+        const request = store.delete(id);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
 // Roadmap Functions
 export const addRoadmap = (roadmap: SavedRoadmap): Promise<number> => {
     return new Promise(async (resolve, reject) => {
@@ -1334,7 +1456,7 @@ export const getAllUnifiedItems = async (): Promise<UnifiedItem[]> => {
     const [
         agents, prompts, stdPrompts, sysPrompts,
         projects, seedsCogni, seedsLingua, seedsArch,
-        signals, syntheses, roadmaps, agentJobs
+        signals, syntheses, roadmaps, agentJobs, compressedSignals
     ] = await Promise.all([
         getAllAgents(),
         getAllPrompts(),
@@ -1347,7 +1469,8 @@ export const getAllUnifiedItems = async (): Promise<UnifiedItem[]> => {
         getAllSignals(),
         getAllSynthesis(),
         getAllRoadmaps(),
-        getAllAgentJobs()
+        getAllAgentJobs(),
+        getAllCompressedSignals()
     ]);
 
     const unified: UnifiedItem[] = [
@@ -1362,7 +1485,8 @@ export const getAllUnifiedItems = async (): Promise<UnifiedItem[]> => {
         ...signals.map(i => mapToUnified(i, 'signal')),
         ...syntheses.map(i => mapToUnified(i, 'synthesis')),
         ...roadmaps.map(i => mapToUnified(i, 'roadmap')),
-        ...agentJobs.map(i => mapToUnified(i, 'agentJob'))
+        ...agentJobs.map(i => mapToUnified(i, 'agentJob')),
+        ...compressedSignals.map(i => mapToUnified(i, 'compressed-signal'))
     ];
 
     return unified.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -1388,6 +1512,7 @@ export const updateUnifiedItemMetadata = async (item: UnifiedItem, metadata: Par
         case 'synthesis': await updateSynthesis(updatedOriginal); break;
         case 'roadmap': await updateRoadmap(updatedOriginal); break;
         case 'agentJob': await updateAgentJob(updatedOriginal); break;
+        case 'compressed-signal': await updateCompressedSignal(updatedOriginal); break;
     }
 };
 
@@ -1404,6 +1529,7 @@ export const deleteUnifiedItem = async (item: UnifiedItem): Promise<void> => {
         case 'synthesis': await deleteSynthesis(id); break;
         case 'roadmap': await deleteRoadmap(id); break;
         case 'agentJob': await deleteAgentJob(id); break;
+        case 'compressed-signal': await deleteCompressedSignal(id); break;
     }
 };
 

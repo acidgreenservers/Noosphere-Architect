@@ -152,6 +152,22 @@ export interface SavedSignal extends LibraryMetadata {
   createdAt: string;
 }
 
+export interface CompressionConfig {
+  messyInput: string;
+}
+
+export interface CompressedSignal {
+  compressedText: string;
+}
+
+export interface SavedCompressedSignal extends LibraryMetadata {
+  id?: number;
+  name: string;
+  config: CompressionConfig;
+  result: CompressedSignal;
+  createdAt: string;
+}
+
 export interface RoadmapConfig {
   rawText: string;
   project?: string;
@@ -232,7 +248,7 @@ export interface SavedSynthesis extends LibraryMetadata {
 export interface UnifiedItem {
     id: number | string;
     name: string;
-    type: 'agent' | 'prompt-standard' | 'prompt-system' | 'project' | 'mindseed' | 'signal' | 'synthesis' | 'roadmap' | 'legacy-prompt' | 'agentJob';
+    type: 'agent' | 'prompt-standard' | 'prompt-system' | 'project' | 'mindseed' | 'signal' | 'synthesis' | 'roadmap' | 'legacy-prompt' | 'agentJob' | 'compressed-signal';
     original: any;
     createdAt: string;
     isStarred: boolean;

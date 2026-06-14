@@ -8,6 +8,7 @@ interface HeaderProps {
   onMindSeedArchitectClick: () => void;
   onAgentApiSettingsClick: () => void;
   onSignalExtractorClick: () => void;
+  onSignalCompressionArchitectClick: () => void;
   onArchitectureOrganizationClick: () => void;
   showHomeButton: boolean;
 }
@@ -19,6 +20,7 @@ const Header: React.FC<HeaderProps> = ({
   onMindSeedArchitectClick,
   onAgentApiSettingsClick,
   onSignalExtractorClick,
+  onSignalCompressionArchitectClick,
   onArchitectureOrganizationClick,
   showHomeButton
 }) => {
@@ -42,6 +44,14 @@ const Header: React.FC<HeaderProps> = ({
             title="Signal Extractor"
            >
             <span className="material-icons">unarchive</span>
+          </button>
+          <button
+            onClick={onSignalCompressionArchitectClick}
+            className="flex items-center text-gray-600 dark:text-gray-300 hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors p-2 rounded-full mr-2"
+            aria-label="Go to Signal Compression Architect"
+            title="Signal Compression Architect"
+           >
+            <span className="material-icons">compress</span>
           </button>
           <button
             onClick={onMindSeedArchitectClick}
