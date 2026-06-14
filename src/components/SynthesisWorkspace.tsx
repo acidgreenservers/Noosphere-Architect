@@ -70,6 +70,7 @@ const SynthesisWorkspace: React.FC<SynthesisWorkspaceProps> = ({ sourceItems, on
 
                     const content = item.prompt || item.extractedSignal || item.content || item.generatedTask ||
                                    (item.files ? Object.values(item.files).join('\n\n') : '') ||
+                                   (item.result?.seeds ? `Explanation: ${item.result.explanation}\n\nInvariants: ${item.result.seeds.join('\n')}` : '') ||
                                    (item.result?.seed ? `> ${item.result.seed}\n\nPattern: ${item.result.pattern}\n\nDeploy When: ${item.result.deployWhen}` : '');
 
                     if (!content) continue;

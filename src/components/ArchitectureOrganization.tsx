@@ -26,7 +26,8 @@ const TYPE_LABELS: Record<UnifiedItem['type'], string> = {
     'synthesis': 'Syntheses',
     'roadmap': 'Roadmaps',
     'agentJob': 'Agent Jobs',
-    'legacy-prompt': 'Legacy Prompts'
+    'legacy-prompt': 'Legacy Prompts',
+    'seed-architect': 'Seed Analyses'
 };
 
 const TYPE_ICONS: Record<UnifiedItem['type'], string> = {
@@ -39,7 +40,8 @@ const TYPE_ICONS: Record<UnifiedItem['type'], string> = {
     'synthesis': 'auto_fix_high',
     'roadmap': 'map',
     'agentJob': 'assignment_ind',
-    'legacy-prompt': 'history'
+    'legacy-prompt': 'history',
+    'seed-architect': 'auto_awesome'
 };
 
 const ArchitectureOrganization: React.FC = () => {
@@ -144,6 +146,8 @@ const ArchitectureOrganization: React.FC = () => {
             updatedOriginal.content = editContent;
         } else if (editItem.type === 'roadmap') {
             updatedOriginal.generatedTask = editContent;
+        } else if (editItem.type === 'seed-architect') {
+            updatedOriginal.result = { ...o.result, explanation: editContent };
         } else if (o.prompt !== undefined) {
             updatedOriginal.prompt = editContent;
         } else if (o.files) {
@@ -167,6 +171,7 @@ const ArchitectureOrganization: React.FC = () => {
             case 'synthesis': await db.updateSynthesis(updatedOriginal); break;
             case 'roadmap': await db.updateRoadmap(updatedOriginal); break;
             case 'agentJob': await db.updateAgentJob(updatedOriginal); break;
+            case 'seed-architect': await db.updateSeed(updatedOriginal); break;
         }
 
         setItems(prev => prev.map(i => i.id === editItem.id ? { ...i, name: editName, original: updatedOriginal } : i));

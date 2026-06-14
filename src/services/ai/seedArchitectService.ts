@@ -1,6 +1,6 @@
 import { handleAiCall } from './openRouter';
 import { SeedResult, SeedGraphData } from '../../types';
-import { addSeedTempResponse, clearSeedTempResponses } from '../dbService';
+import { addSeedTempResponse, clearSeedTempResponses, getCustomContext } from '../dbService';
 
 export interface SeedGenerationProgress {
   stage: 'generating' | 'extracting' | 'evaluating';
@@ -57,9 +57,12 @@ export const generateSeedArchitectResult = async (
   // 4. Final Evaluation
   onProgress?.({ stage: 'evaluating', current: 1, total: 1 });
 
+  const customContext = await getCustomContext('signalContext');
+  const contextPrefix = customContext ? `Custom Context:\n${customContext}\n\n` : '';
+
   const toleranceThreshold = Math.ceil(n * 0.6); // 3 out of 5 ratio
 
-  const evaluationPrompt = `You are a Prompt Seed Architect engine. Evaluate the semantic stability of the following prompt based on ${n} regenerated responses.
+  const evaluationPrompt = `${contextPrefix}You are a Prompt Seed Architect engine. Evaluate the semantic stability of the following prompt based on ${n} regenerated responses.
 
 Original Prompt:
 "${promptText}"

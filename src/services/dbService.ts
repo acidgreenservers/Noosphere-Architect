@@ -2,7 +2,7 @@ import { SavedAgent, SavedPrompt, AgentConfig, PromptConfig, SavedProject, Proje
 import { encryptData, decryptData } from '../utils/encryption';
 
 const DB_NAME = 'NoosphereArchitectDB';
-const DB_VERSION = 16;
+const DB_VERSION = 17;
 const AGENT_STORE = 'savedAgents';
 const PROMPT_STORE = 'savedPrompts'; // Legacy, keeping for migration or reference
 const STANDARD_PROMPT_STORE = 'standardPrompts';
@@ -32,6 +32,7 @@ const AGENT_JOB_STORE = 'savedAgentJobs';
 const AGENT_JOB_DRAFT_STORE = 'agentJobDraft';
 const SEED_STORE = 'savedSeeds';
 const SEED_TEMP_STORE = 'seedTemp';
+const SEED_DRAFT_STORE = 'seedDraft';
 const SCHEMA_VERSION_STORE = '_schemaVersion'; // Internal store for migration verification
 
 
@@ -278,6 +279,12 @@ export const initDB = (): Promise<IDBDatabase> => {
                 db.createObjectStore(SEED_TEMP_STORE, { keyPath: 'id', autoIncrement: true });
             }
             console.log("Migration to v16 complete: Seed Architect stores initialized.");
+        },
+        17: (db, tx) => {
+            if (!db.objectStoreNames.contains(SEED_DRAFT_STORE)) {
+                db.createObjectStore(SEED_DRAFT_STORE, { keyPath: 'id' });
+            }
+            console.log("Migration to v17 complete: Seed Architect draft store initialized.");
         }
       };
 
@@ -1418,6 +1425,37 @@ export const clearSeedTempResponses = (): Promise<void> => {
     return new Promise(async (resolve, reject) => {
         const store = await getStore(SEED_TEMP_STORE, 'readwrite');
         const request = store.clear();
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const saveSeedDraft = (draft: {id: number, config: SeedConfig}): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(SEED_DRAFT_STORE, 'readwrite');
+        const encryptedDraft = { ...draft, config: encryptField(draft.config) };
+        const request = store.put(encryptedDraft);
+        request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const getSeedDraft = (id: number): Promise<{id: number, config: SeedConfig} | undefined> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(SEED_DRAFT_STORE, 'readonly');
+        const request = store.get(id);
+        request.onsuccess = () => {
+            if (!request.result) return resolve(undefined);
+            resolve({ ...request.result, config: decryptField(request.result.config, true) });
+        };
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const clearSeedDraft = (id: number): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(SEED_DRAFT_STORE, 'readwrite');
+        const request = store.delete(id);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
     });

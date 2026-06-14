@@ -10,7 +10,7 @@ interface ToolConfig {
 }
 
 const tools: ToolConfig[] = [
-  { id: 'signalContext', name: 'Signal Extractor', icon: 'unarchive' },
+  { id: 'signalContext', name: 'Signal Center', icon: 'unarchive' },
   { id: 'mindSeedContext', name: 'MindSeed Creation Tool', icon: 'spa' },
   { id: 'promptContext', name: 'Prompt Architect', icon: 'psychology' },
   { id: 'systemPromptContext', name: 'Skill Architect', icon: 'psychology_alt' },

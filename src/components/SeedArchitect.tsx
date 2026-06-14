@@ -37,10 +37,14 @@ const SeedArchitect: React.FC = () => {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    starredSection: true,
-    pinnedSection: true,
-    allItemsSection: true
+    starredSection: false,
+    pinnedSection: false,
+    allItemsSection: false
   });
+
+  const [draftStatus, setDraftStatus] = useState<'unloaded' | 'loaded' | 'none'>('unloaded');
+  const [pendingDraft, setPendingDraft] = useState<SeedConfig | null>(null);
+  const isCheckingDraft = useRef(false);
 
   const loadSavedSeeds = useCallback(async () => {
     const seeds = await db.getAllSeeds();
@@ -49,11 +53,32 @@ const SeedArchitect: React.FC = () => {
 
   useEffect(() => {
     loadSavedSeeds();
+    const loadDraft = async () => {
+      if (isCheckingDraft.current) return;
+      isCheckingDraft.current = true;
+      const draft = await db.getSeedDraft(1);
+      if (draft?.config && draft.config.promptText) {
+        setPendingDraft(draft.config);
+      } else {
+        setDraftStatus('none');
+      }
+    };
+    loadDraft();
     // Cleanup temp store on unmount as per requirements
     return () => {
       db.clearSeedTempResponses();
     };
   }, [loadSavedSeeds]);
+
+  useEffect(() => {
+    if (draftStatus === 'unloaded') return;
+    const handler = setTimeout(() => {
+      if (config.promptText) {
+        db.saveSeedDraft({ id: 1, config });
+      }
+    }, 1500);
+    return () => clearTimeout(handler);
+  }, [config, draftStatus]);
 
   const handleGenerate = useCallback(async () => {
     abortControllerRef.current?.abort();
@@ -124,6 +149,7 @@ const SeedArchitect: React.FC = () => {
     setError(null);
     setIsLoading(false);
     await db.clearSeedTempResponses();
+    await db.clearSeedDraft(1);
   };
 
   const handleSave = async () => {
@@ -142,6 +168,7 @@ const SeedArchitect: React.FC = () => {
     };
     await db.addSeed(newSeed);
     await db.clearSeedTempResponses();
+    await db.clearSeedDraft(1);
     setSuccessMessage('Seed analysis saved successfully!');
     loadSavedSeeds();
     setResult(null);
@@ -168,6 +195,19 @@ const SeedArchitect: React.FC = () => {
     await db.updateSeed(updated);
     setSavedSeeds(prev => prev.map(s => s.id === seed.id ? updated : s));
     if (previewSeed?.id === seed.id) setPreviewSeed(updated);
+  };
+
+  const handleAcceptDraft = () => {
+    if (!pendingDraft) return;
+    setConfig(pendingDraft);
+    setDraftStatus('loaded');
+    setPendingDraft(null);
+  };
+
+  const handleDeclineDraft = async () => {
+    await db.clearSeedDraft(1);
+    setDraftStatus('none');
+    setPendingDraft(null);
   };
 
   const seedToUnified = (seed: SavedSeed): UnifiedItem => ({
@@ -434,6 +474,28 @@ const SeedArchitect: React.FC = () => {
         metadata={previewSeed || undefined}
         onUpdateMetadata={(m) => previewSeed && handleUpdateMetadata(previewSeed, m)}
       />
+
+      <Modal isOpen={!!pendingDraft} onClose={() => setPendingDraft(null)} title="Unsaved Draft Found">
+        <div className="space-y-4">
+            <p className="text-gray-600 dark:text-gray-400">
+                An unsaved seed architect draft was found. Would you like to restore it?
+            </p>
+            <div className="flex justify-end space-x-3 mt-6">
+                <button
+                    onClick={handleDeclineDraft}
+                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                    Discard
+                </button>
+                <button
+                    onClick={handleAcceptDraft}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                >
+                    Restore Draft
+                </button>
+            </div>
+        </div>
+      </Modal>
 
       {/* Delete Confirmation */}
       <Modal isOpen={isDeleteConfirmOpen} onClose={() => setIsDeleteConfirmOpen(false)} title="Confirm Deletion">
