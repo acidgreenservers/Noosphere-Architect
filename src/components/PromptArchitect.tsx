@@ -80,6 +80,7 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
     const [modalInput, setModalInput] = useState<{ name: string; prompt?: string; files?: GeneratedFiles }>({ name: '' });
     const [previewPrompt, setPreviewPrompt] = useState<SavedPrompt | null>(null);
     const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+    const [isClearAllConfirmOpen, setIsClearAllConfirmOpen] = useState(false);
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
         starredSection: true,
         pinnedSection: true,
@@ -287,14 +288,13 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
     };
 
     const handleClearAll = async () => {
-        if (window.confirm('Are you sure you want to delete ALL saved items in this tab?')) {
-            try {
-                await db.clearAllTypedPrompts(activeTab);
-                setSavedPrompts([]);
-                setSuccessMessage('Cleared successfully.');
-            } catch (err) {
-                setError('Failed to clear.');
-            }
+        try {
+            await db.clearAllTypedPrompts(activeTab);
+            setSavedPrompts([]);
+            setSuccessMessage('Cleared successfully.');
+            setIsClearAllConfirmOpen(false);
+        } catch (err) {
+            setError('Failed to clear.');
         }
     };
 
@@ -527,7 +527,7 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                             <button onClick={handleExportAll} className="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/60 flex items-center">
                                 <span className="material-icons text-sm mr-1">download</span>Export All
                             </button>
-                            <button onClick={handleClearAll} className="px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/60 flex items-center">
+                            <button onClick={() => setIsClearAllConfirmOpen(true)} className="px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/60 flex items-center">
                                 <span className="material-icons text-sm mr-1">delete_sweep</span>Clear All
                             </button>
                         </div>
@@ -709,16 +709,26 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                 onDelete={() => setIsDeleteConfirmOpen(true)}
             />
 
+            <Modal isOpen={isClearAllConfirmOpen} onClose={() => setIsClearAllConfirmOpen(false)} title="Confirm Clear All">
+                <div className="space-y-4">
+                    <p className="text-gray-600 dark:text-gray-400">Are you sure you want to delete ALL saved items in this tab? This action cannot be undone.</p>
+                    <div className="flex justify-end space-x-2">
+                        <button onClick={() => setIsClearAllConfirmOpen(false)} className="px-4 py-2 border dark:border-gray-600 rounded-lg transition-colors">Cancel</button>
+                        <button onClick={handleClearAll} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">Clear All</button>
+                    </div>
+                </div>
+            </Modal>
+
             <Modal isOpen={isDeleteConfirmOpen} onClose={() => setIsDeleteConfirmOpen(false)} title="Confirm Deletion">
                 <div className="space-y-4">
                     <p className="text-gray-600 dark:text-gray-400">Are you sure you want to delete <strong>{previewPrompt?.name}</strong>? This action cannot be undone.</p>
                     <div className="flex justify-end space-x-2">
-                        <button onClick={() => setIsDeleteConfirmOpen(false)} className="px-4 py-2 border dark:border-gray-600 rounded-lg">Cancel</button>
+                        <button onClick={() => setIsDeleteConfirmOpen(false)} className="px-4 py-2 border dark:border-gray-600 rounded-lg transition-colors">Cancel</button>
                         <button onClick={() => {
                             const isLegacy = legacyPrompts.some(lp => lp.id === previewPrompt?.id);
                             if (isLegacy) handleLegacyDelete(previewPrompt!.id!);
                             else handleDelete();
-                        }} className="px-4 py-2 bg-red-600 text-white rounded-lg">Delete</button>
+                        }} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">Delete</button>
                     </div>
                 </div>
             </Modal>

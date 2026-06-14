@@ -41,6 +41,9 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
     });
 
     const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+    const [isClearAllConfirmOpen, setIsClearAllConfirmOpen] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
     const [previewSignal, setPreviewSignal] = useState<SavedSignal | null>(null);
     const [saveName, setSaveName] = useState('');
 
@@ -175,12 +178,26 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
 
     const unifiedSignals = savedSignals.map(signalToUnified);
 
-    const handleDelete = async (id: number) => {
-        if (window.confirm('Are you sure you want to delete this signal?')) {
-            await db.deleteSignal(id);
-            setSavedSignals(prev => prev.filter(s => s.id !== id));
-            setSuccessMessage('Signal deleted successfully!');
-        }
+    const handleDelete = (id: number) => {
+        setDeleteTarget(id);
+        setIsDeleteConfirmOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (deleteTarget === null) return;
+        await db.deleteSignal(deleteTarget);
+        setSavedSignals(prev => prev.filter(s => s.id !== deleteTarget));
+        setSuccessMessage('Signal deleted successfully!');
+        setIsDeleteConfirmOpen(false);
+        setDeleteTarget(null);
+        setPreviewSignal(null);
+    };
+
+    const handleClearAll = async () => {
+        await db.clearAllSignals();
+        loadSavedSignals();
+        setSuccessMessage('All signals cleared.');
+        setIsClearAllConfirmOpen(false);
     };
 
     const handleLoadSaved = (signal: SavedSignal) => {
@@ -329,7 +346,7 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
                 <div className="mt-12">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Saved Signals</h2>
-                        <button onClick={async () => { if(window.confirm('Clear all signals?')){ await db.clearAllSignals(); loadSavedSignals(); } }} className="text-sm text-red-500 hover:text-red-600 flex items-center">
+                        <button onClick={() => setIsClearAllConfirmOpen(true)} className="text-sm text-red-500 hover:text-red-600 flex items-center">
                             <span className="material-icons text-sm mr-1">delete_sweep</span> Clear All
                         </button>
                     </div>
@@ -414,6 +431,50 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
                             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
                         >
                             Restore Draft
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            <Modal isOpen={isClearAllConfirmOpen} onClose={() => setIsClearAllConfirmOpen(false)} title="Confirm Clear All">
+                <div className="space-y-4">
+                    <p className="text-gray-600 dark:text-gray-400">
+                        Are you sure you want to clear ALL signals? This action cannot be undone.
+                    </p>
+                    <div className="flex justify-end space-x-3 mt-6">
+                        <button
+                            onClick={() => setIsClearAllConfirmOpen(false)}
+                            className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleClearAll}
+                            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition"
+                        >
+                            Clear All
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            <Modal isOpen={isDeleteConfirmOpen} onClose={() => { setIsDeleteConfirmOpen(false); setDeleteTarget(null); }} title="Confirm Delete">
+                <div className="space-y-4">
+                    <p className="text-gray-600 dark:text-gray-400">
+                        Are you sure you want to delete this signal? This action cannot be undone.
+                    </p>
+                    <div className="flex justify-end space-x-3 mt-6">
+                        <button
+                            onClick={() => { setIsDeleteConfirmOpen(false); setDeleteTarget(null); }}
+                            className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={confirmDelete}
+                            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition"
+                        >
+                            Delete
                         </button>
                     </div>
                 </div>
