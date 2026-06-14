@@ -225,6 +225,38 @@ export interface SavedSynthesis extends LibraryMetadata {
 }
 
 // ----------------------------------------------------------------------
+// Prompt Seed Architect types
+// ----------------------------------------------------------------------
+
+export interface SeedConfig {
+  promptText: string;
+  n: number;
+}
+
+export interface SeedGraphData {
+  recurringTheme: string;
+  semanticSignals: string;
+  gradient: 'Jagged' | 'Smooth';
+  tightness: number; // 1-10
+}
+
+export interface SeedResult {
+  status: 'Pass' | 'Fail';
+  explanation: string;
+  graphData: SeedGraphData;
+  seeds: string[]; // Extracted invariants
+}
+
+export interface SavedSeed extends LibraryMetadata {
+  id?: number;
+  name: string;
+  config: SeedConfig;
+  result: SeedResult;
+  responses: string[]; // The N responses
+  createdAt: string;
+}
+
+// ----------------------------------------------------------------------
 // UnifiedItem – a flattened representation used by ArchitectureOrganization
 // and the new StarredPinnedBar component. It aggregates the common
 // fields from all library entities (agents, prompts, projects, etc.).
@@ -232,7 +264,7 @@ export interface SavedSynthesis extends LibraryMetadata {
 export interface UnifiedItem {
     id: number | string;
     name: string;
-    type: 'agent' | 'prompt-standard' | 'prompt-system' | 'project' | 'mindseed' | 'signal' | 'synthesis' | 'roadmap' | 'legacy-prompt' | 'agentJob';
+    type: 'agent' | 'prompt-standard' | 'prompt-system' | 'project' | 'mindseed' | 'signal' | 'synthesis' | 'roadmap' | 'legacy-prompt' | 'agentJob' | 'seed-architect';
     original: any;
     createdAt: string;
     isStarred: boolean;

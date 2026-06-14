@@ -38,8 +38,8 @@ const Header: React.FC<HeaderProps> = ({
            <button
             onClick={onSignalExtractorClick}
             className="flex items-center text-gray-600 dark:text-gray-300 hover:text-blue-500 dark:hover:text-blue-400 transition-colors p-2 rounded-full mr-2"
-            aria-label="Go to Signal Extractor"
-            title="Signal Extractor"
+            aria-label="Go to Signal Center"
+            title="Signal Center"
            >
             <span className="material-icons">unarchive</span>
           </button>

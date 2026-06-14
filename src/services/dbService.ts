@@ -1,8 +1,8 @@
-import { SavedAgent, SavedPrompt, AgentConfig, PromptConfig, SavedProject, ProjectConfig, SavedSignal, SignalConfig, SavedMindSeed, MindSeedConfig, SavedSynthesis, SavedRoadmap, RoadmapConfig, SavedAgentJob, AgentJobConfig, MindSeedType, PromptType, UnifiedItem } from '../types';
+import { SavedAgent, SavedPrompt, AgentConfig, PromptConfig, SavedProject, ProjectConfig, SavedSignal, SignalConfig, SavedMindSeed, MindSeedConfig, SavedSynthesis, SavedRoadmap, RoadmapConfig, SavedAgentJob, AgentJobConfig, MindSeedType, PromptType, UnifiedItem, SavedSeed, SeedConfig } from '../types';
 import { encryptData, decryptData } from '../utils/encryption';
 
 const DB_NAME = 'NoosphereArchitectDB';
-const DB_VERSION = 15;
+const DB_VERSION = 16;
 const AGENT_STORE = 'savedAgents';
 const PROMPT_STORE = 'savedPrompts'; // Legacy, keeping for migration or reference
 const STANDARD_PROMPT_STORE = 'standardPrompts';
@@ -30,6 +30,8 @@ const ROADMAP_STORE = 'savedRoadmaps';
 const ROADMAP_DRAFT_STORE = 'roadmapDraft';
 const AGENT_JOB_STORE = 'savedAgentJobs';
 const AGENT_JOB_DRAFT_STORE = 'agentJobDraft';
+const SEED_STORE = 'savedSeeds';
+const SEED_TEMP_STORE = 'seedTemp';
 const SCHEMA_VERSION_STORE = '_schemaVersion'; // Internal store for migration verification
 
 
@@ -265,6 +267,17 @@ export const initDB = (): Promise<IDBDatabase> => {
                 db.createObjectStore(AGENT_JOB_DRAFT_STORE, { keyPath: 'id' });
             }
             console.log("Migration to v15 complete: Agent Job store initialized.");
+        },
+        16: (db, tx) => {
+            if (!db.objectStoreNames.contains(SEED_STORE)) {
+                const store = db.createObjectStore(SEED_STORE, { keyPath: 'id', autoIncrement: true });
+                store.createIndex('name', 'name', { unique: false });
+                store.createIndex('createdAt', 'createdAt', { unique: false });
+            }
+            if (!db.objectStoreNames.contains(SEED_TEMP_STORE)) {
+                db.createObjectStore(SEED_TEMP_STORE, { keyPath: 'id', autoIncrement: true });
+            }
+            console.log("Migration to v16 complete: Seed Architect stores initialized.");
         }
       };
 
@@ -439,7 +452,7 @@ const decryptField = (ciphertext: string, isObject: boolean = false): any => {
 const processEntity = (entity: any, schema: string[], transform: (val: any, isObj: boolean) => any): any => {
     if (!entity) return entity;
     const result = { ...entity };
-    const objectFields = new Set(['config', 'files', 'result', 'history', 'lines', 'lineage']);
+    const objectFields = new Set(['config', 'files', 'result', 'history', 'lines', 'lineage', 'responses']);
 
     schema.forEach(field => {
         if (result[field] !== undefined && result[field] !== null) {
@@ -457,7 +470,8 @@ const SCHEMAS = {
     mindseed: ['config', 'result'],
     roadmap: ['config', 'generatedTask'],
     agentJob: ['config', 'files'],
-    synthesis: ['content', 'lines', 'lineage']
+    synthesis: ['content', 'lines', 'lineage'],
+    seed: ['config', 'result', 'responses']
 };
 
 const encryptAgent = (agent: SavedAgent) => processEntity(agent, SCHEMAS.agent, encryptField);
@@ -483,6 +497,9 @@ const decryptAgentJob = (data: any) => processEntity(data, SCHEMAS.agentJob, (v,
 
 const encryptSynthesis = (synthesis: SavedSynthesis) => processEntity(synthesis, SCHEMAS.synthesis, encryptField);
 const decryptSynthesis = (data: any) => processEntity(data, SCHEMAS.synthesis, (v, isObj) => decryptField(v, isObj)) as SavedSynthesis;
+
+const encryptSeed = (seed: SavedSeed) => processEntity(seed, SCHEMAS.seed, encryptField);
+const decryptSeed = (data: any) => processEntity(data, SCHEMAS.seed, (v, isObj) => decryptField(v, isObj)) as SavedSeed;
 
 // Agent Draft Functions
 export const saveDraft = (draft: {id: number, config: AgentConfig}): Promise<number> => {
@@ -1316,6 +1333,96 @@ export const clearAllAgentJobs = (): Promise<void> => {
     });
 };
 
+// Seed Architect Functions
+export const addSeed = (seed: SavedSeed): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(SEED_STORE, 'readwrite');
+        const request = store.add(encryptSeed(seed));
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error("Verification failed after seed write."));
+        };
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const getAllSeeds = (): Promise<SavedSeed[]> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(SEED_STORE, 'readonly');
+        const request = store.getAll();
+        request.onsuccess = () => {
+            const results = (request.result as any[]).map(decryptSeed);
+            resolve(results.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        };
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const updateSeed = (seed: SavedSeed): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(SEED_STORE, 'readwrite');
+        const request = store.put(encryptSeed(seed));
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error("Verification failed after seed update."));
+        };
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const deleteSeed = (id: number): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(SEED_STORE, 'readwrite');
+        const request = store.delete(id);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const clearAllSeeds = (): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(SEED_STORE, 'readwrite');
+        const request = store.clear();
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+// Seed Temp Store Functions
+export const addSeedTempResponse = (text: string): Promise<number> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(SEED_TEMP_STORE, 'readwrite');
+        const request = store.add({ text: encryptField(text) });
+        request.onsuccess = () => resolve(request.result as number);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const getAllSeedTempResponses = (): Promise<string[]> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(SEED_TEMP_STORE, 'readonly');
+        const request = store.getAll();
+        request.onsuccess = () => {
+            const results = (request.result as any[]).map(item => decryptField(item.text));
+            resolve(results);
+        };
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const clearSeedTempResponses = (): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const store = await getStore(SEED_TEMP_STORE, 'readwrite');
+        const request = store.clear();
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
 // ── Unified Library Operations ──────────────────────────────────────────────
 
 const mapToUnified = (item: any, type: UnifiedItem['type']): UnifiedItem => ({
@@ -1334,7 +1441,8 @@ export const getAllUnifiedItems = async (): Promise<UnifiedItem[]> => {
     const [
         agents, prompts, stdPrompts, sysPrompts,
         projects, seedsCogni, seedsLingua, seedsArch,
-        signals, syntheses, roadmaps, agentJobs
+        signals, syntheses, roadmaps, agentJobs,
+        seedArchitects
     ] = await Promise.all([
         getAllAgents(),
         getAllPrompts(),
@@ -1347,7 +1455,8 @@ export const getAllUnifiedItems = async (): Promise<UnifiedItem[]> => {
         getAllSignals(),
         getAllSynthesis(),
         getAllRoadmaps(),
-        getAllAgentJobs()
+        getAllAgentJobs(),
+        getAllSeeds()
     ]);
 
     const unified: UnifiedItem[] = [
@@ -1362,7 +1471,8 @@ export const getAllUnifiedItems = async (): Promise<UnifiedItem[]> => {
         ...signals.map(i => mapToUnified(i, 'signal')),
         ...syntheses.map(i => mapToUnified(i, 'synthesis')),
         ...roadmaps.map(i => mapToUnified(i, 'roadmap')),
-        ...agentJobs.map(i => mapToUnified(i, 'agentJob'))
+        ...agentJobs.map(i => mapToUnified(i, 'agentJob')),
+        ...seedArchitects.map(i => mapToUnified(i, 'seed-architect'))
     ];
 
     return unified.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -1388,6 +1498,7 @@ export const updateUnifiedItemMetadata = async (item: UnifiedItem, metadata: Par
         case 'synthesis': await updateSynthesis(updatedOriginal); break;
         case 'roadmap': await updateRoadmap(updatedOriginal); break;
         case 'agentJob': await updateAgentJob(updatedOriginal); break;
+        case 'seed-architect': await updateSeed(updatedOriginal); break;
     }
 };
 
@@ -1404,6 +1515,7 @@ export const deleteUnifiedItem = async (item: UnifiedItem): Promise<void> => {
         case 'synthesis': await deleteSynthesis(id); break;
         case 'roadmap': await deleteRoadmap(id); break;
         case 'agentJob': await deleteAgentJob(id); break;
+        case 'seed-architect': await deleteSeed(id); break;
     }
 };
 

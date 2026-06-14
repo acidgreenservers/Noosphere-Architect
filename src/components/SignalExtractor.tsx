@@ -14,12 +14,16 @@ import LibraryItem from './LibraryItem';
 import Toast from './Toast';
 import { StarredPinnedBar } from './StarredPinnedBar';
 import { UnifiedItem } from '../types';
+import SeedArchitect from './SeedArchitect';
 
 interface SignalExtractorProps {
     onTransfer: (config: PromptConfig) => void;
 }
 
+type Tab = 'extractor' | 'seed';
+
 const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
+    const [activeTab, setActiveTab] = useState<Tab>('extractor');
     const [config, setConfig] = useState<SignalConfig>({ messyPrompt: '' });
     const [result, setResult] = useState<ExtractedSignal | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -259,12 +263,50 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
         <div className="max-w-4xl mx-auto">
             <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
 
+            <div className="flex justify-between items-center mb-8">
+                <div>
+                    <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 flex items-center">
+                        <span className="material-icons mr-3 text-blue-500 text-4xl">unarchive</span>
+                        Signal Center
+                    </h2>
+                    <p className="text-gray-600 dark:text-gray-400 mt-1">
+                        {activeTab === 'extractor'
+                            ? 'Extract and amplify the core signal from messy thoughts or rough notes.'
+                            : 'Evaluate the semantic stability and language curvature of your prompts.'}
+                    </p>
+                </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="border-b border-gray-200 dark:border-gray-700 mb-8">
+                <nav className="-mb-px flex space-x-8" aria-label="Signal Tabs" role="tablist">
+                    <button
+                        role="tab"
+                        aria-selected={activeTab === 'extractor'}
+                        onClick={() => setActiveTab('extractor')}
+                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-bold text-sm transition-all duration-200 uppercase tracking-widest ${activeTab === 'extractor' ? 'text-blue-500 border-blue-500' : 'text-gray-400 border-transparent hover:text-gray-600 dark:hover:text-gray-200 hover:border-gray-300'}`}
+                    >
+                        Signal Extractor
+                    </button>
+                    <button
+                        role="tab"
+                        aria-selected={activeTab === 'seed'}
+                        onClick={() => setActiveTab('seed')}
+                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-bold text-sm transition-all duration-200 uppercase tracking-widest ${activeTab === 'seed' ? 'text-purple-500 border-purple-500' : 'text-gray-400 border-transparent hover:text-gray-600 dark:hover:text-gray-200 hover:border-gray-300'}`}
+                    >
+                        Seed Architect
+                    </button>
+                </nav>
+            </div>
+
+            {activeTab === 'extractor' ? (
+                <>
             <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8 border border-gray-200 dark:border-gray-700/50">
                 <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="space-y-6">
                     <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-                        <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200 flex items-center">
-                            <span className="material-icons mr-2 text-blue-500 dark:text-blue-400">unarchive</span>
-                            Signal Extractor
+                        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200 flex items-center uppercase tracking-wider">
+                            <span className="material-icons mr-2 text-blue-500 dark:text-blue-400">psychology</span>
+                            Input Signal Context
                         </h2>
                     </div>
 
@@ -412,6 +454,11 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer }) => {
                             ))}
                     </div>
                 </div>
+            )}
+
+                </>
+            ) : (
+                <SeedArchitect />
             )}
 
             <Modal isOpen={!!pendingDraft} onClose={() => setPendingDraft(null)} title="Unsaved Draft Found">

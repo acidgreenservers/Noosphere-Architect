@@ -68,8 +68,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectView }) => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
                     <ToolCard
                         icon="unarchive"
-                        title="Signal Extractor"
-                        description="Extract and amplify the core signal from messy thoughts or rough notes to create actionable systemic prompts."
+                        title="Signal Center"
+                        description="Extract signals from messy thoughts or architect semantic seeds with high stability verification."
                         onClick={() => onSelectView('signalExtractor')}
                     />
                     <ToolCard
