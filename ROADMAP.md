@@ -14,7 +14,7 @@ change.
   verbosity, and format of the generated output.
 * **[ ] Multiple File Formats:** Allow users to export the generated files in
   different formats, such as JSON, YAML, in addition to Markdown.
-* **[ ] Improved UI/UX:** Refine the user interface with better loading
+* **[x] Improved UI/UX:** Refine the user interface with better loading
   states, success notifications, and a more interactive display for the
   generated content.
 
@@ -146,7 +146,7 @@ change.
 
 * **[ ] Multi-Agent Systems:** Introduce features for defining interactions
   and relationships between multiple agents within a single project.
-* **[ ] Model Selection:** Allow users to choose between curated OpenRouter
+* **[x] Model Selection:** Allow users to choose between curated OpenRouter
   models (DeepSeek, Xiaomi Mimo, OpenAI, etc.) based on their architectural
   needs.
 * **[ ] Feedback Loop:** Implement a mechanism for users to rate the quality
