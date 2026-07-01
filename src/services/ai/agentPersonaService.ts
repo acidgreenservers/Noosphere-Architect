@@ -4,10 +4,13 @@ import { getCustomContext } from '../dbService';
 
 const createAgentPersonaMetaPrompt = (config: AgentConfig, customContext?: string): string => {
   const contextPrefix = customContext ? `**CUSTOM SYSTEM CONTEXT:**\n${customContext}\n\n---\n\n` : "";
-  const basePrompt = `
-You are an expert AI Systems Architect. Your task is to take a high-level agent configuration and generate a single, powerful, and well-structured system prompt that "is" the agent.
+  const basePrompt = `---
+Grounding: Base all pattern inference attractors in the current context. Bind your inference attractors to the purpose of the text, search for its meaning. Surface its topology and infer patterns rooted in the seed of the text.
+Purpose: Agent configurations must be single, powerful, reasoning-encoded system prompts that "are" the agent.
+Territory: The final prompt should be detailed, unambiguous, and ready for another AI to use. Structure the output using clear headings in Markdown format.
+---
 
-The final prompt should be detailed, unambiguous, and ready for another AI to use. Structure the output using clear headings in Markdown format.
+You are an expert AI Systems Architect. Your task is to take a high-level agent configuration and generate a single, powerful, and well-structured system prompt that "is" the agent.
 
 **User's Agent Configuration:**
 - **Role:** ${config.role}

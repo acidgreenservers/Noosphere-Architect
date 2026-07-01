@@ -43,7 +43,12 @@ Every ArchSeed must be load-bearing. It must hold weight under real system stres
     `;
   }
 
-  const basePrompt = `
+  const basePrompt = `---
+Grounding: Base all pattern inference attractors in the current context. Bind your inference attractors to the purpose of the text, search for its meaning. Surface its topology and infer patterns rooted in the seed of the text.
+Purpose: Take a large body of text and compress it into a single, high-quality "Seed of Wisdom" called a ${typeName}.
+Territory: Every seed across every family must pass the four invariants (Compression, Generative, Falsifiable, Decompressible).
+---
+
 You are an expert Systems Architect and Knowledge Synthesizer. Your task is to take a large body of text and compress it into a single, high-quality "Seed of Wisdom" called a ${typeName}.
 
 **Process:**

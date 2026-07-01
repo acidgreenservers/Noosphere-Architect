@@ -490,7 +490,12 @@ export const saveDraft = (draft: {id: number, config: AgentConfig}): Promise<num
         const store = await getStore(AGENT_DRAFT_STORE, 'readwrite');
         const encryptedDraft = { ...draft, config: encryptField(draft.config) };
         const request = store.put(encryptedDraft);
-        request.onsuccess = () => resolve(request.result as number);
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error("Verification failed after draft write."));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -561,7 +566,12 @@ export const saveTypedPromptDraft = (type: PromptType, draft: {id: number, confi
         const store = await getStore(storeName, 'readwrite');
         const encryptedDraft = { ...draft, config: encryptField(draft.config) };
         const request = store.put(encryptedDraft);
-        request.onsuccess = () => resolve(request.result as number);
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error(`Verification failed after ${type} prompt draft write.`));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -595,7 +605,12 @@ export const saveMindSeedDraft = (draft: {id: number, config: MindSeedConfig}): 
         const store = await getStore(MINDSEED_DRAFT_STORE, 'readwrite');
         const encryptedDraft = { ...draft, config: encryptField(draft.config) };
         const request = store.put(encryptedDraft);
-        request.onsuccess = () => resolve(request.result as number);
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error("Verification failed after mindseed draft write."));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -725,7 +740,11 @@ export const saveCustomContext = (storeName: ContextStoreName, context: string):
     return new Promise(async (resolve, reject) => {
         const store = await getStore(storeName, 'readwrite');
         const request = store.put({ id: 'current', context: encryptField(context) });
-        request.onsuccess = () => resolve();
+        request.onsuccess = () => {
+            const getReq = store.get('current');
+            getReq.onsuccess = () => resolve();
+            getReq.onerror = () => reject(new Error("Verification failed after custom context write."));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -839,7 +858,12 @@ export const savePromptDraft = (draft: {id: number, config: PromptConfig}): Prom
         const store = await getStore(PROMPT_DRAFT_STORE, 'readwrite');
         const encryptedDraft = { ...draft, config: encryptField(draft.config) };
         const request = store.put(encryptedDraft);
-        request.onsuccess = () => resolve(request.result as number);
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error("Verification failed after prompt draft write."));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -871,7 +895,12 @@ export const saveProjectDraft = (draft: {id: number, config: ProjectConfig}): Pr
         const store = await getStore(PROJECT_DRAFT_STORE, 'readwrite');
         const encryptedDraft = { ...draft, config: encryptField(draft.config) };
         const request = store.put(encryptedDraft);
-        request.onsuccess = () => resolve(request.result as number);
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error("Verification failed after project draft write."));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -903,7 +932,12 @@ export const saveSignalDraft = (draft: {id: number, config: SignalConfig}): Prom
         const store = await getStore(SIGNAL_DRAFT_STORE, 'readwrite');
         const encryptedDraft = { ...draft, config: encryptField(draft.config) };
         const request = store.put(encryptedDraft);
-        request.onsuccess = () => resolve(request.result as number);
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error("Verification failed after signal draft write."));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -1231,7 +1265,12 @@ export const saveRoadmapDraft = (draft: {id: number, config: RoadmapConfig}): Pr
         const store = await getStore(ROADMAP_DRAFT_STORE, 'readwrite');
         const encryptedDraft = { ...draft, config: encryptField(draft.config) };
         const request = store.put(encryptedDraft);
-        request.onsuccess = () => resolve(request.result as number);
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error("Verification failed after roadmap draft write."));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -1412,7 +1451,12 @@ export const saveAgentJobDraft = (draft: {id: number, config: AgentJobConfig}): 
         const store = await getStore(AGENT_JOB_DRAFT_STORE, 'readwrite');
         const encryptedDraft = { ...draft, config: encryptField(draft.config) };
         const request = store.put(encryptedDraft);
-        request.onsuccess = () => resolve(request.result as number);
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error("Verification failed after agent job draft write."));
+        };
         request.onerror = () => reject(request.error);
     });
 };
