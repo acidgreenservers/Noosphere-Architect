@@ -19,7 +19,7 @@ cd Noosphere-Architect
 ```bash
 npm install
 cp .env.example .env
-# Set VITE_ENCRYPTION_KEY in .env
+# Set VITE_ENCRYPTION_KEY in .env (required for persistence)
 ```
 
 ## 3) Launch

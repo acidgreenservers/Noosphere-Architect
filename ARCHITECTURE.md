@@ -17,7 +17,7 @@
 +-----------------------+     +-----------------------+     +-----------------------+
 |     Landing Page      |     |    Architect Tools    |     |    API Settings       |
 |  (Tool Selection,     |     | (Signal, Agent,       |     | (OpenRouter Config,   |
-|   Custom Context)     |     |  Prompt, Roadmap, etc)|     |  Model Selection)     |
+|   Custom Context)     |     |  Prompt, Project, etc)|     |  Model Selection)     |
 +-----------+-----------+     +-----------+-----------+     +-----------+-----------+
             |                             |                             |
             |                             v                             |
@@ -34,7 +34,7 @@
 
           +-----------------------------------------------------------+
           |                      Persistence Layer                    |
-          |           (IndexedDB v13 + Metadata Unification)          |
+          |           (IndexedDB v15 + Metadata Unification)          |
           +-----------------------------+-----------------------------+
                                         |
               +-------------------------+-------------------------+
@@ -42,6 +42,7 @@
               v                         v                         v
       [Saved Prompts]           [Saved Agents]            [Saved Roadmaps]
       [Saved Signals]           [Saved Projects]          [Saved Seeds]
+      [Saved Agent Jobs]        [Saved Synthesis]         [Temporary Seeds]
 ```
 
 ## Data Flow (AI Generation)
@@ -64,7 +65,7 @@
 * **Modular AI Services:** Each tool has a dedicated service in
   `src/services/ai/` to maintain clean boundaries.
 * **IndexedDB Migration Registry:** `dbService.ts` implements a versioned
-  migration system (currently v13) to ensure data integrity as the schema
+  migration system (currently v15) to ensure data integrity as the schema
   evolves.
 * **Code Splitting:** `React.lazy` is used in `App.tsx` for all major tool
   components to keep the initial bundle size minimal.

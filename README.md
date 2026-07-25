@@ -97,10 +97,18 @@ reasoning-encoded system prompt.
 </details>
 
 <details>
-<summary>Roadmap Architect (Actionable Strategy)</summary>
+<summary>Project Architect (Systemic Alignment)</summary>
 
-Transform raw vision text into deeply actionable, rigorously detailed roadmap
-task entries. Supports "Anchor File" context for AI grounding.
+Establish a high-level vision, standards, and rules for your project. This tool
+serves as a multi-tabbed hub containing:
+
+* **Project Architect:** Define the core identity, architecture, and security
+  posture (outputs `PROJECT.md`, `ARCHITECTURE.md`, `SECURITY.md`).
+* **Roadmap Architect:** Transform vision text into actionable, detailed roadmap
+  tasks.
+* **Agent Job Architect:** Author an employer handbook for AI agent-employees,
+  defining their role, authority, and operating boundaries.
+
 </details>
 
 <details>
