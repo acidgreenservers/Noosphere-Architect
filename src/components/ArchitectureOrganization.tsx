@@ -515,6 +515,7 @@ const ArchitectureOrganization: React.FC = () => {
                     title={previewItem.name}
                     content={getPreviewContent(previewItem)}
                     mindSeed={previewItem.type === 'mindseed' ? previewItem.original.result : undefined}
+                    seedArchitect={previewItem.type === 'seed-architect' ? previewItem.original : undefined}
                     metadata={previewItem}
                     categoryOptions={allCategories}
                     onUpdateMetadata={(meta) => {

@@ -224,6 +224,13 @@ const SeedArchitect: React.FC = () => {
 
   const unifiedSeeds = savedSeeds.map(seedToUnified);
 
+  const handleLoadSeed = (seed: SavedSeed) => {
+    setConfig(seed.config);
+    setResult(seed.result);
+    setPreviewSeed(seed);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <div className="space-y-8">
       <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
@@ -408,7 +415,7 @@ const SeedArchitect: React.FC = () => {
               onToggleArchive={(item) => handleUpdateMetadata(item.original, { isArchived: true })}
               onDelete={(item) => handleDelete(item.original.id!)}
               onEdit={() => {}}
-              onSelect={(id) => setPreviewSeed(savedSeeds.find(s => `seed-${s.id}` === id) || null)}
+              onSelect={(id) => { const s = savedSeeds.find(item => `seed-${item.id}` === id); if (s) handleLoadSeed(s); }}
               selectedIds={new Set()}
             />
             <StarredPinnedBar
@@ -421,7 +428,7 @@ const SeedArchitect: React.FC = () => {
               onToggleArchive={(item) => handleUpdateMetadata(item.original, { isArchived: true })}
               onDelete={(item) => handleDelete(item.original.id!)}
               onEdit={() => {}}
-              onSelect={(id) => setPreviewSeed(savedSeeds.find(s => `seed-${s.id}` === id) || null)}
+              onSelect={(id) => { const s = savedSeeds.find(item => `seed-${item.id}` === id); if (s) handleLoadSeed(s); }}
               selectedIds={new Set()}
             />
 
@@ -446,13 +453,13 @@ const SeedArchitect: React.FC = () => {
                     createdAt={seed.createdAt}
                     metadata={seed}
                     icon="auto_awesome"
-                    onPreview={() => setPreviewSeed(seed)}
+                    onPreview={() => handleLoadSeed(seed)}
                     onEdit={() => {}}
                     onDelete={() => handleDelete(seed.id!)}
                     onToggleStar={() => handleUpdateMetadata(seed, { isStarred: !seed.isStarred })}
                     onTogglePin={() => handleUpdateMetadata(seed, { isPinned: !seed.isPinned })}
                     onToggleArchive={() => handleUpdateMetadata(seed, { isArchived: true })}
-                    onClick={() => setPreviewSeed(seed)}
+                    onClick={() => handleLoadSeed(seed)}
                   />
                 ))}
             </div>
@@ -465,6 +472,7 @@ const SeedArchitect: React.FC = () => {
         isOpen={!!previewSeed}
         onClose={() => setPreviewSeed(null)}
         title={previewSeed?.name || 'Preview'}
+        seedArchitect={previewSeed || undefined}
         content={previewSeed ? {
           'Analysis Result.md': `# Verification: ${previewSeed.result.status}\n\n${previewSeed.result.explanation}\n\n## Metrics\n- Theme: ${previewSeed.result.graphData.recurringTheme}\n- Signals: ${previewSeed.result.graphData.semanticSignals}\n- Gradient: ${previewSeed.result.graphData.gradient}\n- Tightness: ${previewSeed.result.graphData.tightness}/10`,
           'Original Prompt.md': previewSeed.config.promptText,

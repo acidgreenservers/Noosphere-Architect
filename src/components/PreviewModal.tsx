@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Modal from './Modal';
-import { LibraryMetadata } from '../types';
+import { LibraryMetadata, SavedSeed } from '../types';
+import CircularSignalGraph from './CircularSignalGraph';
 
 interface PreviewModalProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ interface PreviewModalProps {
     pattern: string;
     deployWhen: string;
   };
+  seedArchitect?: SavedSeed;
   metadata?: LibraryMetadata;
   onUpdateMetadata?: (metadata: LibraryMetadata) => void;
   onCopy: () => void;
@@ -29,6 +31,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   title,
   content,
   mindSeed,
+  seedArchitect,
   metadata,
   onUpdateMetadata,
   onCopy,
@@ -58,6 +61,59 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
 
 
   const renderContent = () => {
+    if (seedArchitect) {
+      const filenames = content && typeof content === 'object' ? Object.keys(content) : [];
+      const currentTab = activeTab || (filenames.length > 0 ? filenames[0] : '');
+
+      return (
+        <div className="space-y-6">
+          <div className={`p-3 text-center font-black uppercase tracking-[0.2em] text-xs md:text-sm rounded-xl text-white ${
+            seedArchitect.result.status === 'Pass' ? 'bg-green-500 shadow-md shadow-green-500/20' : 'bg-red-500 shadow-md shadow-red-500/20'
+          }`}>
+            Verification Result: {seedArchitect.result.status}
+          </div>
+
+          <div className="flex flex-col lg:flex-row gap-8 items-center">
+            <div className="lg:w-1/2 w-full flex justify-center">
+              <CircularSignalGraph data={seedArchitect.result.graphData} />
+            </div>
+
+            <div className="lg:w-1/2 w-full flex flex-col justify-center">
+              <h4 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-3 flex items-center">
+                 <span className="material-icons mr-2 text-blue-500">description</span>
+                 Analysis Details
+              </h4>
+              <div className="prose prose-sm dark:prose-invert max-w-none text-gray-600 dark:text-gray-400 leading-relaxed bg-gray-50 dark:bg-gray-900/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-inner max-h-[220px] overflow-y-auto">
+                  {seedArchitect.result.explanation}
+              </div>
+            </div>
+          </div>
+
+          {filenames.length > 0 && (
+            <div className="space-y-4 pt-2 border-t border-gray-100 dark:border-gray-800">
+              <div className="flex flex-wrap gap-2 border-b border-gray-200 dark:border-gray-700 pb-2">
+                {filenames.map(name => (
+                  <button
+                    key={name}
+                    onClick={() => setActiveTab(name)}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                      currentTab === name
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+              <div className="p-4 bg-white dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 max-h-[35vh] overflow-y-auto shadow-inner prose prose-sm dark:prose-invert max-w-none">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{(content as Record<string, string>)[currentTab] || ''}</ReactMarkdown>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
     if (mindSeed) {
       return (
         <div className="space-y-6">
