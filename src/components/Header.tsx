@@ -8,6 +8,7 @@ interface HeaderProps {
   onMindSeedArchitectClick: () => void;
   onAgentApiSettingsClick: () => void;
   onSignalExtractorClick: () => void;
+  onSignalCompressionArchitectClick?: () => void;
   onArchitectureOrganizationClick: () => void;
   showHomeButton: boolean;
 }

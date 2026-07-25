@@ -73,6 +73,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectView }) => {
                         onClick={() => onSelectView('signalExtractor')}
                     />
                     <ToolCard
+                        icon="compress"
+                        title="Signal Compression Architect"
+                        description="Compress text signals into a coherent, high-density compaction that an LLM can internally unfold."
+                        onClick={() => onSelectView('signalCompressionArchitect')}
+                    />
+                    <ToolCard
                         icon="spa"
                         title="MindSeed Architect Tool"
                         description="Compress text into generative seeds of wisdom using strict structural integrity checks."

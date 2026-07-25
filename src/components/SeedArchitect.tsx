@@ -275,7 +275,7 @@ const SeedArchitect: React.FC = () => {
                 disabled={isLoading || !config.promptText}
                 className="flex-grow md:flex-grow-0 px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50 flex items-center justify-center"
               >
-                {isLoading ? <LoadingSpinner size="sm" color="white" /> : 'Verify Seed Signal'}
+                {isLoading ? <><span className="material-icons animate-spin text-sm mr-2">sync</span> Evaluating...</> : 'Verify Seed Signal'}
               </button>
             </div>
           </div>
@@ -473,6 +473,12 @@ const SeedArchitect: React.FC = () => {
         } : undefined}
         metadata={previewSeed || undefined}
         onUpdateMetadata={(m) => previewSeed && handleUpdateMetadata(previewSeed, m)}
+        onCopy={() => {
+          if (!previewSeed) return;
+          const text = `# Verification: ${previewSeed.result.status}\n\n${previewSeed.result.explanation}`;
+          navigator.clipboard.writeText(text);
+        }}
+        onExport={() => {}}
       />
 
       <Modal isOpen={!!pendingDraft} onClose={() => setPendingDraft(null)} title="Unsaved Draft Found">

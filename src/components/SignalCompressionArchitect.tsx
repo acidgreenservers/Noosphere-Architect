@@ -1,60 +1,53 @@
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { extractSignal } from '../services/ai/signalService';
+import { CompressionConfig, CompressedSignal, SavedCompressedSignal, UnifiedItem } from '../types';
+import { generateCompressedSignal } from '../services/ai/compressionService';
 import { AbortError } from '../services/ai/openRouter';
-import { SignalConfig, ExtractedSignal, SavedSignal, PromptConfig } from '../types';
 import * as db from '../services/dbService';
 import { sanitizeFilename } from '../utils/security';
 import LoadingSpinner from './LoadingSpinner';
+import Toast from './Toast';
 import Modal from './Modal';
 import PreviewModal from './PreviewModal';
 import LibraryItem from './LibraryItem';
-import Toast from './Toast';
 import { StarredPinnedBar } from './StarredPinnedBar';
-import { UnifiedItem } from '../types';
-import SeedArchitect from './SeedArchitect';
-import SignalCompressionArchitect from './SignalCompressionArchitect';
+import styles from './Button.module.css';
 
-interface SignalExtractorProps {
-    onTransfer: (config: PromptConfig) => void;
-    initialTab?: 'extractor' | 'seed' | 'compression';
-}
+const MAX_CHARS = 50000;
 
-type Tab = 'extractor' | 'seed' | 'compression';
-
-const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTab = 'extractor' }) => {
-    const [activeTab, setActiveTab] = useState<Tab>(initialTab);
-    const [config, setConfig] = useState<SignalConfig>({ messyPrompt: '' });
-    const [result, setResult] = useState<ExtractedSignal | null>(null);
+const SignalCompressionArchitect: React.FC = () => {
+    const [config, setConfig] = useState<CompressionConfig>({ messyInput: '' });
+    const [result, setResult] = useState<CompressedSignal | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const [loadingMessage, setLoadingMessage] = useState('');
-    const loadingIntervalRef = useRef<number | null>(null);
+    const [error, setError] = useState<string | null>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
+    const loadingIntervalRef = useRef<number | null>(null);
 
-    const [savedSignals, setSavedSignals] = useState<SavedSignal[]>([]);
+    const [savedSignals, setSavedSignals] = useState<SavedCompressedSignal[]>([]);
     const [searchTerm, setSearchText] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
     const [draftStatus, setDraftStatus] = useState<'unloaded' | 'loaded' | 'none'>('unloaded');
-    const [pendingDraft, setPendingDraft] = useState<SignalConfig | null>(null);
+    const [pendingDraft, setPendingDraft] = useState<CompressionConfig | null>(null);
     const isCheckingDraft = useRef(false);
+
+    const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+    const [saveName, setSaveName] = useState('');
+    const [previewSignal, setPreviewSignal] = useState<SavedCompressedSignal | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+    const [isClearAllConfirmOpen, setIsClearAllConfirmOpen] = useState(false);
+
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
         starredSection: true,
         pinnedSection: true,
         allItemsSection: true
     });
 
-    const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
-    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-    const [isClearAllConfirmOpen, setIsClearAllConfirmOpen] = useState(false);
-    const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
-    const [previewSignal, setPreviewSignal] = useState<SavedSignal | null>(null);
-    const [saveName, setSaveName] = useState('');
-
     const loadSavedSignals = useCallback(async () => {
-        const signals = await db.getAllSignals();
+        const signals = await db.getAllCompressedSignals();
         setSavedSignals(signals);
     }, []);
 
@@ -64,8 +57,8 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
             if (isCheckingDraft.current) return;
             isCheckingDraft.current = true;
 
-            const draft = await db.getSignalDraft(1);
-            if (draft?.config && draft.config.messyPrompt) {
+            const draft = await db.getCompressedSignalDraft(1);
+            if (draft?.config && draft.config.messyInput) {
                 setPendingDraft(draft.config);
             } else {
                 setDraftStatus('none');
@@ -77,14 +70,19 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
     useEffect(() => {
         if (draftStatus === 'unloaded') return;
         const handler = setTimeout(() => {
-            if (config.messyPrompt) {
-                db.saveSignalDraft({ id: 1, config });
+            if (config.messyInput) {
+                db.saveCompressedSignalDraft({ id: 1, config });
             }
         }, 1500);
         return () => clearTimeout(handler);
     }, [config, draftStatus]);
 
-    const handleGenerate = useCallback(async () => {
+    const handleGenerate = async () => {
+        if (!config.messyInput.trim()) {
+            setError("Please enter some text to compress.");
+            return;
+        }
+
         abortControllerRef.current?.abort();
         const controller = new AbortController();
         abortControllerRef.current = controller;
@@ -93,7 +91,7 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
         setError(null);
         setResult(null);
 
-        const messages = ['Reading messy input...', 'Extracting core signal...', 'Amplifying instructions...', 'Finalizing signal...'];
+        const messages = ['Parsing signal topology...', 'Mapping bridges...', 'Compacting context...', 'Synthesizing compressed signal...'];
         let messageIndex = 0;
         setLoadingMessage(messages[0]);
         loadingIntervalRef.current = window.setInterval(() => {
@@ -102,53 +100,36 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
         }, 2000);
 
         try {
-            if (!config.messyPrompt.trim()) {
-                setError("Please enter a messy prompt to extract from.");
-                setIsLoading(false);
-                if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
-                return;
-            }
-            const extracted = await extractSignal(config, controller.signal);
+            const compressed = await generateCompressedSignal(config, controller.signal);
             if (!controller.signal.aborted) {
-                setResult(extracted);
-                await db.clearSignalDraft(1);
+                setResult(compressed);
+                await db.clearCompressedSignalDraft(1);
             }
         } catch (e: any) {
             if (e instanceof AbortError || e?.name === 'AbortError') return;
-            setError(e.message || 'Failed to extract signal. Please check your API key and try again.');
+            setError(e.message || 'Failed to compress signal. Please check your API key and try again.');
         } finally {
             setIsLoading(false);
-            if (loadingIntervalRef.current) {
-                clearInterval(loadingIntervalRef.current);
-            }
+            if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
             setLoadingMessage('');
             abortControllerRef.current = null;
         }
-    }, [config]);
-
-    // Abort on unmount
-    useEffect(() => {
-        return () => {
-            abortControllerRef.current?.abort();
-        };
-    }, []);
+    };
 
     const handleReset = () => {
-        setConfig({ messyPrompt: '' });
+        setConfig({ messyInput: '' });
         setResult(null);
         setError(null);
-        db.clearSignalDraft(1);
+        db.clearCompressedSignalDraft(1);
     };
 
     const handleSaveSignal = async () => {
         if (!result || !saveName.trim()) return;
 
-        const newSignal: SavedSignal = {
+        const newSignal: SavedCompressedSignal = {
             name: saveName.trim(),
             config,
-            extractedSignal: `${result.promptSignal}\n\n${result.signalConstraints}`,
-            promptSignal: result.promptSignal,
-            signalConstraints: result.signalConstraints,
+            result,
             createdAt: new Date().toISOString(),
             isStarred: false,
             isPinned: false,
@@ -156,24 +137,24 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
             category: ''
         };
 
-        await db.addSignal(newSignal);
-        setSuccessMessage('Signal saved successfully!');
+        await db.addCompressedSignal(newSignal);
+        setSuccessMessage('Compressed signal saved successfully!');
         loadSavedSignals();
         setIsSaveModalOpen(false);
         setSaveName('');
     };
 
-    const handleUpdateMetadata = async (signal: SavedSignal, metadata: any) => {
+    const handleUpdateMetadata = async (signal: SavedCompressedSignal, metadata: any) => {
         const updated = { ...signal, ...metadata };
-        await db.updateSignal(updated);
+        await db.updateCompressedSignal(updated);
         setSavedSignals(prev => prev.map(s => s.id === signal.id ? updated : s));
         if (previewSignal?.id === signal.id) setPreviewSignal(updated);
     };
 
-    const signalToUnified = (signal: SavedSignal): UnifiedItem => ({
-        id: `signal-${signal.id}`,
+    const signalToUnified = (signal: SavedCompressedSignal): UnifiedItem => ({
+        id: `compressed-signal-${signal.id}`,
         name: signal.name,
-        type: 'signal',
+        type: 'compressed-signal',
         original: signal,
         createdAt: signal.createdAt,
         isStarred: signal.isStarred || false,
@@ -191,7 +172,7 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
 
     const confirmDelete = async () => {
         if (deleteTarget === null) return;
-        await db.deleteSignal(deleteTarget);
+        await db.deleteCompressedSignal(deleteTarget);
         setSavedSignals(prev => prev.filter(s => s.id !== deleteTarget));
         setSuccessMessage('Signal deleted successfully!');
         setIsDeleteConfirmOpen(false);
@@ -200,18 +181,15 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
     };
 
     const handleClearAll = async () => {
-        await db.clearAllSignals();
+        await db.clearAllCompressedSignals();
         loadSavedSignals();
-        setSuccessMessage('All signals cleared.');
+        setSuccessMessage('All compressed signals cleared.');
         setIsClearAllConfirmOpen(false);
     };
 
-    const handleLoadSaved = (signal: SavedSignal) => {
+    const handleLoadSaved = (signal: SavedCompressedSignal) => {
         setConfig(signal.config);
-        setResult({
-            promptSignal: signal.promptSignal,
-            signalConstraints: signal.signalConstraints
-        });
+        setResult(signal.result);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -223,31 +201,19 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
     };
 
     const handleDeclineDraft = async () => {
-        await db.clearSignalDraft(1);
+        await db.clearCompressedSignalDraft(1);
         setDraftStatus('none');
         setPendingDraft(null);
     };
 
-    const handleTransfer = () => {
-        if (!result) return;
-        onTransfer({
-            goal: result.promptSignal,
-            instructions: result.signalConstraints
-        });
-    };
-
-    const handleCopySignal = (originalPrompt: string, signal: string, constraints: string) => {
-        const quotedOriginal = originalPrompt.split('\n').map(line => `> ${line}`).join('\n');
-        const textToCopy = `## User Prompt\n\n${quotedOriginal}\n>\n>\n\n## Prompt Signal\n\n${signal}\n\n## Signal Constraints\n\n${constraints}`;
-        navigator.clipboard.writeText(textToCopy);
+    const handleCopy = (text: string) => {
+        navigator.clipboard.writeText(text);
         setSuccessMessage('Signal copied to clipboard!');
     };
 
-    const handleExportSignal = (name: string, originalPrompt: string, signal: string, constraints: string) => {
-        const quotedOriginal = originalPrompt.split('\n').map(line => `> ${line}`).join('\n');
-        const content = `## User Prompt\n\n${quotedOriginal}\n>\n>\n\n## Prompt Signal\n\n${signal}\n\n## Signal Constraints\n\n${constraints}`;
-        const filename = sanitizeFilename(name || 'extracted-signal') + '.md';
-
+    const handleExport = (name: string, text: string) => {
+        const filename = sanitizeFilename(name || 'compressed-signal') + '.md';
+        const content = `# Compressed Signal: ${name}\n\n${text}`;
         const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -259,7 +225,9 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
         URL.revokeObjectURL(url);
     };
 
-    const totalChars = result ? (result.promptSignal.length + result.signalConstraints.length) : 0;
+    const charCount = config.messyInput.length;
+    const isNearLimit = charCount > MAX_CHARS * 0.9;
+    const charCountColor = charCount > MAX_CHARS ? 'text-red-600' : isNearLimit ? 'text-orange-500' : 'text-gray-500';
 
     return (
         <div className="max-w-4xl mx-auto">
@@ -267,83 +235,41 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
 
             <div className="flex justify-between items-center mb-8">
                 <div>
-                    <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 flex items-center">
-                        <span className="material-icons mr-3 text-blue-500 text-4xl">unarchive</span>
-                        Signal Center
-                    </h2>
-                    <p className="text-gray-600 dark:text-gray-400 mt-1">
-                        {activeTab === 'extractor'
-                            ? 'Extract and amplify the core signal from messy thoughts or rough notes.'
-                            : activeTab === 'seed'
-                            ? 'Evaluate the semantic stability and language curvature of your prompts.'
-                            : 'Compress text signals into a coherent, high-density compaction that an LLM can internally unfold.'}
-                    </p>
+                    <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Signal Compression Architect</h2>
+                    <p className="text-gray-600 dark:text-gray-400">Compress text signals into high-density context compactions.</p>
                 </div>
             </div>
 
-            {/* Tabs */}
-            <div className="border-b border-gray-200 dark:border-gray-700 mb-8">
-                <nav className="-mb-px flex space-x-8" aria-label="Signal Tabs" role="tablist">
-                    <button
-                        role="tab"
-                        aria-selected={activeTab === 'extractor'}
-                        onClick={() => setActiveTab('extractor')}
-                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-bold text-sm transition-all duration-200 uppercase tracking-widest ${activeTab === 'extractor' ? 'text-blue-500 border-blue-500' : 'text-gray-400 border-transparent hover:text-gray-600 dark:hover:text-gray-200 hover:border-gray-300'}`}
-                    >
-                        Signal Extractor
-                    </button>
-                    <button
-                        role="tab"
-                        aria-selected={activeTab === 'seed'}
-                        onClick={() => setActiveTab('seed')}
-                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-bold text-sm transition-all duration-200 uppercase tracking-widest ${activeTab === 'seed' ? 'text-purple-500 border-purple-500' : 'text-gray-400 border-transparent hover:text-gray-600 dark:hover:text-gray-200 hover:border-gray-300'}`}
-                    >
-                        Seed Architect
-                    </button>
-                    <button
-                        role="tab"
-                        aria-selected={activeTab === 'compression'}
-                        onClick={() => setActiveTab('compression')}
-                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-bold text-sm transition-all duration-200 uppercase tracking-widest ${activeTab === 'compression' ? 'text-cyan-500 border-cyan-500' : 'text-gray-400 border-transparent hover:text-gray-600 dark:hover:text-gray-200 hover:border-gray-300'}`}
-                    >
-                        Signal Compression Architect
-                    </button>
-                </nav>
-            </div>
-
-            {activeTab === 'extractor' ? (
-                <>
-            <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8 border border-gray-200 dark:border-gray-700/50">
-                <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="space-y-6">
-                    <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-                        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200 flex items-center uppercase tracking-wider">
-                            <span className="material-icons mr-2 text-blue-500 dark:text-blue-400">psychology</span>
-                            Input Signal Context
-                        </h2>
-                    </div>
-
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8 border border-gray-200 dark:border-gray-700/50">
+                <div className="space-y-6">
                     <div>
-                        <label htmlFor="messyPrompt" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Input Messy Prompt <span className="text-red-500 ml-1">*</span>
+                        <label htmlFor="messyInput" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Input Context <span className="text-red-500 ml-1">*</span>
                         </label>
                         <textarea
-                            id="messyPrompt"
-                            rows={8}
-                            value={config.messyPrompt}
-                            onChange={(e) => setConfig({ messyPrompt: e.target.value })}
-                            placeholder="Paste your messy thoughts, rough notes, or disorganized instructions here..."
-                            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20 text-gray-900 dark:text-gray-100"
-                            required
+                            id="messyInput"
+                            rows={10}
+                            value={config.messyInput}
+                            onChange={(e) => setConfig({ messyInput: e.target.value })}
+                            placeholder="Paste the context, messy thoughts, or structured signals you want to compress..."
+                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-gray-100"
                         />
+                        <div className={`mt-2 text-right text-sm font-medium ${charCountColor}`}>
+                            {charCount.toLocaleString()} / {MAX_CHARS.toLocaleString()}
+                        </div>
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-center justify-end space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
-                        <button type="button" onClick={handleReset} disabled={isLoading} className="w-full sm:w-auto px-6 py-2 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 transition">Reset</button>
-                        <button type="submit" disabled={!config.messyPrompt.trim() || isLoading} className="w-full sm:w-auto flex items-center justify-center px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-300 dark:disabled:bg-blue-800 disabled:cursor-not-allowed transition">
-                            {isLoading ? 'Extracting...' : 'Extract Signal'}
+                        <button type="button" onClick={handleReset} disabled={isLoading} className="w-full sm:w-auto px-6 py-2 border border-gray-300 dark:border-gray-500 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 transition">Reset</button>
+                        <button
+                            onClick={handleGenerate}
+                            disabled={!config.messyInput.trim() || isLoading}
+                            className={`${styles.base} bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-all duration-200 flex items-center justify-center disabled:bg-blue-300 dark:disabled:bg-blue-800 disabled:cursor-not-allowed`}
+                        >
+                            {isLoading ? 'Compressing...' : 'Compress Signal'}
                         </button>
                     </div>
-                </form>
+                </div>
             </div>
 
             {error && (
@@ -353,44 +279,28 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
                 </div>
             )}
 
-            {isLoading && <LoadingSpinner message={loadingMessage || 'Extracting signal...'} />}
+            {isLoading && <LoadingSpinner message={loadingMessage || 'Compressing signal...'} />}
 
             {result && !isLoading && (
-                <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <div className="flex flex-col md:flex-row justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-                        <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Extracted Signal</h3>
+                        <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Compressed Context</h3>
                         <div className="flex flex-wrap items-center justify-center md:justify-end gap-3 mt-3 md:mt-0">
-                           <span className={`text-xs font-mono px-2 py-1 rounded ${totalChars > 1000 ? 'bg-red-100 text-red-700' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}>
-                                {totalChars} / 1000 characters
-                           </span>
-                           <button onClick={() => handleCopySignal(config.messyPrompt, result.promptSignal, result.signalConstraints)} className="flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700 transition" title="Copy to clipboard">
-                                <span className="material-icons text-base mr-1.5">content_copy</span>Copy to clipboard
+                           <button onClick={() => handleCopy(result.compressedText)} className="flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700 transition" title="Copy to clipboard">
+                                <span className="material-icons text-base mr-1.5">content_copy</span>Copy
                             </button>
-                           <button onClick={() => { handleExportSignal(saveName, config.messyPrompt, result.promptSignal, result.signalConstraints); setSuccessMessage('Signal exported successfully!'); }} className="flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700 transition" title="Export signal">
+                           <button onClick={() => handleExport('compressed-signal', result.compressedText)} className="flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700 transition" title="Export signal">
                                 <span className="material-icons text-base mr-1.5">download</span>Export
                            </button>
                            <button onClick={() => setIsSaveModalOpen(true)} className="flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm transition" title="Save signal">
-                                <span className="material-icons text-base mr-1.5">save</span>Save
-                            </button>
-                           <button onClick={handleTransfer} className="flex items-center px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-md text-sm transition" title="Transfer to Prompt Architect">
-                                <span className="material-icons text-base mr-1.5">psychology</span>Transfer
+                                <span className="material-icons text-base mr-1.5">save</span>Save to Library
                             </button>
                         </div>
                     </div>
 
-                    <div className="p-6 space-y-8 bg-white dark:bg-gray-800">
-                        <div>
-                            <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Prompt Signal</h4>
-                            <div className="p-4 bg-gray-50 dark:bg-gray-900/70 rounded-lg prose prose-sm dark:prose-invert max-w-none border border-gray-200 dark:border-gray-700 prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:bg-white dark:prose-blockquote:bg-gray-800 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-blockquote:italic">
-                                <ReactMarkdown remarkPlugins={[remarkGfm]}>{result.promptSignal ?? ''}</ReactMarkdown>
-                            </div>
-                        </div>
-
-                        <div>
-                            <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Signal Constraints</h4>
-                            <div className="p-4 bg-gray-50 dark:bg-gray-900/70 rounded-lg prose prose-sm dark:prose-invert max-w-none border border-gray-200 dark:border-gray-700 prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:bg-white dark:prose-blockquote:bg-gray-800 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-blockquote:italic">
-                                <ReactMarkdown remarkPlugins={[remarkGfm]}>{result.signalConstraints ?? ''}</ReactMarkdown>
-                            </div>
+                    <div className="p-8">
+                        <div className="prose prose-sm dark:prose-invert max-w-none bg-gray-50 dark:bg-gray-900/50 p-6 rounded-xl border border-gray-200 dark:border-gray-700 font-mono leading-relaxed whitespace-pre-wrap">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{result.compressedText}</ReactMarkdown>
                         </div>
                     </div>
                 </div>
@@ -399,7 +309,7 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
             {savedSignals.length > 0 && (
                 <div className="mt-12">
                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Saved Signals</h2>
+                        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Saved Compactions</h2>
                         <button onClick={() => setIsClearAllConfirmOpen(true)} className="text-sm text-red-500 hover:text-red-600 flex items-center">
                             <span className="material-icons text-sm mr-1">delete_sweep</span> Clear All
                         </button>
@@ -416,7 +326,7 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
                             onToggleArchive={(item) => handleUpdateMetadata(item.original, { isArchived: true })}
                             onDelete={(item) => handleDelete(item.original.id!)}
                             onEdit={() => {}}
-                            onSelect={(id) => handleLoadSaved(savedSignals.find(s => `signal-${s.id}` === id)!)}
+                            onSelect={(id) => handleLoadSaved(savedSignals.find(s => `compressed-signal-${s.id}` === id)!)}
                             selectedIds={new Set()}
                         />
                         <StarredPinnedBar
@@ -429,7 +339,7 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
                             onToggleArchive={(item) => handleUpdateMetadata(item.original, { isArchived: true })}
                             onDelete={(item) => handleDelete(item.original.id!)}
                             onEdit={() => {}}
-                            onSelect={(id) => handleLoadSaved(savedSignals.find(s => `signal-${s.id}` === id)!)}
+                            onSelect={(id) => handleLoadSaved(savedSignals.find(s => `compressed-signal-${s.id}` === id)!)}
                             selectedIds={new Set()}
                         />
                     </div>
@@ -439,13 +349,14 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
                             <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
                             <input
                                 type="text"
-                                placeholder="Search saved signals..."
+                                placeholder="Search saved compactions..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchText(e.target.value)}
                                 className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                             />
                         </div>
                     </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {savedSignals
                             .filter(s => !s.isArchived && !s.isStarred && !s.isPinned && s.name.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -455,7 +366,7 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
                                     name={s.name}
                                     createdAt={s.createdAt}
                                     metadata={s}
-                                    icon="unarchive"
+                                    icon="compress"
                                     onPreview={() => setPreviewSignal(s)}
                                     onDelete={() => handleDelete(s.id!)}
                                     onToggleStar={() => handleUpdateMetadata(s, { isStarred: !s.isStarred })}
@@ -468,17 +379,10 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
                 </div>
             )}
 
-                </>
-            ) : activeTab === 'seed' ? (
-                <SeedArchitect />
-            ) : (
-                <SignalCompressionArchitect />
-            )}
-
             <Modal isOpen={!!pendingDraft} onClose={() => setPendingDraft(null)} title="Unsaved Draft Found">
                 <div className="space-y-4">
                     <p className="text-gray-600 dark:text-gray-400">
-                        An unsaved signal extractor draft was found. Would you like to restore it?
+                        An unsaved compression draft was found. Would you like to restore it?
                     </p>
                     <div className="flex justify-end space-x-3 mt-6">
                         <button
@@ -500,7 +404,7 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
             <Modal isOpen={isClearAllConfirmOpen} onClose={() => setIsClearAllConfirmOpen(false)} title="Confirm Clear All">
                 <div className="space-y-4">
                     <p className="text-gray-600 dark:text-gray-400">
-                        Are you sure you want to clear ALL signals? This action cannot be undone.
+                        Are you sure you want to clear ALL saved compactions? This action cannot be undone.
                     </p>
                     <div className="flex justify-end space-x-3 mt-6">
                         <button
@@ -522,7 +426,7 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
             <Modal isOpen={isDeleteConfirmOpen} onClose={() => { setIsDeleteConfirmOpen(false); setDeleteTarget(null); }} title="Confirm Delete">
                 <div className="space-y-4">
                     <p className="text-gray-600 dark:text-gray-400">
-                        Are you sure you want to delete this signal? This action cannot be undone.
+                        Are you sure you want to delete this compaction? This action cannot be undone.
                     </p>
                     <div className="flex justify-end space-x-3 mt-6">
                         <button
@@ -545,17 +449,17 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
                 isOpen={!!previewSignal}
                 onClose={() => setPreviewSignal(null)}
                 title={`Preview: ${previewSignal?.name}`}
-                content={previewSignal ? `## User Prompt\n\n${previewSignal.config.messyPrompt.split('\n').map(line => `> ${line}`).join('\n')}\n>\n>\n\n## Prompt Signal\n\n${previewSignal.promptSignal}\n\n## Signal Constraints\n\n${previewSignal.signalConstraints}` : ''}
+                content={previewSignal ? previewSignal.result.compressedText : ''}
                 metadata={previewSignal || undefined}
                 onUpdateMetadata={(metadata) => previewSignal && handleUpdateMetadata(previewSignal, metadata)}
                 onCopy={() => {
                     if (previewSignal) {
-                        handleCopySignal(previewSignal.config.messyPrompt, previewSignal.promptSignal, previewSignal.signalConstraints);
+                        handleCopy(previewSignal.result.compressedText);
                     }
                 }}
                 onExport={() => {
                     if (previewSignal) {
-                        handleExportSignal(previewSignal.name, previewSignal.config.messyPrompt, previewSignal.promptSignal, previewSignal.signalConstraints);
+                        handleExport(previewSignal.name, previewSignal.result.compressedText);
                     }
                 }}
                 onDelete={() => {
@@ -566,16 +470,16 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
                 }}
             />
 
-            <Modal isOpen={isSaveModalOpen} onClose={() => setIsSaveModalOpen(false)} title="Save Extracted Signal">
+            <Modal isOpen={isSaveModalOpen} onClose={() => setIsSaveModalOpen(false)} title="Save Compressed Signal">
                 <div className="space-y-4">
                     <div>
-                        <label htmlFor="saveName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Signal Name</label>
+                        <label htmlFor="saveName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
                         <input
                             type="text"
                             id="saveName"
                             value={saveName}
                             onChange={(e) => setSaveName(e.target.value)}
-                            placeholder="e.g., Email Marketing Signal"
+                            placeholder="e.g., Project X Core Context"
                             className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-900 dark:text-gray-100"
                             autoFocus
                         />
@@ -587,7 +491,7 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
                             disabled={!saveName.trim()}
                             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition"
                         >
-                            Save Signal
+                            Save Compaction
                         </button>
                     </div>
                 </div>
@@ -596,4 +500,4 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
     );
 };
 
-export default SignalExtractor;
+export default SignalCompressionArchitect;

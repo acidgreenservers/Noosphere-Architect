@@ -27,7 +27,8 @@ const TYPE_LABELS: Record<UnifiedItem['type'], string> = {
     'roadmap': 'Roadmaps',
     'agentJob': 'Agent Jobs',
     'legacy-prompt': 'Legacy Prompts',
-    'seed-architect': 'Seed Analyses'
+    'seed-architect': 'Seed Analyses',
+    'compressed-signal': 'Compressed Signals'
 };
 
 const TYPE_ICONS: Record<UnifiedItem['type'], string> = {
@@ -41,7 +42,8 @@ const TYPE_ICONS: Record<UnifiedItem['type'], string> = {
     'roadmap': 'map',
     'agentJob': 'assignment_ind',
     'legacy-prompt': 'history',
-    'seed-architect': 'auto_awesome'
+    'seed-architect': 'auto_awesome',
+    'compressed-signal': 'compress'
 };
 
 const ArchitectureOrganization: React.FC = () => {
@@ -227,9 +229,8 @@ const ArchitectureOrganization: React.FC = () => {
         }
         const selectedItems = items.filter(i => selectedIds.has(String(i.id)));
         for (const item of selectedItems) {
-            const updatedOriginal = { ...item.original, category: bulkCategoryInput.trim() };
-            await saveItem(item.type, updatedOriginal);
-            setItems(prev => prev.map(i => i.id === item.id ? { ...i, category: bulkCategoryInput.trim(), original: updatedOriginal } : i));
+            await db.updateUnifiedItemMetadata(item, { category: bulkCategoryInput.trim() });
+            setItems(prev => prev.map(i => i.id === item.id ? { ...i, category: bulkCategoryInput.trim(), original: { ...i.original, category: bulkCategoryInput.trim() } } : i));
         }
         setBulkCategoryInput('');
         setSelectedIds(new Set());

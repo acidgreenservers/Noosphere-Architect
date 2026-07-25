@@ -11,9 +11,10 @@ const ProjectArchitect = lazy(() => import('./components/ProjectArchitect'));
 const MindSeedArchitect = lazy(() => import('./components/MindSeedArchitect'));
 const AgentApiSettings = lazy(() => import('./components/AgentApiSettings'));
 const SignalExtractor = lazy(() => import('./components/SignalExtractor'));
+const SignalCompressionArchitect = lazy(() => import('./components/SignalCompressionArchitect'));
 const ArchitectureOrganization = lazy(() => import('./components/ArchitectureOrganization'));
 
-export type View = 'landing' | 'agentArchitect' | 'promptArchitect' | 'projectArchitect' | 'mindSeedArchitect' | 'agentApiSettings' | 'signalExtractor' | 'architectureOrganization';
+export type View = 'landing' | 'agentArchitect' | 'promptArchitect' | 'projectArchitect' | 'mindSeedArchitect' | 'agentApiSettings' | 'signalExtractor' | 'signalCompressionArchitect' | 'architectureOrganization';
 
 const App: React.FC = () => {
   const [view, setView] = useState<View>('landing');
@@ -38,6 +39,8 @@ const App: React.FC = () => {
         return <AgentApiSettings />;
       case 'signalExtractor':
         return <SignalExtractor onTransfer={handleTransferToPromptArchitect} />;
+      case 'signalCompressionArchitect':
+        return <SignalExtractor onTransfer={handleTransferToPromptArchitect} initialTab="compression" />;
       case 'architectureOrganization':
         return <ArchitectureOrganization />;
       case 'landing':
@@ -55,6 +58,7 @@ const App: React.FC = () => {
         onMindSeedArchitectClick={() => setView('mindSeedArchitect')}
         onAgentApiSettingsClick={() => setView('agentApiSettings')}
         onSignalExtractorClick={() => setView('signalExtractor')}
+        onSignalCompressionArchitectClick={() => setView('signalCompressionArchitect')}
         onArchitectureOrganizationClick={() => setView('architectureOrganization')}
         showHomeButton={view !== 'landing'}
       />
