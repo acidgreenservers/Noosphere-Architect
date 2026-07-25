@@ -67,46 +67,81 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
 
       return (
         <div className="space-y-6">
-          <div className={`p-3 text-center font-black uppercase tracking-[0.2em] text-xs md:text-sm rounded-xl text-white ${
-            seedArchitect.result.status === 'Pass' ? 'bg-green-500 shadow-md shadow-green-500/20' : 'bg-red-500 shadow-md shadow-red-500/20'
-          }`}>
-            Verification Result: {seedArchitect.result.status}
+          {/* Top Bento Header Bar: Chips & Badges */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="md:col-span-1 bg-gray-50 dark:bg-gray-900/60 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 flex flex-col justify-center items-center">
+              <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-[0.2em] shadow-sm ${
+                seedArchitect.result.status === 'Pass' 
+                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30' 
+                : 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30'
+              }`}>
+                Verification: {seedArchitect.result.status}
+              </span>
+              <div className="mt-3 flex flex-wrap justify-center gap-2">
+                <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                  Tightness: {seedArchitect.result.graphData.tightness}/10
+                </span>
+                <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                  Gradient: {seedArchitect.result.graphData.gradient}
+                </span>
+              </div>
+            </div>
+
+            <div className="md:col-span-2 bg-gray-50 dark:bg-gray-900/60 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 flex flex-col justify-center">
+              <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1 flex items-center">
+                <span className="material-icons text-sm mr-1 text-blue-500">label</span>
+                Theme & Signals
+              </h4>
+              <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                {seedArchitect.result.graphData.recurringTheme}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 italic">
+                {seedArchitect.result.graphData.semanticSignals}
+              </p>
+            </div>
           </div>
 
-          <div className="flex flex-col lg:flex-row gap-8 items-center">
-            <div className="lg:w-1/2 w-full flex justify-center">
+          {/* Main Bento Row: Circular Graph Tile + Explanation Tile */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+            <div className="lg:col-span-5 bg-white dark:bg-gray-900/40 p-5 rounded-2xl border border-gray-200 dark:border-gray-700/60 flex items-center justify-center shadow-sm">
               <CircularSignalGraph data={seedArchitect.result.graphData} />
             </div>
 
-            <div className="lg:w-1/2 w-full flex flex-col justify-center">
+            <div className="lg:col-span-7 bg-white dark:bg-gray-900/40 p-6 rounded-2xl border border-gray-200 dark:border-gray-700/60 flex flex-col shadow-sm">
               <h4 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-3 flex items-center">
                  <span className="material-icons mr-2 text-blue-500">description</span>
                  Analysis Details
               </h4>
-              <div className="prose prose-sm dark:prose-invert max-w-none text-gray-600 dark:text-gray-400 leading-relaxed bg-gray-50 dark:bg-gray-900/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-inner max-h-[220px] overflow-y-auto">
+              <div className="prose prose-sm dark:prose-invert max-w-none text-gray-600 dark:text-gray-300 leading-relaxed bg-gray-50 dark:bg-gray-900/60 p-5 rounded-xl border border-gray-100 dark:border-gray-800 flex-1 min-h-[220px] overflow-y-auto custom-scrollbar">
                   {seedArchitect.result.explanation}
               </div>
             </div>
           </div>
 
+          {/* Bottom Bento Row: Sub-Tabs Inspector */}
           {filenames.length > 0 && (
-            <div className="space-y-4 pt-2 border-t border-gray-100 dark:border-gray-800">
-              <div className="flex flex-wrap gap-2 border-b border-gray-200 dark:border-gray-700 pb-2">
-                {filenames.map(name => (
-                  <button
-                    key={name}
-                    onClick={() => setActiveTab(name)}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                      currentTab === name
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    {name}
-                  </button>
-                ))}
+            <div className="bg-white dark:bg-gray-900/40 p-5 rounded-2xl border border-gray-200 dark:border-gray-700/60 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+                <div className="flex flex-wrap gap-2">
+                  {filenames.map(name => (
+                    <button
+                      key={name}
+                      onClick={() => setActiveTab(name)}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${
+                        currentTab === name
+                          ? 'bg-blue-600 text-white shadow-md'
+                          : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
+                      }`}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+                <span className="text-[11px] font-mono text-gray-400 uppercase tracking-wider hidden sm:inline">
+                  Interactive Inspector
+                </span>
               </div>
-              <div className="p-4 bg-white dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 max-h-[35vh] overflow-y-auto shadow-inner prose prose-sm dark:prose-invert max-w-none">
+              <div className="p-4 bg-gray-50 dark:bg-gray-900/80 rounded-xl border border-gray-100 dark:border-gray-800 max-h-[35vh] overflow-y-auto shadow-inner prose prose-sm dark:prose-invert max-w-none font-mono text-xs custom-scrollbar">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{(content as Record<string, string>)[currentTab] || ''}</ReactMarkdown>
               </div>
             </div>
@@ -186,7 +221,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={title}>
+    <Modal isOpen={isOpen} onClose={onClose} title={title} maxWidthClass="max-w-6xl">
       <div className="flex flex-col h-full">
         {metadata && onUpdateMetadata && (
             <div className="flex flex-wrap items-center gap-4 mb-6 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700">

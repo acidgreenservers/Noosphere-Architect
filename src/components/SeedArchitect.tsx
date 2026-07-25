@@ -351,29 +351,60 @@ const SeedArchitect: React.FC = () => {
       )}
 
       {result && !isLoading && (
-        <div className="space-y-8 animate-in fade-in zoom-in-95 duration-700">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden border border-gray-100 dark:border-gray-700">
-            <div className={`p-4 text-center font-black uppercase tracking-[0.2em] text-sm ${
-              result.status === 'Pass' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-            }`}>
-              Verification Result: {result.status}
+        <div className="space-y-6 animate-in fade-in zoom-in-95 duration-700">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-6 md:p-8 border border-gray-100 dark:border-gray-700/60 space-y-6">
+            {/* Top Bento Header Bar: Chips & Badges */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="md:col-span-1 bg-gray-50 dark:bg-gray-900/60 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 flex flex-col justify-center items-center">
+                <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-[0.2em] shadow-sm ${
+                  result.status === 'Pass' 
+                  ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30' 
+                  : 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30'
+                }`}>
+                  Verification: {result.status}
+                </span>
+                <div className="mt-3 flex flex-wrap justify-center gap-2">
+                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                    Tightness: {result.graphData.tightness}/10
+                  </span>
+                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                    Gradient: {result.graphData.gradient}
+                  </span>
+                </div>
+              </div>
+
+              <div className="md:col-span-2 bg-gray-50 dark:bg-gray-900/60 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 flex flex-col justify-center">
+                <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1 flex items-center">
+                  <span className="material-icons text-sm mr-1 text-blue-500">label</span>
+                  Theme & Signals
+                </h4>
+                <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                  {result.graphData.recurringTheme}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 italic">
+                  {result.graphData.semanticSignals}
+                </p>
+              </div>
             </div>
 
-            <div className="p-6 md:p-10 flex flex-col lg:flex-row gap-10">
-              <div className="lg:w-1/2">
+            {/* Main Bento Row: Circular Graph Tile + Explanation Tile */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+              <div className="lg:col-span-5 bg-gray-50 dark:bg-gray-900/40 p-5 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center justify-center">
                 <CircularSignalGraph data={result.graphData} />
               </div>
 
-              <div className="lg:w-1/2 flex flex-col justify-center">
-                <h4 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center">
-                   <span className="material-icons mr-2 text-blue-500">description</span>
-                   Analysis Details
-                </h4>
-                <div className="prose prose-sm dark:prose-invert max-w-none text-gray-600 dark:text-gray-400 leading-relaxed bg-gray-50 dark:bg-gray-900/50 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-inner">
-                    {result.explanation}
+              <div className="lg:col-span-7 flex flex-col justify-between">
+                <div className="flex-1 flex flex-col">
+                  <h4 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-3 flex items-center">
+                     <span className="material-icons mr-2 text-blue-500">description</span>
+                     Analysis Details
+                  </h4>
+                  <div className="prose prose-sm dark:prose-invert max-w-none text-gray-600 dark:text-gray-300 leading-relaxed bg-gray-50 dark:bg-gray-900/60 p-5 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-inner flex-1 min-h-[220px] overflow-y-auto custom-scrollbar">
+                      {result.explanation}
+                  </div>
                 </div>
 
-                <div className="mt-8 flex space-x-4">
+                <div className="mt-6 flex space-x-4">
                   <button
                     onClick={handleReset}
                     className="flex-grow px-6 py-3 border border-gray-200 dark:border-gray-700 rounded-xl font-bold text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all"
