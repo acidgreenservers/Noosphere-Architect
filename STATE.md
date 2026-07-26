@@ -27,8 +27,10 @@ Git Hygiene Mandate: Maintain clean commit history and semantic release tags. Su
 
 **Completed Structural Nodes:**
 1. Unified Data Searching: Deep recursion enabled for JSON-structured tool configurations.
-2. Safe DB Async: Hoisted all IndexedDB transaction `await` calls out of raw `Promise` constructors, eliminating silent lock/hang vectors.
+2. Safe DB Async: Hoisted all IndexedDB transaction `await` calls out of raw `Promise` constructors across all 22 CRUD & draft operations, eliminating silent lock/hang vectors.
 3. Archive UX Paradigm: The Archive acts as a true literal repository with `viewMode` toggle. High-density List format implemented with Progressive Disclosure (hover menus) and explicit Active Filter observability.
+4. Signal Compression Architect Resilience: Implemented 45s API fetch timeout, robust JSON payload extraction, key normalization, and safe draft loading.
+5. GitHub Actions CI Testing: Integrated `npm test` step into `.github/workflows/deploy.yml` to automatically run all 24 unit tests before building for production.
 
 **Next Topological Move:**
-- Await user guidance on new feature scopes or transition to next domain tool integration. Maintain vigilance on memory footprints and further performance optimizations if large libraries emerge.
+- Await user guidance on new feature scopes or transition to next domain tool integration. Maintain clean git hygiene and test coverage across new features.
