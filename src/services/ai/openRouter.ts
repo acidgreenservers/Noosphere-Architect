@@ -25,31 +25,40 @@ export const callOpenRouter = async (
   expectJson: boolean = false,
   signal?: AbortSignal
 ): Promise<string> => {
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    signal,
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": window.location.origin,
-      "X-Title": "Noosphere Architect",
-    },
-    body: JSON.stringify({
-      model: model,
-      messages: [{ role: "user", content: prompt }],
-      response_format: expectJson ? { type: "json_object" } : undefined,
-    })
-  });
+  const timeoutController = new AbortController();
+  const timeoutId = setTimeout(() => timeoutController.abort(new Error("Request timed out after 45 seconds")), 45000);
 
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({ error: { message: `HTTP ${response.status}` } }));
-    const error = new Error(err.error?.message || `OpenRouter API error (${response.status})`);
-    (error as any).status = response.status;
-    throw error;
+  const combinedSignal = signal ? AbortSignal.any([signal, timeoutController.signal]) : timeoutController.signal;
+
+  try {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      signal: combinedSignal,
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": window.location.origin,
+        "X-Title": "Noosphere Architect",
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [{ role: "user", content: prompt }],
+        response_format: expectJson ? { type: "json_object" } : undefined,
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: { message: `HTTP ${response.status}` } }));
+      const error = new Error(err.error?.message || `OpenRouter API error (${response.status})`);
+      (error as any).status = response.status;
+      throw error;
+    }
+
+    const data = await response.json();
+    return data.choices[0]?.message?.content || "";
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  const data = await response.json();
-  return data.choices[0].message.content;
 };
 
 /**
@@ -133,9 +142,24 @@ export const handleAiCall = async <T>(
     );
 
     if (expectJson) {
-      // Clean up potential markdown code blocks from OpenRouter response
-      const cleanedText = responseText.replace(/^```json\n?/, '').replace(/\n?```$/, '');
-      return JSON.parse(cleanedText) as T;
+      // Robust JSON extraction: Strip markdown code blocks or extract JSON structure via regex
+      let cleanedText = responseText.trim();
+      
+      // Remove leading/trailing markdown fences if present
+      cleanedText = cleanedText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
+      // If text still contains non-JSON markdown wrapper, extract first JSON object or array
+      const jsonMatch = cleanedText.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+      if (jsonMatch) {
+        cleanedText = jsonMatch[0];
+      }
+
+      try {
+        return JSON.parse(cleanedText) as T;
+      } catch (parseErr) {
+        console.error("Failed to parse JSON response:", cleanedText, parseErr);
+        throw new Error("AI response was not in a valid JSON format. Raw output: " + responseText.slice(0, 200));
+      }
     }
 
     return responseText as unknown as T;

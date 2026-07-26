@@ -538,9 +538,9 @@ const encryptCompressedSignal = (signal: SavedCompressedSignal) => processEntity
 const decryptCompressedSignal = (data: any) => processEntity(data, SCHEMAS.compression, (v, isObj) => decryptField(v, isObj)) as SavedCompressedSignal;
 
 // Agent Draft Functions
-export const saveDraft = (draft: {id: number, config: AgentConfig}): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(AGENT_DRAFT_STORE, 'readwrite');
+export const saveDraft = async (draft: {id: number, config: AgentConfig}): Promise<number> => {
+    const store = await getStore(AGENT_DRAFT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const encryptedDraft = { ...draft, config: encryptField(draft.config) };
         const request = store.put(encryptedDraft);
         request.onsuccess = () => resolve(request.result as number);
@@ -608,10 +608,10 @@ export const clearAllSynthesis = async (): Promise<void> => {
 };
 
 // Generic Prompt Draft Functions
-export const saveTypedPromptDraft = (type: PromptType, draft: {id: number, config: PromptConfig | AgentConfig}): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const storeName = type === 'standard' ? STANDARD_PROMPT_DRAFT_STORE : SYSTEM_PROMPT_DRAFT_STORE;
-        const store = await getStore(storeName, 'readwrite');
+export const saveTypedPromptDraft = async (type: PromptType, draft: {id: number, config: PromptConfig | AgentConfig}): Promise<number> => {
+    const storeName = type === 'standard' ? STANDARD_PROMPT_DRAFT_STORE : SYSTEM_PROMPT_DRAFT_STORE;
+    const store = await getStore(storeName, 'readwrite');
+    return new Promise((resolve, reject) => {
         const encryptedDraft = { ...draft, config: encryptField(draft.config) };
         const request = store.put(encryptedDraft);
         request.onsuccess = () => resolve(request.result as number);
@@ -619,10 +619,10 @@ export const saveTypedPromptDraft = (type: PromptType, draft: {id: number, confi
     });
 };
 
-export const getTypedPromptDraft = (type: PromptType, id: number): Promise<{id: number, config: PromptConfig | AgentConfig} | undefined> => {
-    return new Promise(async (resolve, reject) => {
-        const storeName = type === 'standard' ? STANDARD_PROMPT_DRAFT_STORE : SYSTEM_PROMPT_DRAFT_STORE;
-        const store = await getStore(storeName, 'readonly');
+export const getTypedPromptDraft = async (type: PromptType, id: number): Promise<{id: number, config: PromptConfig | AgentConfig} | undefined> => {
+    const storeName = type === 'standard' ? STANDARD_PROMPT_DRAFT_STORE : SYSTEM_PROMPT_DRAFT_STORE;
+    const store = await getStore(storeName, 'readonly');
+    return new Promise((resolve, reject) => {
         const request = store.get(id);
         request.onsuccess = () => {
             if (!request.result) return resolve(undefined);
@@ -632,10 +632,10 @@ export const getTypedPromptDraft = (type: PromptType, id: number): Promise<{id: 
     });
 };
 
-export const clearTypedPromptDraft = (type: PromptType, id: number): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const storeName = type === 'standard' ? STANDARD_PROMPT_DRAFT_STORE : SYSTEM_PROMPT_DRAFT_STORE;
-        const store = await getStore(storeName, 'readwrite');
+export const clearTypedPromptDraft = async (type: PromptType, id: number): Promise<void> => {
+    const storeName = type === 'standard' ? STANDARD_PROMPT_DRAFT_STORE : SYSTEM_PROMPT_DRAFT_STORE;
+    const store = await getStore(storeName, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.delete(id);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
@@ -643,9 +643,9 @@ export const clearTypedPromptDraft = (type: PromptType, id: number): Promise<voi
 };
 
 // MindSeed Draft Functions
-export const saveMindSeedDraft = (draft: {id: number, config: MindSeedConfig}): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(MINDSEED_DRAFT_STORE, 'readwrite');
+export const saveMindSeedDraft = async (draft: {id: number, config: MindSeedConfig}): Promise<number> => {
+    const store = await getStore(MINDSEED_DRAFT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const encryptedDraft = { ...draft, config: encryptField(draft.config) };
         const request = store.put(encryptedDraft);
         request.onsuccess = () => resolve(request.result as number);
@@ -658,10 +658,10 @@ const getPromptStoreName = (type: PromptType) => {
     return type === 'standard' ? STANDARD_PROMPT_STORE : SYSTEM_PROMPT_STORE;
 };
 
-export const addTypedPrompt = (type: PromptType, prompt: SavedPrompt): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const storeName = getPromptStoreName(type);
-        const store = await getStore(storeName, 'readwrite');
+export const addTypedPrompt = async (type: PromptType, prompt: SavedPrompt): Promise<number> => {
+    const storeName = getPromptStoreName(type);
+    const store = await getStore(storeName, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.add(encryptPrompt(prompt));
         request.onsuccess = () => {
             const id = request.result as number;
@@ -673,10 +673,10 @@ export const addTypedPrompt = (type: PromptType, prompt: SavedPrompt): Promise<n
     });
 };
 
-export const getAllTypedPrompts = (type: PromptType): Promise<SavedPrompt[]> => {
-    return new Promise(async (resolve, reject) => {
-        const storeName = getPromptStoreName(type);
-        const store = await getStore(storeName, 'readonly');
+export const getAllTypedPrompts = async (type: PromptType): Promise<SavedPrompt[]> => {
+    const storeName = getPromptStoreName(type);
+    const store = await getStore(storeName, 'readonly');
+    return new Promise((resolve, reject) => {
         const request = store.getAll();
         request.onsuccess = () => {
             const results = (request.result as any[]).map(decryptPrompt);
@@ -686,10 +686,10 @@ export const getAllTypedPrompts = (type: PromptType): Promise<SavedPrompt[]> => 
     });
 };
 
-export const updateTypedPrompt = (type: PromptType, prompt: SavedPrompt): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const storeName = getPromptStoreName(type);
-        const store = await getStore(storeName, 'readwrite');
+export const updateTypedPrompt = async (type: PromptType, prompt: SavedPrompt): Promise<number> => {
+    const storeName = getPromptStoreName(type);
+    const store = await getStore(storeName, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.put(encryptPrompt(prompt));
         request.onsuccess = () => {
             const id = request.result as number;
@@ -701,20 +701,20 @@ export const updateTypedPrompt = (type: PromptType, prompt: SavedPrompt): Promis
     });
 };
 
-export const deleteTypedPrompt = (type: PromptType, id: number): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const storeName = getPromptStoreName(type);
-        const store = await getStore(storeName, 'readwrite');
+export const deleteTypedPrompt = async (type: PromptType, id: number): Promise<void> => {
+    const storeName = getPromptStoreName(type);
+    const store = await getStore(storeName, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.delete(id);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
     });
 };
 
-export const clearAllTypedPrompts = (type: PromptType): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const storeName = getPromptStoreName(type);
-        const store = await getStore(storeName, 'readwrite');
+export const clearAllTypedPrompts = async (type: PromptType): Promise<void> => {
+    const storeName = getPromptStoreName(type);
+    const store = await getStore(storeName, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.clear();
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
@@ -751,23 +751,18 @@ const getMindSeedStoreName = (type: MindSeedType) => {
     }
 };
 
-export const addMindSeed = (mindSeed: SavedMindSeed): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const storeName = getMindSeedStoreName(mindSeed.config.type);
-            const store = await getStore(storeName, 'readwrite');
-            const request = store.add(encryptMindSeed(mindSeed));
-            request.onsuccess = async () => {
-                const id = request.result as number;
-                // Atomic verification: check if it was correctly written
-                const getRequest = store.get(id);
-                getRequest.onsuccess = () => resolve(id);
-                getRequest.onerror = () => reject(new Error("Verification failed after write."));
-            };
-            request.onerror = () => reject(request.error);
-        } catch (error) {
-            reject(error);
-        }
+export const addMindSeed = async (mindSeed: SavedMindSeed): Promise<number> => {
+    const storeName = getMindSeedStoreName(mindSeed.config.type);
+    const store = await getStore(storeName, 'readwrite');
+    return new Promise((resolve, reject) => {
+        const request = store.add(encryptMindSeed(mindSeed));
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getRequest = store.get(id);
+            getRequest.onsuccess = () => resolve(id);
+            getRequest.onerror = () => reject(new Error("Verification failed after write."));
+        };
+        request.onerror = () => reject(request.error);
     });
 };
 
@@ -801,67 +796,51 @@ export const deleteCustomContext = async (storeName: ContextStoreName): Promise<
     });
 };
 
-export const getAllMindSeeds = (type: MindSeedType): Promise<SavedMindSeed[]> => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const storeName = getMindSeedStoreName(type);
-            const store = await getStore(storeName, 'readonly');
-            const request = store.getAll();
-            request.onsuccess = () => {
-                const results = (request.result as any[]).map(decryptMindSeed);
-                resolve(results.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-            };
-            request.onerror = () => reject(request.error);
-        } catch (error) {
-            reject(error);
-        }
+export const getAllMindSeeds = async (type: MindSeedType): Promise<SavedMindSeed[]> => {
+    const storeName = getMindSeedStoreName(type);
+    const store = await getStore(storeName, 'readonly');
+    return new Promise((resolve, reject) => {
+        const request = store.getAll();
+        request.onsuccess = () => {
+            const results = (request.result as any[]).map(decryptMindSeed);
+            resolve(results.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        };
+        request.onerror = () => reject(request.error);
     });
 };
 
-export const updateMindSeed = (mindSeed: SavedMindSeed): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const storeName = getMindSeedStoreName(mindSeed.config.type);
-            const store = await getStore(storeName, 'readwrite');
-            const request = store.put(encryptMindSeed(mindSeed));
-            request.onsuccess = () => {
-                const id = request.result as number;
-                const getReq = store.get(id);
-                getReq.onsuccess = () => resolve(id);
-                getReq.onerror = () => reject(new Error("Verification failed after mindseed update."));
-            };
-            request.onerror = () => reject(request.error);
-        } catch (error) {
-            reject(error);
-        }
+export const updateMindSeed = async (mindSeed: SavedMindSeed): Promise<number> => {
+    const storeName = getMindSeedStoreName(mindSeed.config.type);
+    const store = await getStore(storeName, 'readwrite');
+    return new Promise((resolve, reject) => {
+        const request = store.put(encryptMindSeed(mindSeed));
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error("Verification failed after mindseed update."));
+        };
+        request.onerror = () => reject(request.error);
     });
 };
 
-export const deleteMindSeed = (id: number, type: MindSeedType): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const storeName = getMindSeedStoreName(type);
-            const store = await getStore(storeName, 'readwrite');
-            const request = store.delete(id);
-            request.onsuccess = () => resolve();
-            request.onerror = () => reject(request.error);
-        } catch (error) {
-            reject(error);
-        }
+export const deleteMindSeed = async (id: number, type: MindSeedType): Promise<void> => {
+    const storeName = getMindSeedStoreName(type);
+    const store = await getStore(storeName, 'readwrite');
+    return new Promise((resolve, reject) => {
+        const request = store.delete(id);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
     });
 };
 
-export const clearAllMindSeeds = (type: MindSeedType): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const storeName = getMindSeedStoreName(type);
-            const store = await getStore(storeName, 'readwrite');
-            const request = store.clear();
-            request.onsuccess = () => resolve();
-            request.onerror = () => reject(request.error);
-        } catch (error) {
-            reject(error);
-        }
+export const clearAllMindSeeds = async (type: MindSeedType): Promise<void> => {
+    const storeName = getMindSeedStoreName(type);
+    const store = await getStore(storeName, 'readwrite');
+    return new Promise((resolve, reject) => {
+        const request = store.clear();
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
     });
 };
 
@@ -887,9 +866,9 @@ export const clearDraft = async (id: number): Promise<void> => {
 };
 
 // Prompt Draft Functions
-export const savePromptDraft = (draft: {id: number, config: PromptConfig}): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(PROMPT_DRAFT_STORE, 'readwrite');
+export const savePromptDraft = async (draft: {id: number, config: PromptConfig}): Promise<number> => {
+    const store = await getStore(PROMPT_DRAFT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const encryptedDraft = { ...draft, config: encryptField(draft.config) };
         const request = store.put(encryptedDraft);
         request.onsuccess = () => resolve(request.result as number);
@@ -919,9 +898,9 @@ export const clearPromptDraft = async (id: number): Promise<void> => {
 };
 
 // Project Draft Functions
-export const saveProjectDraft = (draft: {id: number, config: ProjectConfig}): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(PROJECT_DRAFT_STORE, 'readwrite');
+export const saveProjectDraft = async (draft: {id: number, config: ProjectConfig}): Promise<number> => {
+    const store = await getStore(PROJECT_DRAFT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const encryptedDraft = { ...draft, config: encryptField(draft.config) };
         const request = store.put(encryptedDraft);
         request.onsuccess = () => resolve(request.result as number);
@@ -951,9 +930,9 @@ export const clearProjectDraft = async (id: number): Promise<void> => {
 };
 
 // Signal Draft Functions
-export const saveSignalDraft = (draft: {id: number, config: SignalConfig}): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(SIGNAL_DRAFT_STORE, 'readwrite');
+export const saveSignalDraft = async (draft: {id: number, config: SignalConfig}): Promise<number> => {
+    const store = await getStore(SIGNAL_DRAFT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const encryptedDraft = { ...draft, config: encryptField(draft.config) };
         const request = store.put(encryptedDraft);
         request.onsuccess = () => resolve(request.result as number);
@@ -1279,9 +1258,9 @@ export const clearAllCompressedSignals = async (): Promise<void> => {
     });
 };
 
-export const saveCompressedSignalDraft = (draft: {id: number, config: CompressionConfig}): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(COMPRESSED_SIGNAL_DRAFT_STORE, 'readwrite');
+export const saveCompressedSignalDraft = async (draft: {id: number, config: CompressionConfig}): Promise<number> => {
+    const store = await getStore(COMPRESSED_SIGNAL_DRAFT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const encryptedDraft = { ...draft, config: encryptField(draft.config) };
         const request = store.put(encryptedDraft);
         request.onsuccess = () => resolve(request.result as number);
@@ -1369,9 +1348,9 @@ export const clearAllRoadmaps = async (): Promise<void> => {
     });
 };
 
-export const saveRoadmapDraft = (draft: {id: number, config: RoadmapConfig}): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(ROADMAP_DRAFT_STORE, 'readwrite');
+export const saveRoadmapDraft = async (draft: {id: number, config: RoadmapConfig}): Promise<number> => {
+    const store = await getStore(ROADMAP_DRAFT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const encryptedDraft = { ...draft, config: encryptField(draft.config) };
         const request = store.put(encryptedDraft);
         request.onsuccess = () => resolve(request.result as number);
@@ -1549,9 +1528,9 @@ export const clearSeedTempResponses = async (): Promise<void> => {
     });
 };
 
-export const saveSeedDraft = (draft: {id: number, config: SeedConfig}): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(SEED_DRAFT_STORE, 'readwrite');
+export const saveSeedDraft = async (draft: {id: number, config: SeedConfig}): Promise<number> => {
+    const store = await getStore(SEED_DRAFT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const encryptedDraft = { ...draft, config: encryptField(draft.config) };
         const request = store.put(encryptedDraft);
         request.onsuccess = () => resolve(request.result as number);
@@ -1680,9 +1659,9 @@ export const deleteUnifiedItem = async (item: UnifiedItem): Promise<void> => {
     }
 };
 
-export const saveAgentJobDraft = (draft: {id: number, config: AgentJobConfig}): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(AGENT_JOB_DRAFT_STORE, 'readwrite');
+export const saveAgentJobDraft = async (draft: {id: number, config: AgentJobConfig}): Promise<number> => {
+    const store = await getStore(AGENT_JOB_DRAFT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const encryptedDraft = { ...draft, config: encryptField(draft.config) };
         const request = store.put(encryptedDraft);
         request.onsuccess = () => resolve(request.result as number);

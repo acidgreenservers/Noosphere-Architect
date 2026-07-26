@@ -32,8 +32,30 @@ Generate ONLY the raw JSON object with the "compressedText" key.
   return contextPrefix + basePrompt;
 };
 
+function validateCompressedSignal(raw: unknown): CompressedSignal {
+  if (!raw || typeof raw !== 'object') {
+    throw new Error("AI response was not a valid JSON object.");
+  }
+  const obj = raw as Record<string, unknown>;
+  const text = (
+    obj.compressedText ||
+    obj.compressed_text ||
+    obj.compaction ||
+    obj.text ||
+    obj.result ||
+    obj.signal
+  );
+
+  if (typeof text !== 'string' || !text.trim()) {
+    throw new Error(`AI response missing compressed text payload. Received: ${JSON.stringify(raw).slice(0, 150)}`);
+  }
+
+  return { compressedText: text.trim() };
+}
+
 export const generateCompressedSignal = async (config: CompressionConfig, signal?: AbortSignal): Promise<CompressedSignal> => {
   const customContext = await getCustomContext('compressedSignalContext');
   const prompt = createCompressionMetaPrompt(config, customContext);
-  return handleAiCall<CompressedSignal>(prompt, true, "compressing signal", signal);
+  const raw = await handleAiCall<unknown>(prompt, true, "compressing signal", signal);
+  return validateCompressedSignal(raw);
 };

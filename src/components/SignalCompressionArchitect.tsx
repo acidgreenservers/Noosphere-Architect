@@ -58,10 +58,15 @@ const SignalCompressionArchitect: React.FC = () => {
             if (isCheckingDraft.current) return;
             isCheckingDraft.current = true;
 
-            const draft = await db.getCompressedSignalDraft(1);
-            if (draft?.config && draft.config.messyInput) {
-                setPendingDraft(draft.config);
-            } else {
+            try {
+                const draft = await db.getCompressedSignalDraft(1);
+                if (draft?.config && draft.config.messyInput) {
+                    setPendingDraft(draft.config);
+                } else {
+                    setDraftStatus('none');
+                }
+            } catch (err) {
+                console.warn("Failed to load compressed signal draft:", err);
                 setDraftStatus('none');
             }
         };
