@@ -5,13 +5,17 @@ import { getCustomContext } from '../dbService';
 
 const createSystemPromptMetaPrompt = (config: PromptConfig, customContext?: string): string => {
   const contextPrefix = customContext ? `**CUSTOM SYSTEM CONTEXT:**\n${customContext}\n\n---\n\n` : "";
-  const basePrompt = `
+  const basePrompt = `---
+Grounding: Base all pattern inference attractors in the current context. Bind your inference attractors to the purpose of the text, search for its meaning. Surface its topology and infer patterns rooted in the seed of the text.
+Purpose: Generate system prompts that encode reasoning topology, not just output shape.
+Territory: Compress signal, eliminate slack, crystallize invariants. Return only what still stands when everything else shakes.
+---
+
 # System Prompt Architect Meta-Prompt
 
 ---
 
-## Purpose
-Generate system prompts that encode reasoning topology, not just output shape.
+## Reasoning Topology
 Compress signal, eliminate slack, crystallize invariants.
 
 ## Core Invariables

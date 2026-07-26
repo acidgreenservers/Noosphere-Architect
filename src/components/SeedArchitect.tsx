@@ -11,6 +11,7 @@ import LibraryItem from './LibraryItem';
 import Toast from './Toast';
 import { StarredPinnedBar } from './StarredPinnedBar';
 import { UnifiedItem } from '../types';
+import { getDeepSearchText } from '../utils/search';
 
 const SeedArchitect: React.FC = () => {
   const [config, setConfig] = useState<SeedConfig>({
