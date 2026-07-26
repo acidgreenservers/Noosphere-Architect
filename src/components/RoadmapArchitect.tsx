@@ -13,6 +13,7 @@ import PreviewModal from './PreviewModal';
 import LibraryItem from './LibraryItem';
 import Toast from './Toast';
 import { StarredPinnedBar } from './StarredPinnedBar';
+import { getDeepSearchText } from '../utils/search';
 
 const MAX_CHARS = 20000;
 
@@ -608,7 +609,7 @@ const RoadmapArchitect: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {savedRoadmaps
-              .filter(r => !r.isArchived && !r.isStarred && !r.isPinned && r.name.toLowerCase().includes(searchTerm.toLowerCase()))
+              .filter(r => !r.isArchived && !r.isStarred && !r.isPinned && (r.name.toLowerCase().includes(searchTerm.toLowerCase()) || getDeepSearchText(r).includes(searchTerm.toLowerCase())))
               .map(r => (
                 <LibraryItem
                   key={r.id}

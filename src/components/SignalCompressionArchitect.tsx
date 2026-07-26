@@ -13,6 +13,7 @@ import Modal from './Modal';
 import PreviewModal from './PreviewModal';
 import LibraryItem from './LibraryItem';
 import { StarredPinnedBar } from './StarredPinnedBar';
+import { getDeepSearchText } from '../utils/search';
 import styles from './Button.module.css';
 
 const MAX_CHARS = 50000;
@@ -359,7 +360,7 @@ const SignalCompressionArchitect: React.FC = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {savedSignals
-                            .filter(s => !s.isArchived && !s.isStarred && !s.isPinned && s.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                            .filter(s => !s.isArchived && !s.isStarred && !s.isPinned && (s.name.toLowerCase().includes(searchTerm.toLowerCase()) || getDeepSearchText(s).includes(searchTerm.toLowerCase())))
                             .map(s => (
                                 <LibraryItem
                                     key={s.id}

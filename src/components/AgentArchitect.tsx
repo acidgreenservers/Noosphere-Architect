@@ -15,6 +15,7 @@ import LibraryItem from './LibraryItem';
 import Toast from './Toast';
 import { StarredPinnedBar } from './StarredPinnedBar';
 import { UnifiedItem } from '../types';
+import { getDeepSearchText } from '../utils/search';
 
 const AGENT_TEMPLATES = [
     {
@@ -475,7 +476,7 @@ const AgentArchitect: React.FC = () => {
             </div>
             <div className="space-y-4">
                 {savedAgents
-                    .filter(a => !a.isArchived && !a.isStarred && !a.isPinned && a.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                    .filter(a => !a.isArchived && !a.isStarred && !a.isPinned && (a.name.toLowerCase().includes(searchTerm.toLowerCase()) || getDeepSearchText(a).includes(searchTerm.toLowerCase())))
                     .map(agent => (
                         <LibraryItem
                             key={agent.id}
@@ -493,8 +494,8 @@ const AgentArchitect: React.FC = () => {
                             onClick={() => handleLoadSavedAgent(agent)}
                         />
                     ))}
-                {(savedAgents.filter(a => !a.isArchived && !a.isStarred && !a.isPinned && a.name.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && searchTerm) && (
-                    <div className="py-8 text-center text-gray-400 dark:text-gray-500">
+                {(savedAgents.filter(a => !a.isArchived && !a.isStarred && !a.isPinned && (a.name.toLowerCase().includes(searchTerm.toLowerCase()) || getDeepSearchText(a).includes(searchTerm.toLowerCase()))).length === 0 && searchTerm) && (
+                    <div className="col-span-full py-12 text-center text-gray-500 dark:text-gray-400">
                         <span className="material-icons text-4xl mb-2">search_off</span>
                         <p>No agents match your search</p>
                     </div>

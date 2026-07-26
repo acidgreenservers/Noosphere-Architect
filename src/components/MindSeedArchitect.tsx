@@ -14,6 +14,7 @@ import PreviewModal from './PreviewModal';
 import LibraryItem from './LibraryItem';
 import { StarredPinnedBar } from './StarredPinnedBar';
 import { UnifiedItem } from '../types';
+import { getDeepSearchText } from '../utils/search';
 import styles from './Button.module.css';
 
 const MAX_CHARS = 20000;
@@ -442,7 +443,7 @@ const MindSeedArchitect: React.FC = () => {
             </div>
             <div className="grid grid-cols-1 gap-4">
               {savedSeeds
-                .filter(s => !s.isArchived && !s.isStarred && !s.isPinned && (s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.result.seed.toLowerCase().includes(searchTerm.toLowerCase())))
+                .filter(s => !s.isArchived && !s.isStarred && !s.isPinned && (s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.result.seed.toLowerCase().includes(searchTerm.toLowerCase()) || getDeepSearchText(s).includes(searchTerm.toLowerCase())))
                 .map((seed) => (
                     <LibraryItem
                         key={seed.id}

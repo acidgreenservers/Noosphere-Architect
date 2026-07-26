@@ -12,6 +12,7 @@ import SynthesisWorkspace from './SynthesisWorkspace';
 import Modal from './Modal';
 import Toast from './Toast';
 import { getPreviewContent, getExportFilename, buildExport, triggerDownload } from '../utils/export';
+import { getDeepSearchText } from '../utils/search';
 
 type SortField = 'createdAt' | 'name' | 'type';
 type SortDirection = 'asc' | 'desc';
@@ -19,7 +20,7 @@ type SortDirection = 'asc' | 'desc';
 const TYPE_LABELS: Record<UnifiedItem['type'], string> = {
     'agent': 'Agents',
     'prompt-standard': 'Standard Prompts',
-    'prompt-system': 'System Prompts',
+    'prompt-system': 'Skills',
     'project': 'Projects',
     'mindseed': 'MindSeeds',
     'signal': 'Signals',
@@ -198,11 +199,27 @@ const ArchitectureOrganization: React.FC = () => {
 
     const sidebarCount = (filterId: string): number => {
         return items.filter(i => {
-            if (filterId === 'all') return !i.isArchived;
+            const isTypeFilter = Object.keys(TYPE_LABELS).includes(filterId) || filterId === 'all_types';
+            const isItemArchived = i.isArchived === true || String(i.isArchived) === 'true';
+            
+            if (isTypeFilter) {
+                if (activeCategory === 'archived' && !isItemArchived) return false;
+                if (activeCategory === 'starred' && !i.isStarred) return false;
+                if (activeCategory === 'pinned' && !i.isPinned) return false;
+                if (!['all', 'starred', 'pinned', 'archived'].includes(activeCategory) && i.category !== activeCategory) return false;
+                
+                if (filterId !== 'all_types' && i.type !== filterId) return false;
+                return true;
+            }
+            
+            if (activeTypeFilter !== 'all_types' && i.type !== activeTypeFilter) return false;
+            
+            if (filterId === 'archived') return isItemArchived;
+            
+            if (filterId === 'all') return true;
             if (filterId === 'starred') return i.isStarred;
             if (filterId === 'pinned') return i.isPinned;
-            if (filterId === 'archived') return i.isArchived;
-            if (Object.keys(TYPE_LABELS).includes(filterId)) return i.type === filterId;
+            
             return i.category === filterId;
         }).length;
     };
@@ -248,21 +265,23 @@ const ArchitectureOrganization: React.FC = () => {
 
     const filteredAndSortedItems = items
         .filter(item => {
-            const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                                  getDeepSearchText(item.original).includes(searchTerm.toLowerCase());
             if (!matchesSearch) return false;
 
-            if (activeCategory === 'all' && item.isArchived) return false;
+            const isItemArchived = item.isArchived === true || String(item.isArchived) === 'true';
+
+            if (activeCategory === 'archived' && !isItemArchived) return false;
+
             if (activeCategory === 'starred' && !item.isStarred) return false;
             if (activeCategory === 'pinned' && !item.isPinned) return false;
-            if (activeCategory === 'archived' && !item.isArchived) return false;
-
-            const isViewFilter = ['all', 'starred', 'pinned', 'archived'].includes(activeCategory);
-            if (activeTypeFilter !== 'all_types' && (isViewFilter || activeCategory === 'all')) {
-                if (item.type !== activeTypeFilter) return false;
-            }
 
             if (!['all', 'starred', 'pinned', 'archived'].includes(activeCategory)) {
                 if (item.category !== activeCategory) return false;
+            }
+
+            if (activeTypeFilter !== 'all_types') {
+                if (item.type !== activeTypeFilter) return false;
             }
 
             return true;
@@ -276,25 +295,18 @@ const ArchitectureOrganization: React.FC = () => {
 
 
     const renderSidebarButton = (id: string, label: string, icon: string) => {
-        const isActive =
-            (['all', 'starred', 'pinned', 'archived'].includes(id) && activeCategory === id) ||
-            (Object.keys(TYPE_LABELS).includes(id) && activeTypeFilter === id) ||
-            (!['all', 'starred', 'pinned', 'archived'].includes(id) && !Object.keys(TYPE_LABELS).includes(id) && activeCategory === id);
+        const isTypeFilter = Object.keys(TYPE_LABELS).includes(id) || id === 'all_types';
+        const isActive = isTypeFilter ? activeTypeFilter === id : activeCategory === id;
         const count = sidebarCount(id);
 
         return (
             <button
                 key={id}
                 onClick={() => {
-                    if (['all', 'starred', 'pinned', 'archived'].includes(id)) {
-                        setActiveCategory(id);
-                        setActiveTypeFilter('all_types');
-                    } else if (Object.keys(TYPE_LABELS).includes(id)) {
+                    if (isTypeFilter) {
                         setActiveTypeFilter(id);
-                        setActiveCategory('all');
                     } else {
                         setActiveCategory(id);
-                        setActiveTypeFilter('all_types');
                     }
                 }}
                 className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all ${

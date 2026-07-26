@@ -16,6 +16,7 @@ import { StarredPinnedBar } from './StarredPinnedBar';
 import { UnifiedItem } from '../types';
 import SeedArchitect from './SeedArchitect';
 import SignalCompressionArchitect from './SignalCompressionArchitect';
+import { getDeepSearchText } from '../utils/search';
 
 interface SignalExtractorProps {
     onTransfer: (config: PromptConfig) => void;
@@ -448,7 +449,7 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {savedSignals
-                            .filter(s => !s.isArchived && !s.isStarred && !s.isPinned && s.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                            .filter(s => !s.isArchived && !s.isStarred && !s.isPinned && (s.name.toLowerCase().includes(searchTerm.toLowerCase()) || getDeepSearchText(s).includes(searchTerm.toLowerCase())))
                             .map(s => (
                                 <LibraryItem
                                     key={s.id}

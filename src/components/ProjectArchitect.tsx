@@ -17,6 +17,7 @@ import LibraryItem from './LibraryItem';
 import Toast from './Toast';
 import { StarredPinnedBar } from './StarredPinnedBar';
 import { UnifiedItem } from '../types';
+import { getDeepSearchText } from '../utils/search';
 
 type Tab = 'architect' | 'roadmap' | 'agentJob';
 
@@ -578,7 +579,7 @@ const ProjectArchitect: React.FC = () => {
                 </div>
                 <div className="space-y-4">
                     {savedProjects
-                        .filter(p => !p.isArchived && !p.isStarred && !p.isPinned && p.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                        .filter(p => !p.isArchived && !p.isStarred && !p.isPinned && (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || getDeepSearchText(p).includes(searchTerm.toLowerCase())))
                         .map(project => (
                             <LibraryItem
                                 key={project.id}
@@ -595,7 +596,7 @@ const ProjectArchitect: React.FC = () => {
                                 onClick={() => handleLoadSavedProject(project)}
                             />
                         ))}
-                    {(savedProjects.filter(p => !p.isArchived && !p.isStarred && !p.isPinned && p.name.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && searchTerm) && (
+                    {(savedProjects.filter(p => !p.isArchived && !p.isStarred && !p.isPinned && (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || getDeepSearchText(p).includes(searchTerm.toLowerCase()))).length === 0 && searchTerm) && (
                         <div className="py-8 text-center text-gray-400 dark:text-gray-500">
                             <span className="material-icons text-4xl mb-2">search_off</span>
                             <p>No projects match your search</p>

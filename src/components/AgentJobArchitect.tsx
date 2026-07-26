@@ -7,6 +7,7 @@ import { AgentJobConfig, GeneratedAgentJobFile, SavedAgentJob } from '../types';
 import { UnifiedItem } from '../types';
 import * as db from '../services/dbService';
 import { sanitizeFilename } from '../utils/security';
+import { getDeepSearchText } from '../utils/search';
 import LoadingSpinner from './LoadingSpinner';
 import Modal from './Modal';
 import PreviewModal from './PreviewModal';
@@ -577,7 +578,7 @@ const AgentJobArchitect: React.FC = () => {
 
           <div className="space-y-4">
             {savedAgentJobs
-              .filter(j => !j.isArchived && !j.isStarred && !j.isPinned && j.name.toLowerCase().includes(searchTerm.toLowerCase()))
+              .filter(j => !j.isArchived && !j.isStarred && !j.isPinned && (j.name.toLowerCase().includes(searchTerm.toLowerCase()) || getDeepSearchText(j).includes(searchTerm.toLowerCase())))
               .map(job => (
                 <LibraryItem
                   key={job.id}
@@ -593,7 +594,7 @@ const AgentJobArchitect: React.FC = () => {
                   onClick={() => handleLoadSaved(job)}
                 />
               ))}
-            {savedAgentJobs.filter(j => !j.isArchived && !j.isStarred && !j.isPinned && j.name.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && searchTerm && (
+            {savedAgentJobs.filter(j => !j.isArchived && !j.isStarred && !j.isPinned && (j.name.toLowerCase().includes(searchTerm.toLowerCase()) || getDeepSearchText(j).includes(searchTerm.toLowerCase()))).length === 0 && searchTerm && (
               <div className="py-8 text-center text-gray-400 dark:text-gray-500">
                 <span className="material-icons text-4xl mb-2">search_off</span>
                 <p>No agent jobs match your search</p>

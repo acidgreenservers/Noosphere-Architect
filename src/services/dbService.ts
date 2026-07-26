@@ -549,9 +549,9 @@ export const saveDraft = (draft: {id: number, config: AgentConfig}): Promise<num
 };
 
 // Synthesis Functions
-export const addSynthesis = (synthesis: SavedSynthesis): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(SYNTHESIS_STORE, 'readwrite');
+export const addSynthesis = async (synthesis: SavedSynthesis): Promise<number> => {
+    const store = await getStore(SYNTHESIS_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.add(encryptSynthesis(synthesis));
         request.onsuccess = () => {
             const id = request.result as number;
@@ -563,9 +563,9 @@ export const addSynthesis = (synthesis: SavedSynthesis): Promise<number> => {
     });
 };
 
-export const getAllSynthesis = (): Promise<SavedSynthesis[]> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(SYNTHESIS_STORE, 'readonly');
+export const getAllSynthesis = async (): Promise<SavedSynthesis[]> => {
+    const store = await getStore(SYNTHESIS_STORE, 'readonly');
+    return new Promise((resolve, reject) => {
         const request = store.getAll();
         request.onsuccess = () => {
             const results = (request.result as any[]).map(decryptSynthesis);
@@ -575,9 +575,9 @@ export const getAllSynthesis = (): Promise<SavedSynthesis[]> => {
     });
 };
 
-export const updateSynthesis = (synthesis: SavedSynthesis): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(SYNTHESIS_STORE, 'readwrite');
+export const updateSynthesis = async (synthesis: SavedSynthesis): Promise<number> => {
+    const store = await getStore(SYNTHESIS_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.put(encryptSynthesis(synthesis));
         request.onsuccess = () => {
             const id = request.result as number;
@@ -589,18 +589,18 @@ export const updateSynthesis = (synthesis: SavedSynthesis): Promise<number> => {
     });
 };
 
-export const deleteSynthesis = (id: number): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(SYNTHESIS_STORE, 'readwrite');
+export const deleteSynthesis = async (id: number): Promise<void> => {
+    const store = await getStore(SYNTHESIS_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.delete(id);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
     });
 };
 
-export const clearAllSynthesis = (): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(SYNTHESIS_STORE, 'readwrite');
+export const clearAllSynthesis = async (): Promise<void> => {
+    const store = await getStore(SYNTHESIS_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.clear();
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
@@ -721,9 +721,9 @@ export const clearAllTypedPrompts = (type: PromptType): Promise<void> => {
     });
 };
 
-export const getMindSeedDraft = (id: number): Promise<{id: number, config: MindSeedConfig} | undefined> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(MINDSEED_DRAFT_STORE, 'readonly');
+export const getMindSeedDraft = async (id: number): Promise<{id: number, config: MindSeedConfig} | undefined> => {
+    const store = await getStore(MINDSEED_DRAFT_STORE, 'readonly');
+    return new Promise((resolve, reject) => {
         const request = store.get(id);
         request.onsuccess = () => {
             if (!request.result) return resolve(undefined);
@@ -733,9 +733,9 @@ export const getMindSeedDraft = (id: number): Promise<{id: number, config: MindS
     });
 };
 
-export const clearMindSeedDraft = (id: number): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(MINDSEED_DRAFT_STORE, 'readwrite');
+export const clearMindSeedDraft = async (id: number): Promise<void> => {
+    const store = await getStore(MINDSEED_DRAFT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.delete(id);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
@@ -774,27 +774,27 @@ export const addMindSeed = (mindSeed: SavedMindSeed): Promise<number> => {
 // Custom Context Functions
 export type ContextStoreName = 'agentContext' | 'mindSeedContext' | 'signalContext' | 'promptContext' | 'systemPromptContext' | 'projectContext' | 'compressedSignalContext';
 
-export const saveCustomContext = (storeName: ContextStoreName, context: string): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(storeName, 'readwrite');
+export const saveCustomContext = async (storeName: ContextStoreName, context: string): Promise<void> => {
+    const store = await getStore(storeName, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.put({ id: 'current', context: encryptField(context) });
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
     });
 };
 
-export const getCustomContext = (storeName: ContextStoreName): Promise<string | undefined> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(storeName, 'readonly');
+export const getCustomContext = async (storeName: ContextStoreName): Promise<string | undefined> => {
+    const store = await getStore(storeName, 'readonly');
+    return new Promise((resolve, reject) => {
         const request = store.get('current');
         request.onsuccess = () => resolve(decryptField(request.result?.context));
         request.onerror = () => reject(request.error);
     });
 };
 
-export const deleteCustomContext = (storeName: ContextStoreName): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(storeName, 'readwrite');
+export const deleteCustomContext = async (storeName: ContextStoreName): Promise<void> => {
+    const store = await getStore(storeName, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.delete('current');
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
@@ -865,9 +865,9 @@ export const clearAllMindSeeds = (type: MindSeedType): Promise<void> => {
     });
 };
 
-export const getDraft = (id: number): Promise<{id: number, config: AgentConfig} | undefined> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(AGENT_DRAFT_STORE, 'readonly');
+export const getDraft = async (id: number): Promise<{id: number, config: AgentConfig} | undefined> => {
+    const store = await getStore(AGENT_DRAFT_STORE, 'readonly');
+    return new Promise((resolve, reject) => {
         const request = store.get(id);
         request.onsuccess = () => {
             if (!request.result) return resolve(undefined);
@@ -877,9 +877,9 @@ export const getDraft = (id: number): Promise<{id: number, config: AgentConfig} 
     });
 };
 
-export const clearDraft = (id: number): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(AGENT_DRAFT_STORE, 'readwrite');
+export const clearDraft = async (id: number): Promise<void> => {
+    const store = await getStore(AGENT_DRAFT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.delete(id);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
@@ -897,9 +897,9 @@ export const savePromptDraft = (draft: {id: number, config: PromptConfig}): Prom
     });
 };
 
-export const getPromptDraft = (id: number): Promise<{id: number, config: PromptConfig} | undefined> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(PROMPT_DRAFT_STORE, 'readonly');
+export const getPromptDraft = async (id: number): Promise<{id: number, config: PromptConfig} | undefined> => {
+    const store = await getStore(PROMPT_DRAFT_STORE, 'readonly');
+    return new Promise((resolve, reject) => {
         const request = store.get(id);
         request.onsuccess = () => {
             if (!request.result) return resolve(undefined);
@@ -909,9 +909,9 @@ export const getPromptDraft = (id: number): Promise<{id: number, config: PromptC
     });
 };
 
-export const clearPromptDraft = (id: number): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(PROMPT_DRAFT_STORE, 'readwrite');
+export const clearPromptDraft = async (id: number): Promise<void> => {
+    const store = await getStore(PROMPT_DRAFT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.delete(id);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
@@ -929,9 +929,9 @@ export const saveProjectDraft = (draft: {id: number, config: ProjectConfig}): Pr
     });
 };
 
-export const getProjectDraft = (id: number): Promise<{id: number, config: ProjectConfig} | undefined> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(PROJECT_DRAFT_STORE, 'readonly');
+export const getProjectDraft = async (id: number): Promise<{id: number, config: ProjectConfig} | undefined> => {
+    const store = await getStore(PROJECT_DRAFT_STORE, 'readonly');
+    return new Promise((resolve, reject) => {
         const request = store.get(id);
         request.onsuccess = () => {
             if (!request.result) return resolve(undefined);
@@ -941,9 +941,9 @@ export const getProjectDraft = (id: number): Promise<{id: number, config: Projec
     });
 };
 
-export const clearProjectDraft = (id: number): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(PROJECT_DRAFT_STORE, 'readwrite');
+export const clearProjectDraft = async (id: number): Promise<void> => {
+    const store = await getStore(PROJECT_DRAFT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.delete(id);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
@@ -961,9 +961,9 @@ export const saveSignalDraft = (draft: {id: number, config: SignalConfig}): Prom
     });
 };
 
-export const getSignalDraft = (id: number): Promise<{id: number, config: SignalConfig} | undefined> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(SIGNAL_DRAFT_STORE, 'readonly');
+export const getSignalDraft = async (id: number): Promise<{id: number, config: SignalConfig} | undefined> => {
+    const store = await getStore(SIGNAL_DRAFT_STORE, 'readonly');
+    return new Promise((resolve, reject) => {
         const request = store.get(id);
         request.onsuccess = () => {
             if (!request.result) return resolve(undefined);
@@ -973,9 +973,9 @@ export const getSignalDraft = (id: number): Promise<{id: number, config: SignalC
     });
 };
 
-export const clearSignalDraft = (id: number): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(SIGNAL_DRAFT_STORE, 'readwrite');
+export const clearSignalDraft = async (id: number): Promise<void> => {
+    const store = await getStore(SIGNAL_DRAFT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.delete(id);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
@@ -984,9 +984,9 @@ export const clearSignalDraft = (id: number): Promise<void> => {
 
 
 // Agent Functions
-export const addAgent = (agent: SavedAgent): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(AGENT_STORE, 'readwrite');
+export const addAgent = async (agent: SavedAgent): Promise<number> => {
+    const store = await getStore(AGENT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.add(encryptAgent(agent));
         request.onsuccess = () => {
             const id = request.result as number;
@@ -999,9 +999,9 @@ export const addAgent = (agent: SavedAgent): Promise<number> => {
 };
 
 // Signal Functions
-export const addSignal = (signal: SavedSignal): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(SIGNAL_STORE, 'readwrite');
+export const addSignal = async (signal: SavedSignal): Promise<number> => {
+    const store = await getStore(SIGNAL_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.add(encryptSignal(signal));
         request.onsuccess = () => {
             const id = request.result as number;
@@ -1013,9 +1013,9 @@ export const addSignal = (signal: SavedSignal): Promise<number> => {
     });
 };
 
-export const getAllSignals = (): Promise<SavedSignal[]> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(SIGNAL_STORE, 'readonly');
+export const getAllSignals = async (): Promise<SavedSignal[]> => {
+    const store = await getStore(SIGNAL_STORE, 'readonly');
+    return new Promise((resolve, reject) => {
         const request = store.getAll();
         request.onsuccess = () => {
             const results = (request.result as any[]).map(decryptSignal);
@@ -1025,9 +1025,9 @@ export const getAllSignals = (): Promise<SavedSignal[]> => {
     });
 };
 
-export const updateSignal = (signal: SavedSignal): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(SIGNAL_STORE, 'readwrite');
+export const updateSignal = async (signal: SavedSignal): Promise<number> => {
+    const store = await getStore(SIGNAL_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.put(encryptSignal(signal));
         request.onsuccess = () => {
             const id = request.result as number;
@@ -1039,27 +1039,27 @@ export const updateSignal = (signal: SavedSignal): Promise<number> => {
     });
 };
 
-export const deleteSignal = (id: number): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(SIGNAL_STORE, 'readwrite');
+export const deleteSignal = async (id: number): Promise<void> => {
+    const store = await getStore(SIGNAL_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.delete(id);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
     });
 };
 
-export const clearAllSignals = (): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(SIGNAL_STORE, 'readwrite');
+export const clearAllSignals = async (): Promise<void> => {
+    const store = await getStore(SIGNAL_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.clear();
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
     });
 };
 
-export const getAllAgents = (): Promise<SavedAgent[]> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(AGENT_STORE, 'readonly');
+export const getAllAgents = async (): Promise<SavedAgent[]> => {
+    const store = await getStore(AGENT_STORE, 'readonly');
+    return new Promise((resolve, reject) => {
         const request = store.getAll();
         request.onsuccess = () => {
             const results = (request.result as any[]).map(decryptAgent);
@@ -1069,9 +1069,9 @@ export const getAllAgents = (): Promise<SavedAgent[]> => {
     });
 };
 
-export const updateAgent = (agent: SavedAgent): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(AGENT_STORE, 'readwrite');
+export const updateAgent = async (agent: SavedAgent): Promise<number> => {
+    const store = await getStore(AGENT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.put(encryptAgent(agent));
         request.onsuccess = () => {
             const id = request.result as number;
@@ -1083,18 +1083,18 @@ export const updateAgent = (agent: SavedAgent): Promise<number> => {
     });
 };
 
-export const deleteAgent = (id: number): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(AGENT_STORE, 'readwrite');
+export const deleteAgent = async (id: number): Promise<void> => {
+    const store = await getStore(AGENT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.delete(id);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
     });
 };
 
-export const clearAllAgents = (): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(AGENT_STORE, 'readwrite');
+export const clearAllAgents = async (): Promise<void> => {
+    const store = await getStore(AGENT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.clear();
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
@@ -1103,9 +1103,9 @@ export const clearAllAgents = (): Promise<void> => {
 
 
 // Prompt Functions
-export const addPrompt = (prompt: SavedPrompt): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(PROMPT_STORE, 'readwrite');
+export const addPrompt = async (prompt: SavedPrompt): Promise<number> => {
+    const store = await getStore(PROMPT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.add(encryptPrompt(prompt));
         request.onsuccess = () => {
             const id = request.result as number;
@@ -1117,9 +1117,9 @@ export const addPrompt = (prompt: SavedPrompt): Promise<number> => {
     });
 };
 
-export const getAllPrompts = (): Promise<SavedPrompt[]> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(PROMPT_STORE, 'readonly');
+export const getAllPrompts = async (): Promise<SavedPrompt[]> => {
+    const store = await getStore(PROMPT_STORE, 'readonly');
+    return new Promise((resolve, reject) => {
         const request = store.getAll();
         request.onsuccess = () => {
             const results = (request.result as any[]).map(decryptPrompt);
@@ -1129,9 +1129,9 @@ export const getAllPrompts = (): Promise<SavedPrompt[]> => {
     });
 };
 
-export const updatePrompt = (prompt: SavedPrompt): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(PROMPT_STORE, 'readwrite');
+export const updatePrompt = async (prompt: SavedPrompt): Promise<number> => {
+    const store = await getStore(PROMPT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.put(encryptPrompt(prompt));
         request.onsuccess = () => {
             const id = request.result as number;
@@ -1143,18 +1143,18 @@ export const updatePrompt = (prompt: SavedPrompt): Promise<number> => {
     });
 };
 
-export const deletePrompt = (id: number): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(PROMPT_STORE, 'readwrite');
+export const deletePrompt = async (id: number): Promise<void> => {
+    const store = await getStore(PROMPT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.delete(id);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
     });
 };
 
-export const clearAllPrompts = (): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(PROMPT_STORE, 'readwrite');
+export const clearAllPrompts = async (): Promise<void> => {
+    const store = await getStore(PROMPT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.clear();
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
@@ -1162,9 +1162,9 @@ export const clearAllPrompts = (): Promise<void> => {
 };
 
 // Project Functions
-export const addProject = (project: SavedProject): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(PROJECT_STORE, 'readwrite');
+export const addProject = async (project: SavedProject): Promise<number> => {
+    const store = await getStore(PROJECT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.add(encryptProject(project));
         request.onsuccess = () => {
             const id = request.result as number;
@@ -1176,9 +1176,9 @@ export const addProject = (project: SavedProject): Promise<number> => {
     });
 };
 
-export const getAllProjects = (): Promise<SavedProject[]> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(PROJECT_STORE, 'readonly');
+export const getAllProjects = async (): Promise<SavedProject[]> => {
+    const store = await getStore(PROJECT_STORE, 'readonly');
+    return new Promise((resolve, reject) => {
         const request = store.getAll();
         request.onsuccess = () => {
             const results = (request.result as any[]).map(decryptProject);
@@ -1188,9 +1188,9 @@ export const getAllProjects = (): Promise<SavedProject[]> => {
     });
 };
 
-export const updateProject = (project: SavedProject): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(PROJECT_STORE, 'readwrite');
+export const updateProject = async (project: SavedProject): Promise<number> => {
+    const store = await getStore(PROJECT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.put(encryptProject(project));
         request.onsuccess = () => {
             const id = request.result as number;
@@ -1202,18 +1202,18 @@ export const updateProject = (project: SavedProject): Promise<number> => {
     });
 };
 
-export const deleteProject = (id: number): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(PROJECT_STORE, 'readwrite');
+export const deleteProject = async (id: number): Promise<void> => {
+    const store = await getStore(PROJECT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.delete(id);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
     });
 };
 
-export const clearAllProjects = (): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(PROJECT_STORE, 'readwrite');
+export const clearAllProjects = async (): Promise<void> => {
+    const store = await getStore(PROJECT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.clear();
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
@@ -1221,9 +1221,9 @@ export const clearAllProjects = (): Promise<void> => {
 };
 
 // Compressed Signal Functions
-export const addCompressedSignal = (signal: SavedCompressedSignal): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(COMPRESSED_SIGNAL_STORE, 'readwrite');
+export const addCompressedSignal = async (signal: SavedCompressedSignal): Promise<number> => {
+    const store = await getStore(COMPRESSED_SIGNAL_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.add(encryptCompressedSignal(signal));
         request.onsuccess = () => {
             const id = request.result as number;
@@ -1235,9 +1235,9 @@ export const addCompressedSignal = (signal: SavedCompressedSignal): Promise<numb
     });
 };
 
-export const getAllCompressedSignals = (): Promise<SavedCompressedSignal[]> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(COMPRESSED_SIGNAL_STORE, 'readonly');
+export const getAllCompressedSignals = async (): Promise<SavedCompressedSignal[]> => {
+    const store = await getStore(COMPRESSED_SIGNAL_STORE, 'readonly');
+    return new Promise((resolve, reject) => {
         const request = store.getAll();
         request.onsuccess = () => {
             const results = (request.result as any[]).map(decryptCompressedSignal);
@@ -1247,9 +1247,9 @@ export const getAllCompressedSignals = (): Promise<SavedCompressedSignal[]> => {
     });
 };
 
-export const updateCompressedSignal = (signal: SavedCompressedSignal): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(COMPRESSED_SIGNAL_STORE, 'readwrite');
+export const updateCompressedSignal = async (signal: SavedCompressedSignal): Promise<number> => {
+    const store = await getStore(COMPRESSED_SIGNAL_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.put(encryptCompressedSignal(signal));
         request.onsuccess = () => {
             const id = request.result as number;
@@ -1261,18 +1261,18 @@ export const updateCompressedSignal = (signal: SavedCompressedSignal): Promise<n
     });
 };
 
-export const deleteCompressedSignal = (id: number): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(COMPRESSED_SIGNAL_STORE, 'readwrite');
+export const deleteCompressedSignal = async (id: number): Promise<void> => {
+    const store = await getStore(COMPRESSED_SIGNAL_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.delete(id);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
     });
 };
 
-export const clearAllCompressedSignals = (): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(COMPRESSED_SIGNAL_STORE, 'readwrite');
+export const clearAllCompressedSignals = async (): Promise<void> => {
+    const store = await getStore(COMPRESSED_SIGNAL_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.clear();
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
@@ -1289,9 +1289,9 @@ export const saveCompressedSignalDraft = (draft: {id: number, config: Compressio
     });
 };
 
-export const getCompressedSignalDraft = (id: number): Promise<{id: number, config: CompressionConfig} | undefined> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(COMPRESSED_SIGNAL_DRAFT_STORE, 'readonly');
+export const getCompressedSignalDraft = async (id: number): Promise<{id: number, config: CompressionConfig} | undefined> => {
+    const store = await getStore(COMPRESSED_SIGNAL_DRAFT_STORE, 'readonly');
+    return new Promise((resolve, reject) => {
         const request = store.get(id);
         request.onsuccess = () => {
             if (!request.result) return resolve(undefined);
@@ -1301,9 +1301,9 @@ export const getCompressedSignalDraft = (id: number): Promise<{id: number, confi
     });
 };
 
-export const clearCompressedSignalDraft = (id: number): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(COMPRESSED_SIGNAL_DRAFT_STORE, 'readwrite');
+export const clearCompressedSignalDraft = async (id: number): Promise<void> => {
+    const store = await getStore(COMPRESSED_SIGNAL_DRAFT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.delete(id);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
@@ -1311,9 +1311,9 @@ export const clearCompressedSignalDraft = (id: number): Promise<void> => {
 };
 
 // Roadmap Functions
-export const addRoadmap = (roadmap: SavedRoadmap): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(ROADMAP_STORE, 'readwrite');
+export const addRoadmap = async (roadmap: SavedRoadmap): Promise<number> => {
+    const store = await getStore(ROADMAP_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.add(encryptRoadmap(roadmap));
         request.onsuccess = () => {
             const id = request.result as number;
@@ -1325,9 +1325,9 @@ export const addRoadmap = (roadmap: SavedRoadmap): Promise<number> => {
     });
 };
 
-export const getAllRoadmaps = (): Promise<SavedRoadmap[]> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(ROADMAP_STORE, 'readonly');
+export const getAllRoadmaps = async (): Promise<SavedRoadmap[]> => {
+    const store = await getStore(ROADMAP_STORE, 'readonly');
+    return new Promise((resolve, reject) => {
         const request = store.getAll();
         request.onsuccess = () => {
             const results = (request.result as any[]).map(decryptRoadmap);
@@ -1337,9 +1337,9 @@ export const getAllRoadmaps = (): Promise<SavedRoadmap[]> => {
     });
 };
 
-export const updateRoadmap = (roadmap: SavedRoadmap): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(ROADMAP_STORE, 'readwrite');
+export const updateRoadmap = async (roadmap: SavedRoadmap): Promise<number> => {
+    const store = await getStore(ROADMAP_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.put(encryptRoadmap(roadmap));
         request.onsuccess = () => {
             const id = request.result as number;
@@ -1351,18 +1351,18 @@ export const updateRoadmap = (roadmap: SavedRoadmap): Promise<number> => {
     });
 };
 
-export const deleteRoadmap = (id: number): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(ROADMAP_STORE, 'readwrite');
+export const deleteRoadmap = async (id: number): Promise<void> => {
+    const store = await getStore(ROADMAP_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.delete(id);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
     });
 };
 
-export const clearAllRoadmaps = (): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(ROADMAP_STORE, 'readwrite');
+export const clearAllRoadmaps = async (): Promise<void> => {
+    const store = await getStore(ROADMAP_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.clear();
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
@@ -1379,9 +1379,9 @@ export const saveRoadmapDraft = (draft: {id: number, config: RoadmapConfig}): Pr
     });
 };
 
-export const getRoadmapDraft = (id: number): Promise<{id: number, config: RoadmapConfig} | undefined> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(ROADMAP_DRAFT_STORE, 'readonly');
+export const getRoadmapDraft = async (id: number): Promise<{id: number, config: RoadmapConfig} | undefined> => {
+    const store = await getStore(ROADMAP_DRAFT_STORE, 'readonly');
+    return new Promise((resolve, reject) => {
         const request = store.get(id);
         request.onsuccess = () => {
             if (!request.result) return resolve(undefined);
@@ -1391,9 +1391,9 @@ export const getRoadmapDraft = (id: number): Promise<{id: number, config: Roadma
     });
 };
 
-export const clearRoadmapDraft = (id: number): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(ROADMAP_DRAFT_STORE, 'readwrite');
+export const clearRoadmapDraft = async (id: number): Promise<void> => {
+    const store = await getStore(ROADMAP_DRAFT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.delete(id);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
@@ -1401,9 +1401,9 @@ export const clearRoadmapDraft = (id: number): Promise<void> => {
 };
 
 // Agent Job Functions
-export const addAgentJob = (job: SavedAgentJob): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(AGENT_JOB_STORE, 'readwrite');
+export const addAgentJob = async (job: SavedAgentJob): Promise<number> => {
+    const store = await getStore(AGENT_JOB_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.add(encryptAgentJob(job));
         request.onsuccess = () => {
             const id = request.result as number;
@@ -1415,9 +1415,9 @@ export const addAgentJob = (job: SavedAgentJob): Promise<number> => {
     });
 };
 
-export const getAllAgentJobs = (): Promise<SavedAgentJob[]> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(AGENT_JOB_STORE, 'readonly');
+export const getAllAgentJobs = async (): Promise<SavedAgentJob[]> => {
+    const store = await getStore(AGENT_JOB_STORE, 'readonly');
+    return new Promise((resolve, reject) => {
         const request = store.getAll();
         request.onsuccess = () => {
             const results = (request.result as any[]).map(decryptAgentJob);
@@ -1427,9 +1427,9 @@ export const getAllAgentJobs = (): Promise<SavedAgentJob[]> => {
     });
 };
 
-export const updateAgentJob = (job: SavedAgentJob): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(AGENT_JOB_STORE, 'readwrite');
+export const updateAgentJob = async (job: SavedAgentJob): Promise<number> => {
+    const store = await getStore(AGENT_JOB_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.put(encryptAgentJob(job));
         request.onsuccess = () => {
             const id = request.result as number;
@@ -1441,18 +1441,18 @@ export const updateAgentJob = (job: SavedAgentJob): Promise<number> => {
     });
 };
 
-export const deleteAgentJob = (id: number): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(AGENT_JOB_STORE, 'readwrite');
+export const deleteAgentJob = async (id: number): Promise<void> => {
+    const store = await getStore(AGENT_JOB_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.delete(id);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
     });
 };
 
-export const clearAllAgentJobs = (): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(AGENT_JOB_STORE, 'readwrite');
+export const clearAllAgentJobs = async (): Promise<void> => {
+    const store = await getStore(AGENT_JOB_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.clear();
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
@@ -1460,9 +1460,9 @@ export const clearAllAgentJobs = (): Promise<void> => {
 };
 
 // Seed Architect Functions
-export const addSeed = (seed: SavedSeed): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(SEED_STORE, 'readwrite');
+export const addSeed = async (seed: SavedSeed): Promise<number> => {
+    const store = await getStore(SEED_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.add(encryptSeed(seed));
         request.onsuccess = () => {
             const id = request.result as number;
@@ -1474,9 +1474,9 @@ export const addSeed = (seed: SavedSeed): Promise<number> => {
     });
 };
 
-export const getAllSeeds = (): Promise<SavedSeed[]> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(SEED_STORE, 'readonly');
+export const getAllSeeds = async (): Promise<SavedSeed[]> => {
+    const store = await getStore(SEED_STORE, 'readonly');
+    return new Promise((resolve, reject) => {
         const request = store.getAll();
         request.onsuccess = () => {
             const results = (request.result as any[]).map(decryptSeed);
@@ -1486,9 +1486,9 @@ export const getAllSeeds = (): Promise<SavedSeed[]> => {
     });
 };
 
-export const updateSeed = (seed: SavedSeed): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(SEED_STORE, 'readwrite');
+export const updateSeed = async (seed: SavedSeed): Promise<number> => {
+    const store = await getStore(SEED_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.put(encryptSeed(seed));
         request.onsuccess = () => {
             const id = request.result as number;
@@ -1500,18 +1500,18 @@ export const updateSeed = (seed: SavedSeed): Promise<number> => {
     });
 };
 
-export const deleteSeed = (id: number): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(SEED_STORE, 'readwrite');
+export const deleteSeed = async (id: number): Promise<void> => {
+    const store = await getStore(SEED_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.delete(id);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
     });
 };
 
-export const clearAllSeeds = (): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(SEED_STORE, 'readwrite');
+export const clearAllSeeds = async (): Promise<void> => {
+    const store = await getStore(SEED_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.clear();
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
@@ -1519,18 +1519,18 @@ export const clearAllSeeds = (): Promise<void> => {
 };
 
 // Seed Temp Store Functions
-export const addSeedTempResponse = (text: string): Promise<number> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(SEED_TEMP_STORE, 'readwrite');
+export const addSeedTempResponse = async (text: string): Promise<number> => {
+    const store = await getStore(SEED_TEMP_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.add({ text: encryptField(text) });
         request.onsuccess = () => resolve(request.result as number);
         request.onerror = () => reject(request.error);
     });
 };
 
-export const getAllSeedTempResponses = (): Promise<string[]> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(SEED_TEMP_STORE, 'readonly');
+export const getAllSeedTempResponses = async (): Promise<string[]> => {
+    const store = await getStore(SEED_TEMP_STORE, 'readonly');
+    return new Promise((resolve, reject) => {
         const request = store.getAll();
         request.onsuccess = () => {
             const results = (request.result as any[]).map(item => decryptField(item.text));
@@ -1540,9 +1540,9 @@ export const getAllSeedTempResponses = (): Promise<string[]> => {
     });
 };
 
-export const clearSeedTempResponses = (): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(SEED_TEMP_STORE, 'readwrite');
+export const clearSeedTempResponses = async (): Promise<void> => {
+    const store = await getStore(SEED_TEMP_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.clear();
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
@@ -1559,9 +1559,9 @@ export const saveSeedDraft = (draft: {id: number, config: SeedConfig}): Promise<
     });
 };
 
-export const getSeedDraft = (id: number): Promise<{id: number, config: SeedConfig} | undefined> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(SEED_DRAFT_STORE, 'readonly');
+export const getSeedDraft = async (id: number): Promise<{id: number, config: SeedConfig} | undefined> => {
+    const store = await getStore(SEED_DRAFT_STORE, 'readonly');
+    return new Promise((resolve, reject) => {
         const request = store.get(id);
         request.onsuccess = () => {
             if (!request.result) return resolve(undefined);
@@ -1571,9 +1571,9 @@ export const getSeedDraft = (id: number): Promise<{id: number, config: SeedConfi
     });
 };
 
-export const clearSeedDraft = (id: number): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(SEED_DRAFT_STORE, 'readwrite');
+export const clearSeedDraft = async (id: number): Promise<void> => {
+    const store = await getStore(SEED_DRAFT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.delete(id);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
@@ -1601,20 +1601,20 @@ export const getAllUnifiedItems = async (): Promise<UnifiedItem[]> => {
         signals, syntheses, roadmaps, agentJobs,
         seedArchitects, compressedSignals
     ] = await Promise.all([
-        getAllAgents(),
-        getAllPrompts(),
-        getAllTypedPrompts('standard'),
-        getAllTypedPrompts('system'),
-        getAllProjects(),
-        getAllMindSeeds('cogni'),
-        getAllMindSeeds('lingua'),
-        getAllMindSeeds('arch'),
-        getAllSignals(),
-        getAllSynthesis(),
-        getAllRoadmaps(),
-        getAllAgentJobs(),
-        getAllSeeds(),
-        getAllCompressedSignals()
+        getAllAgents().catch(() => []),
+        getAllPrompts().catch(() => []),
+        getAllTypedPrompts('standard').catch(() => []),
+        getAllTypedPrompts('system').catch(() => []),
+        getAllProjects().catch(() => []),
+        getAllMindSeeds('cogni').catch(() => []),
+        getAllMindSeeds('lingua').catch(() => []),
+        getAllMindSeeds('arch').catch(() => []),
+        getAllSignals().catch(() => []),
+        getAllSynthesis().catch(() => []),
+        getAllRoadmaps().catch(() => []),
+        getAllAgentJobs().catch(() => []),
+        getAllSeeds().catch(() => []),
+        getAllCompressedSignals().catch(() => [])
     ]);
 
     const unified: UnifiedItem[] = [
@@ -1690,9 +1690,9 @@ export const saveAgentJobDraft = (draft: {id: number, config: AgentJobConfig}): 
     });
 };
 
-export const getAgentJobDraft = (id: number): Promise<{id: number, config: AgentJobConfig} | undefined> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(AGENT_JOB_DRAFT_STORE, 'readonly');
+export const getAgentJobDraft = async (id: number): Promise<{id: number, config: AgentJobConfig} | undefined> => {
+    const store = await getStore(AGENT_JOB_DRAFT_STORE, 'readonly');
+    return new Promise((resolve, reject) => {
         const request = store.get(id);
         request.onsuccess = () => {
             if (!request.result) return resolve(undefined);
@@ -1702,9 +1702,9 @@ export const getAgentJobDraft = (id: number): Promise<{id: number, config: Agent
     });
 };
 
-export const clearAgentJobDraft = (id: number): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        const store = await getStore(AGENT_JOB_DRAFT_STORE, 'readwrite');
+export const clearAgentJobDraft = async (id: number): Promise<void> => {
+    const store = await getStore(AGENT_JOB_DRAFT_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
         const request = store.delete(id);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);

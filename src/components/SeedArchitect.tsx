@@ -476,7 +476,7 @@ const SeedArchitect: React.FC = () => {
 
             <div className="space-y-3">
               {savedSeeds
-                .filter(s => !s.isArchived && !s.isStarred && !s.isPinned && s.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                .filter(s => !s.isArchived && !s.isStarred && !s.isPinned && (s.name.toLowerCase().includes(searchTerm.toLowerCase()) || getDeepSearchText(s).includes(searchTerm.toLowerCase())))
                 .map(seed => (
                   <LibraryItem
                     key={seed.id}
