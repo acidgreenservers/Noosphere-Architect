@@ -53,11 +53,20 @@ const LibraryItem: React.FC<LibraryItemProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`relative bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-100 dark:border-gray-700 overflow-hidden transition-all group ${metadata.isPinned ? 'ring-2 ring-blue-500' : ''} ${metadata.isArchived ? 'opacity-60' : ''}`}
+      className={`relative rounded-xl shadow-md border overflow-hidden transition-all group ${
+        metadata.isPinned ? 'ring-2 ring-blue-500' : ''
+      } ${
+        metadata.isArchived ? 'bg-gray-50 dark:bg-gray-800/80 border-gray-200 dark:border-gray-700 opacity-60' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700'
+      }`}
     >
       {/* Base Content Layer */}
-      <div className="p-4 flex justify-between items-center">
-        <div className="flex-grow cursor-pointer" onClick={onClick}>
+      <div 
+        className="p-4 flex justify-between items-center cursor-pointer select-none" 
+        onClick={onClick}
+        onDoubleClick={(e) => { e.stopPropagation(); onPreview(); }}
+        title="Double click to preview"
+      >
+        <div className="flex-grow">
           <div className="flex items-center gap-2 mb-1">
             {metadata.isPinned && <span className="material-icons text-blue-500 text-xs">push_pin</span>}
             {metadata.isStarred && <span className="material-icons text-amber-500 text-xs">star</span>}

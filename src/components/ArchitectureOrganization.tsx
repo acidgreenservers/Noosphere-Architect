@@ -5,6 +5,7 @@ import {
 } from '../types';
 import * as db from '../services/dbService';
 import LibraryItem from './LibraryItem';
+import LibraryListItem from './LibraryListItem';
 import PreviewModal from './PreviewModal';
 import ExportPopover from './ExportPopover';
 import BatchExportPopover from './BatchExportPopover';
@@ -54,6 +55,7 @@ const ArchitectureOrganization: React.FC = () => {
     const [activeTypeFilter, setActiveTypeFilter] = useState<string>('all_types');
     const [sortField, setSortField] = useState<SortField>('createdAt');
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+    const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isSynthesisMode, setIsSynthesisMode] = useState(false);
     const [previewItem, setPreviewItem] = useState<UnifiedItem | null>(null);
@@ -381,6 +383,25 @@ const ArchitectureOrganization: React.FC = () => {
                             </span>
                         </button>
                     </div>
+                    
+                    {/* View Mode Toggle */}
+                    <div className="flex items-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-1">
+                        <button
+                            onClick={() => setViewMode('list')}
+                            className={`p-1.5 rounded-lg transition-colors flex items-center justify-center ${viewMode === 'list' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                            title="List View"
+                        >
+                            <span className="material-icons text-sm">view_list</span>
+                        </button>
+                        <button
+                            onClick={() => setViewMode('grid')}
+                            className={`p-1.5 rounded-lg transition-colors flex items-center justify-center ${viewMode === 'grid' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                            title="Grid View"
+                        >
+                            <span className="material-icons text-sm">grid_view</span>
+                        </button>
+                    </div>
+
                     <div className="relative w-full md:w-72">
                         <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
                         <input
@@ -483,29 +504,95 @@ const ArchitectureOrganization: React.FC = () => {
                                 </div>
                             </div>
                         )}
-                        <div className="mb-4 text-sm text-gray-500 dark:text-gray-400 px-1">
-                            {filteredAndSortedItems.length} item{filteredAndSortedItems.length !== 1 ? 's' : ''}
-                            {activeTypeFilter !== 'all_types' && ` in ${TYPE_LABELS[activeTypeFilter as UnifiedItem['type']]?.toLowerCase() || activeTypeFilter}`}
-                            {activeCategory !== 'all' && !['starred', 'pinned', 'archived'].includes(activeCategory) && ` in "${activeCategory}"`}
+                        <div className="mb-4 flex flex-col gap-3 px-1">
+                            {/* Active Filters Bar */}
+                            {(activeTypeFilter !== 'all_types' || activeCategory !== 'all' || searchTerm) && (
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mr-1">Active Filters:</span>
+                                    
+                                    {searchTerm && (
+                                        <div className="flex items-center gap-1.5 px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full text-sm font-medium border border-gray-200 dark:border-gray-700">
+                                            <span className="material-icons text-[14px] text-gray-400">search</span>
+                                            "{searchTerm}"
+                                            <button onClick={() => setSearchTerm('')} className="ml-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none">
+                                                <span className="material-icons text-[14px] block">close</span>
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {activeTypeFilter !== 'all_types' && (
+                                        <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium border border-blue-100 dark:border-blue-800/50">
+                                            <span className="material-icons text-[14px]">{TYPE_ICONS[activeTypeFilter as UnifiedItem['type']] || 'category'}</span>
+                                            {TYPE_LABELS[activeTypeFilter as UnifiedItem['type']] || activeTypeFilter}
+                                            <button onClick={() => setActiveTypeFilter('all_types')} className="ml-1 text-blue-400 hover:text-blue-600 dark:hover:text-blue-200 focus:outline-none">
+                                                <span className="material-icons text-[14px] block">close</span>
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {activeCategory !== 'all' && (
+                                        <div className="flex items-center gap-1.5 px-3 py-1 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-sm font-medium border border-purple-100 dark:border-purple-800/50">
+                                            <span className="material-icons text-[14px]">
+                                                {['starred', 'pinned', 'archived'].includes(activeCategory) ? (activeCategory === 'starred' ? 'star' : activeCategory === 'pinned' ? 'push_pin' : 'archive') : 'folder'}
+                                            </span>
+                                            <span className="capitalize">{activeCategory}</span>
+                                            <button onClick={() => setActiveCategory('all')} className="ml-1 text-purple-400 hover:text-purple-600 dark:hover:text-purple-200 focus:outline-none">
+                                                <span className="material-icons text-[14px] block">close</span>
+                                            </button>
+                                        </div>
+                                    )}
+                                    
+                                    <button 
+                                        onClick={() => { setActiveTypeFilter('all_types'); setActiveCategory('all'); setSearchTerm(''); }}
+                                        className="ml-2 text-xs font-bold text-red-500 hover:text-red-700 hover:underline transition-colors"
+                                    >
+                                        Clear All
+                                    </button>
+                                </div>
+                            )}
+                            
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                                {filteredAndSortedItems.length} item{filteredAndSortedItems.length !== 1 ? 's' : ''} found
+                            </div>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 gap-4" : "flex flex-col gap-1"}>
                             {filteredAndSortedItems.map(item => (
                                 <div key={item.id} className="relative">
-                                    <LibraryItem
-                                        name={item.name}
-                                        createdAt={item.createdAt}
-                                        metadata={item}
-                                        typeLabel={item.type.replace('prompt-', '')}
-                                        onPreview={() => setPreviewItem(item)}
-                                        onDelete={() => handleDelete(item)}
-                                        onToggleStar={() => handleToggleMetadata(item, 'isStarred')}
-                                        onTogglePin={() => handleToggleMetadata(item, 'isPinned')}
-                                        onToggleArchive={() => handleToggleMetadata(item, 'isArchived')}
-                                        onExport={() => setExportItem(item)}
-                                        onEdit={() => handleOpenEdit(item)}
-                                        onClick={() => toggleSelection(String(item.id))}
-                                        isSelected={selectedIds.has(String(item.id))}
-                                    />
+                                    {viewMode === 'grid' ? (
+                                        <LibraryItem
+                                            name={item.name}
+                                            createdAt={item.createdAt}
+                                            metadata={item}
+                                            icon={TYPE_ICONS[item.type]}
+                                            typeLabel={item.type.replace('prompt-', '')}
+                                            onPreview={() => setPreviewItem(item)}
+                                            onDelete={() => handleDelete(item)}
+                                            onToggleStar={() => handleToggleMetadata(item, 'isStarred')}
+                                            onTogglePin={() => handleToggleMetadata(item, 'isPinned')}
+                                            onToggleArchive={() => handleToggleMetadata(item, 'isArchived')}
+                                            onExport={() => setExportItem(item)}
+                                            onEdit={() => handleOpenEdit(item)}
+                                            onClick={() => toggleSelection(String(item.id))}
+                                            isSelected={selectedIds.has(String(item.id))}
+                                        />
+                                    ) : (
+                                        <LibraryListItem
+                                            name={item.name}
+                                            createdAt={item.createdAt}
+                                            metadata={item}
+                                            icon={TYPE_ICONS[item.type]}
+                                            typeLabel={item.type.replace('prompt-', '')}
+                                            onPreview={() => setPreviewItem(item)}
+                                            onDelete={() => handleDelete(item)}
+                                            onToggleStar={() => handleToggleMetadata(item, 'isStarred')}
+                                            onTogglePin={() => handleToggleMetadata(item, 'isPinned')}
+                                            onToggleArchive={() => handleToggleMetadata(item, 'isArchived')}
+                                            onExport={() => setExportItem(item)}
+                                            onEdit={() => handleOpenEdit(item)}
+                                            onClick={() => toggleSelection(String(item.id))}
+                                            isSelected={selectedIds.has(String(item.id))}
+                                        />
+                                    )}
                                 </div>
                             ))}
                             {filteredAndSortedItems.length === 0 && (
