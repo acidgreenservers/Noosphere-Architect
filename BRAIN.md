@@ -115,3 +115,19 @@ loop → the store is created but its migrator never enters.
 Ignored this: existing working patterns are not bugs to fix. They're constraints
 to respect. The moment I see "ugly" or "redundant" code that *works*, I've
 already failed - the user's mental model is the ground truth, not my aesthetics.
+
+**An unhandled promise is a silent hanging lock.**
+
+Ignored this: wrapping database fetching logic inside a raw `Promise(async...)` executor without explicit catching → the promise never rejects, the safety net is bypassed, and the UI hangs on a blank screen forever.
+
+**Visual density must match data density.**
+
+Ignored this: forcing an archive of hundreds of records into spacious, large grid cards → scanning becomes impossible, and secondary actions become an operational chore.
+
+**State must be masked locally but exposed globally.**
+
+Ignored this: aggressively filtering out 'archived' statuses at the global library level → the items vanish completely instead of acting as a true historical repository.
+
+**Invisible filters disconnect the mental model.**
+
+Ignored this: a user selects a sidebar category and forgets, but the UI doesn't explicitly scream the active state → the user assumes their saved data has been deleted.
