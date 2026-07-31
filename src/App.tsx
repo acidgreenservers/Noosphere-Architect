@@ -90,7 +90,6 @@ const App: React.FC = () => {
         return (
           <LandingPage
             onSelectView={setView}
-            onIncept={handleIncept}
           />
         );
     }
