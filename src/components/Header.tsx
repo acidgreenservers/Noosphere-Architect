@@ -93,14 +93,14 @@ const Header: React.FC<HeaderProps> = ({
         </div>
 
         <a 
-          href="https://acidgreenservers.github.io/Noosphere-Nexus/" 
+          href="https://acidgreenservers.github.io/Noosphere-Reflect/"
           target="_blank" 
           rel="noopener noreferrer" 
-          className="flex items-center px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-px"
+          className="flex items-center px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-px"
         >
           <span className="material-icons mr-2 text-base">hub</span>
-          <span className="hidden sm:inline">AI Framework Hub</span>
-          <span className="sm:hidden">Frameworks</span>
+          <span className="hidden sm:inline">Context Preservation Hub</span>
+          <span className="sm:hidden">Context</span>
         </a>
       </div>
     </header>
