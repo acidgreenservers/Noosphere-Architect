@@ -82,9 +82,6 @@ const AgentArchitect: React.FC = () => {
 
         const draft = await db.getDraft(1);
         if (draft?.config && Object.values(draft.config).some(v => v)) {
-            // Unsaved drafts are now handled via the shared Modal pattern
-            // but since AgentArchitect already has a draft status logic,
-            // we will keep the pendingDraft state but use a Modal for it.
             setPendingDraft(draft.config);
         } else {
             setDraftStatus('none');
@@ -107,7 +104,6 @@ const AgentArchitect: React.FC = () => {
   }, [agentConfig, draftStatus]);
 
   const handleGenerate = useCallback(async () => {
-    // Cancel any in-flight request
     abortControllerRef.current?.abort();
     const controller = new AbortController();
     abortControllerRef.current = controller;
@@ -130,13 +126,11 @@ const AgentArchitect: React.FC = () => {
         return;
       }
       const result = await generateAgentPersona(agentConfig, controller.signal);
-      // Only update state if this request wasn't superseded
       if (!controller.signal.aborted) {
         setGeneratedPrompt(result);
         await db.clearDraft(1);
       }
     } catch (e: any) {
-      // Silently swallow abort errors
       if (e instanceof AbortError || e?.name === 'AbortError') return;
       setError('Failed to generate agent persona. Please check your API key and try again.');
     } finally {
@@ -149,7 +143,6 @@ const AgentArchitect: React.FC = () => {
     }
   }, [agentConfig]);
 
-  // Abort on unmount
   useEffect(() => {
     return () => {
       abortControllerRef.current?.abort();
@@ -356,9 +349,17 @@ const AgentArchitect: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto animate-fade-in">
       <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8">
+
+      <div className="flex justify-between items-center mb-10">
+          <div>
+              <h2 className="text-3xl font-extrabold text-slate-900 dark:text-slate-100">AI Agent Architect</h2>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Configure specialized reasoning agent structures.</p>
+          </div>
+      </div>
+
+      <div className="bg-transparent mb-12">
         <AgentForm 
           agentConfig={agentConfig} 
           setAgentConfig={setAgentConfig} 
@@ -370,7 +371,7 @@ const AgentArchitect: React.FC = () => {
       </div>
 
       {error && (
-        <div className="mt-8 bg-red-100 dark:bg-red-900/50 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg relative" role="alert">
+        <div className="mt-8 bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 px-5 py-4 rounded-2xl text-sm relative" role="alert">
           <strong className="font-bold">Error: </strong>
           <span className="block sm:inline">{error}</span>
         </div>
@@ -379,61 +380,56 @@ const AgentArchitect: React.FC = () => {
       {isLoading && <LoadingSpinner message={loadingMessage} />}
 
       {generatedPrompt && !isLoading && (
-        <div className="mt-8 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                <div className="flex items-center gap-2 px-6 py-3 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
-                    <span className="material-icons text-blue-500 text-lg">signal_cellular_alt</span>
-                    <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Signal Analysis</h4>
-                </div>
-                <div className="p-6 prose prose-sm dark:prose-invert max-w-none text-gray-600 dark:text-gray-400">
+        <div className="mt-12 space-y-10 animate-fade-in">
+             <div className="space-y-4">
+                <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center">
+                    <span className="material-icons text-sm mr-2 text-blue-500">signal_cellular_alt</span>
+                    Signal Analysis
+                </h4>
+                <div className="prose prose-slate prose-sm dark:prose-invert max-w-none text-slate-600 dark:text-slate-400 leading-relaxed bg-slate-50 dark:bg-slate-900/30 p-5 rounded-2xl border border-slate-100 dark:border-slate-800/50">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{generatedPrompt.signal}</ReactMarkdown>
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-                    <div className="flex items-center gap-2">
-                        <span className="material-icons text-lg text-gray-600 dark:text-gray-400">psychology</span>
-                        <h3 className="text-xl font-semibold">Generated Agent Prompt</h3>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <button onClick={() => { navigator.clipboard.writeText(generatedPrompt.prompt); setSuccessMessage('Prompt copied!'); }} className="flex items-center px-3 py-1.5 border rounded-md text-sm hover:bg-white dark:hover:bg-gray-700 transition-colors">
-                            <span className="material-icons text-base mr-1.5">content_copy</span>Copy
+            <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-slate-200/60 dark:border-slate-800/50 gap-4">
+                    <h3 className="text-xl font-bold">Generated Agent Prompt</h3>
+                    <div className="flex items-center space-x-3">
+                        <button onClick={() => { navigator.clipboard.writeText(generatedPrompt.prompt); setSuccessMessage('Prompt copied!'); }} className="flex items-center px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-900/50 transition duration-200 cursor-pointer">
+                            <span className="material-icons text-base mr-2">content_copy</span>Copy
                         </button>
-                        <button onClick={() => handleExportPrompt(generatedPrompt.prompt, loadedAgentName)} className="flex items-center px-3 py-1.5 border rounded-md text-sm hover:bg-white dark:hover:bg-gray-700 transition-colors">
-                            <span className="material-icons text-base mr-1.5">download</span>Export
+                        <button onClick={() => handleExportPrompt(generatedPrompt.prompt, loadedAgentName)} className="flex items-center px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-900/50 transition duration-200 cursor-pointer">
+                            <span className="material-icons text-base mr-2">download</span>Export
                         </button>
-                        <button onClick={handleOpenSaveModal} className="flex items-center px-3 py-1.5 border rounded-md text-sm bg-blue-500 text-white hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/20">
-                            <span className="material-icons text-base mr-1.5">save</span>Save
+                        <button onClick={handleOpenSaveModal} className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold shadow-md shadow-blue-600/10 transition cursor-pointer">
+                            <span className="material-icons text-base mr-2">save</span>Save
                         </button>
                     </div>
                 </div>
-                <div className="p-6 md:p-10">
-                    <blockquote className="border-l-4 border-blue-500 pl-4 py-2 italic text-lg text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900/40 rounded-r-lg">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{generatedPrompt.prompt}</ReactMarkdown>
-                    </blockquote>
+                <div className="prose prose-slate dark:prose-invert max-w-none py-4 px-2">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{generatedPrompt.prompt}</ReactMarkdown>
                 </div>
             </div>
         </div>
       )}
       
       {savedAgents.length > 0 && (
-        <div className="mt-12">
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">Saved Agents</h2>
-                <div className="flex space-x-2">
-                    <button onClick={handleExportAll} className="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/60 flex items-center">
-                        <span className="material-icons text-sm mr-1">download</span>
+        <div className="mt-20 border-t border-slate-200/60 dark:border-slate-800/50 pt-16">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
+                <h2 className="text-2xl font-extrabold text-slate-800 dark:text-slate-200">Saved Agents</h2>
+                <div className="flex space-x-3">
+                    <button onClick={handleExportAll} className="px-4 py-2 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-500/10 rounded-xl hover:bg-blue-500/15 flex items-center cursor-pointer transition">
+                        <span className="material-icons text-sm mr-2">download</span>
                         Export All
                     </button>
-                    <button onClick={() => setIsClearAllConfirmOpen(true)} className="px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/60 flex items-center">
-                        <span className="material-icons text-sm mr-1">delete_sweep</span>
+                    <button onClick={() => setIsClearAllConfirmOpen(true)} className="px-4 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-500/10 rounded-xl hover:bg-rose-500/15 flex items-center cursor-pointer transition">
+                        <span className="material-icons text-sm mr-2">delete_sweep</span>
                         Clear All
                     </button>
                 </div>
             </div>
 
-            <div className="mb-6 space-y-4">
+            <div className="mb-8 space-y-4">
                 <StarredPinnedBar
                     type="starred"
                     items={unifiedAgents}
@@ -462,15 +458,15 @@ const AgentArchitect: React.FC = () => {
                 />
             </div>
 
-            <div className="mb-4">
+            <div className="mb-6">
                 <div className="relative">
-                    <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+                    <span className="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">search</span>
                     <input
                         type="text"
                         placeholder="Search saved agents..."
                         value={searchTerm}
                         onChange={(e) => setSearchText(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                        className="w-full pl-11 pr-4 py-3 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-blue-500/40 outline-none transition-all text-sm"
                     />
                 </div>
             </div>
@@ -495,9 +491,9 @@ const AgentArchitect: React.FC = () => {
                         />
                     ))}
                 {(savedAgents.filter(a => !a.isArchived && !a.isStarred && !a.isPinned && (a.name.toLowerCase().includes(searchTerm.toLowerCase()) || getDeepSearchText(a).includes(searchTerm.toLowerCase()))).length === 0 && searchTerm) && (
-                    <div className="col-span-full py-12 text-center text-gray-500 dark:text-gray-400">
-                        <span className="material-icons text-4xl mb-2">search_off</span>
-                        <p>No agents match your search</p>
+                    <div className="py-12 text-center text-slate-500">
+                        <span className="material-icons text-4xl mb-2 text-slate-400">search_off</span>
+                        <p className="text-sm">No agents match your search</p>
                     </div>
                 )}
             </div>
@@ -505,15 +501,15 @@ const AgentArchitect: React.FC = () => {
       )}
 
       <Modal isOpen={isTemplateModalOpen} onClose={() => setIsTemplateModalOpen(false)} title="Load an Agent Template">
-          <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar">
               {AGENT_TEMPLATES.map((template) => (
                   <button 
                       key={template.name} 
                       onClick={() => handleLoadTemplate(template)}
-                      className="w-full text-left p-4 rounded-lg bg-gray-50 dark:bg-gray-700 hover:bg-blue-100 dark:hover:bg-blue-900/50 border dark:border-gray-600 transition"
+                      className="w-full text-left p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/30 hover:bg-blue-500/5 hover:border-blue-500/30 border border-slate-100 dark:border-slate-800/80 transition cursor-pointer"
                   >
-                      <h4 className="font-semibold text-gray-800 dark:text-gray-200">{template.name}</h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{template.role}</p>
+                      <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm">{template.name}</h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">{template.role}</p>
                   </button>
               ))}
           </div>
@@ -545,39 +541,39 @@ const AgentArchitect: React.FC = () => {
 
       <Modal isOpen={isClearAllConfirmOpen} onClose={() => setIsClearAllConfirmOpen(false)} title="Confirm Clear All">
           <div className="space-y-4">
-              <p className="text-gray-600 dark:text-gray-400">Are you sure you want to delete ALL saved agents? This action cannot be undone.</p>
-              <div className="flex justify-end space-x-2">
-                  <button onClick={() => setIsClearAllConfirmOpen(false)} className="px-4 py-2 border dark:border-gray-600 rounded-lg transition-colors">Cancel</button>
-                  <button onClick={handleClearAll} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">Clear All</button>
+              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Are you sure you want to delete ALL saved agents? This action cannot be undone.</p>
+              <div className="flex justify-end gap-3 pt-4">
+                  <button onClick={() => setIsClearAllConfirmOpen(false)} className="px-5 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl font-semibold text-xs cursor-pointer">Cancel</button>
+                  <button onClick={handleClearAll} className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs rounded-xl cursor-pointer">Clear All</button>
               </div>
           </div>
       </Modal>
 
       <Modal isOpen={isDeleteConfirmOpen} onClose={() => setIsDeleteConfirmOpen(false)} title="Confirm Deletion">
           <div className="space-y-4">
-              <p className="text-gray-600 dark:text-gray-400">Are you sure you want to delete <strong>{previewAgent?.name}</strong>? This action cannot be undone.</p>
-              <div className="flex justify-end space-x-2">
-                  <button onClick={() => setIsDeleteConfirmOpen(false)} className="px-4 py-2 border dark:border-gray-600 rounded-lg transition-colors">Cancel</button>
-                  <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">Delete</button>
+              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Are you sure you want to delete <strong>{previewAgent?.name}</strong>? This action cannot be undone.</p>
+              <div className="flex justify-end gap-3 pt-4">
+                  <button onClick={() => setIsDeleteConfirmOpen(false)} className="px-5 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl font-semibold text-xs cursor-pointer">Cancel</button>
+                  <button onClick={handleDelete} className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs rounded-xl cursor-pointer">Delete</button>
               </div>
           </div>
       </Modal>
 
       <Modal isOpen={!!pendingDraft} onClose={() => setPendingDraft(null)} title="Unsaved Draft Found">
           <div className="space-y-4">
-              <p className="text-gray-600 dark:text-gray-400">
+              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                   An unsaved agent architect draft was found. Would you like to restore it?
               </p>
-              <div className="flex justify-end space-x-3 mt-6">
+              <div className="flex justify-end gap-3 pt-4">
                   <button
                       onClick={handleDeclineDraft}
-                      className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                      className="px-5 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl font-semibold text-xs cursor-pointer text-slate-600 dark:text-slate-400 hover:bg-slate-100"
                   >
                       Discard
                   </button>
                   <button
                       onClick={handleAcceptDraft}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                      className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-xl cursor-pointer shadow-sm transition"
                   >
                       Restore Draft
                   </button>
@@ -586,20 +582,24 @@ const AgentArchitect: React.FC = () => {
       </Modal>
 
       <Modal isOpen={!!modalState} onClose={() => setModalState(null)} title={modalState?.mode === 'edit' ? 'Edit Agent' : 'Save Agent Configuration'}>
-          {modalState && <div className="space-y-4">
-              <label htmlFor="modalAgentName" className="block text-sm font-medium">Name</label>
-              <input type="text" id="modalAgentName" value={modalInput.name} onChange={e => setModalInput({...modalInput, name: e.target.value})} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20" placeholder="e.g., My Financial Advisor Agent" />
+          {modalState && <div className="space-y-5 animate-fade-in">
+              <div>
+                  <label htmlFor="modalAgentName" className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Name</label>
+                  <input type="text" id="modalAgentName" value={modalInput.name} onChange={e => setModalInput({...modalInput, name: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/40" placeholder="e.g., My Financial Advisor Agent" />
+              </div>
               
               {modalState.mode === 'edit' && (
-                  <div className="max-h-96 overflow-y-auto space-y-4 pr-2">
-                    <label className="block text-sm font-medium pt-2">Agent Prompt</label>
-                    <textarea rows={15} value={modalInput.prompt} onChange={e => setModalInput(prev => ({...prev, prompt: e.target.value}))} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md font-mono text-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20" />
+                  <div className="max-h-96 overflow-y-auto space-y-4 pr-1 custom-scrollbar">
+                    <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Agent Prompt</label>
+                        <textarea rows={15} value={modalInput.prompt} onChange={e => setModalInput(prev => ({...prev, prompt: e.target.value}))} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl font-mono text-xs focus:ring-2 focus:ring-blue-500/40 outline-none custom-scrollbar" />
+                    </div>
                   </div>
               )}
 
-              <div className="flex justify-end space-x-2 pt-2">
-                  <button onClick={() => setModalState(null)} className="px-4 py-2 rounded-md border dark:border-gray-600">Cancel</button>
-                  <button onClick={handleModalSave} className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700">{modalState.mode === 'edit' ? 'Update' : 'Save'}</button>
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800/80">
+                  <button onClick={() => setModalState(null)} className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 font-semibold text-xs cursor-pointer">Cancel</button>
+                  <button onClick={handleModalSave} className="px-5 py-2.5 rounded-xl bg-blue-600 text-white hover:bg-blue-700 font-semibold text-xs cursor-pointer">{modalState.mode === 'edit' ? 'Update' : 'Save'}</button>
               </div>
           </div>}
       </Modal>

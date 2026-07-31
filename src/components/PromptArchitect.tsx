@@ -136,7 +136,6 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
     }, [promptConfig, skillConfig, draftStatus, activeTab]);
 
     const handleGenerate = useCallback(async () => {
-        // Cancel any in-flight request
         abortControllerRef.current?.abort();
         const controller = new AbortController();
         abortControllerRef.current = controller;
@@ -160,7 +159,6 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
         try {
             if (activeTab === 'standard') {
                 if (!promptConfig.goal.trim()) throw new Error("Please enter a goal.");
-                // Utilize high-density reasoning topology for standard prompts
                 const result = await generateStructuredSystemPrompt(promptConfig, controller.signal);
                 if (!controller.signal.aborted) setGeneratedPrompt(result);
             } else {
@@ -180,7 +178,6 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
         }
     }, [promptConfig, skillConfig, activeTab]);
 
-    // Abort on unmount
     useEffect(() => {
         return () => {
             abortControllerRef.current?.abort();
@@ -384,15 +381,15 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
     const allUnified = [...unifiedPrompts, ...unifiedLegacy];
 
     return (
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto animate-fade-in">
             <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
 
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex justify-between items-center mb-10">
                 <div>
-                    <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                    <h2 className="text-3xl font-extrabold text-slate-900 dark:text-slate-100">
                         {activeTab === 'standard' ? 'Prompt Architect' : 'Skill Architect'}
                     </h2>
-                    <p className="text-gray-600 dark:text-gray-400">
+                    <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
                         {activeTab === 'standard'
                             ? 'Extract signal from messy thoughts and refine into high-quality standard prompts.'
                             : 'Architect specialized skill modules and capability bundles for AI systems.'}
@@ -401,76 +398,76 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
             </div>
 
             {/* Tabs */}
-            <div className="border-b border-gray-200 dark:border-gray-700 mb-8">
-                <nav className="-mb-px flex space-x-8" aria-label="Prompt Type Tabs" role="tablist">
+            <div className="mb-10">
+                <nav className="flex gap-2" aria-label="Prompt Type Tabs" role="tablist">
                     <button
                         role="tab"
                         aria-selected={activeTab === 'standard'}
                         onClick={() => { setActiveTab('standard'); setDraftStatus('unloaded'); }}
-                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${activeTab === 'standard' ? 'text-blue-500 border-blue-500' : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}`}
+                        className={`whitespace-nowrap py-2.5 px-5 rounded-xl font-semibold text-xs tracking-wider uppercase transition-all duration-200 cursor-pointer ${activeTab === 'standard' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/50'}`}
                     >
-                        Prompt Architect
+                        Standard Prompt
                     </button>
                     <button
                         role="tab"
                         aria-selected={activeTab === 'system'}
                         onClick={() => { setActiveTab('system'); setDraftStatus('unloaded'); }}
-                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${activeTab === 'system' ? 'text-purple-500 border-purple-500' : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}`}
+                        className={`whitespace-nowrap py-2.5 px-5 rounded-xl font-semibold text-xs tracking-wider uppercase transition-all duration-200 cursor-pointer ${activeTab === 'system' ? 'bg-purple-600 text-white shadow-md shadow-purple-600/10' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/50'}`}
                     >
                         Skill Architect
                     </button>
                 </nav>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8">
-                <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="space-y-6">
-                    <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-                        <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
-                            {activeTab === 'standard' ? 'Define Your Prompt' : 'Define Skill Module'}
+            <div className="bg-transparent mb-12">
+                <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="space-y-8">
+                    <div className="flex flex-col sm:flex-row justify-between sm:items-center pb-6 mb-2 border-b border-slate-200/60 dark:border-slate-800/50 gap-4">
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 uppercase tracking-widest text-xs">
+                            {activeTab === 'standard' ? 'Define Your Standard Prompt' : 'Define Skill Module'}
                         </h3>
-                        <button type="button" onClick={() => setIsTemplateModalOpen(true)} className="w-full sm:w-auto flex items-center justify-center px-4 py-2 border border-blue-500 text-blue-500 dark:text-blue-400 dark:border-blue-400 rounded-md text-sm font-medium hover:bg-blue-50 dark:hover:bg-blue-900/40 transition">
-                            <span className="material-icons mr-2 text-base">model_training</span>
+                        <button type="button" onClick={() => setIsTemplateModalOpen(true)} className="w-full sm:w-auto flex items-center justify-center px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900/50 transition cursor-pointer">
+                            <span className="material-icons mr-2 text-sm">model_training</span>
                             Load Template
                         </button>
                     </div>
 
                     {activeTab === 'standard' ? (
-                        <>
+                        <div className="space-y-6">
                             <div>
-                                <label htmlFor="goal" className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                <label htmlFor="goal" className="flex items-center text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
                                     Prompt Goal / Core Task <span className="text-red-500 ml-1">*</span>
                                 </label>
-                                <input type="text" id="goal" value={promptConfig.goal} onChange={(e) => setPromptConfig(prev => ({...prev, goal: e.target.value}))} placeholder="e.g., 'Summarize technical articles'" className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md" />
+                                <input type="text" id="goal" value={promptConfig.goal} onChange={(e) => setPromptConfig(prev => ({...prev, goal: e.target.value}))} placeholder="e.g., 'Summarize technical articles'" className="w-full px-4 py-3 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition" />
                             </div>
                             <div>
-                                <label htmlFor="instructions" className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Instructions (Optional)</label>
-                                <textarea id="instructions" rows={5} value={promptConfig.instructions} onChange={(e) => setPromptConfig(prev => ({...prev, instructions: e.target.value}))} className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md" />
+                                <label htmlFor="instructions" className="flex items-center text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Instructions (Optional)</label>
+                                <textarea id="instructions" rows={5} value={promptConfig.instructions} onChange={(e) => setPromptConfig(prev => ({...prev, instructions: e.target.value}))} placeholder="Specify detailed steps, constraints, tone, format..." className="w-full px-4 py-3 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar" />
                             </div>
-                        </>
+                        </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="md:col-span-1">
-                                <label className="block text-sm font-medium mb-1">Role/Capability <span className="text-red-500">*</span></label>
-                                <input type="text" value={skillConfig.role} onChange={(e) => setSkillConfig(prev => ({...prev, role: e.target.value}))} placeholder="e.g. Data Viz Specialist" className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md" />
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Role/Capability <span className="text-red-500">*</span></label>
+                                <input type="text" value={skillConfig.role} onChange={(e) => setSkillConfig(prev => ({...prev, role: e.target.value}))} placeholder="e.g. Data Viz Specialist" className="w-full px-4 py-3 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition" />
                             </div>
                             <div className="md:col-span-1">
-                                <label className="block text-sm font-medium mb-1">Scope <span className="text-red-500">*</span></label>
-                                <input type="text" value={skillConfig.scope} onChange={(e) => setSkillConfig(prev => ({...prev, scope: e.target.value}))} placeholder="e.g. D3.js Charts" className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md" />
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Scope <span className="text-red-500">*</span></label>
+                                <input type="text" value={skillConfig.scope} onChange={(e) => setSkillConfig(prev => ({...prev, scope: e.target.value}))} placeholder="e.g. D3.js Charts" className="w-full px-4 py-3 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition" />
                             </div>
                             <div className="md:col-span-2">
-                                <label className="block text-sm font-medium mb-1">Primary Goals</label>
-                                <textarea rows={3} value={skillConfig.goals} onChange={(e) => setSkillConfig(prev => ({...prev, goals: e.target.value}))} className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md" />
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Primary Goals</label>
+                                <textarea rows={3} value={skillConfig.goals} onChange={(e) => setSkillConfig(prev => ({...prev, goals: e.target.value}))} placeholder="List out primary goals, one per line..." className="w-full px-4 py-3 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar" />
                             </div>
                             <div className="md:col-span-2">
-                                <label className="block text-sm font-medium mb-1">Constraints</label>
-                                <textarea rows={3} value={skillConfig.constraints} onChange={(e) => setSkillConfig(prev => ({...prev, constraints: e.target.value}))} className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md" />
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Constraints</label>
+                                <textarea rows={3} value={skillConfig.constraints} onChange={(e) => setSkillConfig(prev => ({...prev, constraints: e.target.value}))} placeholder="Specify boundaries or limitations..." className="w-full px-4 py-3 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar" />
                             </div>
                         </div>
                     )}
 
-                    <div className="flex flex-col sm:flex-row items-center justify-end space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
-                        <button type="button" onClick={handleReset} disabled={isLoading} className="w-full sm:w-auto px-6 py-2 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition">Reset</button>
-                        <button type="submit" disabled={isLoading} className={`w-full sm:w-auto flex items-center justify-center px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${activeTab === 'standard' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-purple-600 hover:bg-purple-700'} focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 transition`}>
+                    <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-slate-200/60 dark:border-slate-800/50">
+                        <button type="button" onClick={handleReset} disabled={isLoading} className="w-full sm:w-auto px-6 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/60 transition cursor-pointer">Reset</button>
+                        <button type="submit" disabled={isLoading} className={`w-full sm:w-auto flex items-center justify-center px-6 py-2.5 rounded-xl text-sm font-semibold text-white cursor-pointer ${activeTab === 'standard' ? 'bg-blue-600 hover:bg-blue-500 shadow-md shadow-blue-600/10' : 'bg-purple-600 hover:bg-purple-500 shadow-md shadow-purple-600/10'} focus:outline-none disabled:opacity-50 transition`}>
                             {isLoading ? 'Architecting...' : 'Generate'}
                         </button>
                     </div>
@@ -478,7 +475,7 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
             </div>
 
             {error && (
-                <div className="mt-8 bg-red-100 dark:bg-red-900/50 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg">
+                <div className="mt-8 bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 px-5 py-4 rounded-2xl text-sm">
                     <strong className="font-bold">Error: </strong><span>{error}</span>
                 </div>
             )}
@@ -486,55 +483,53 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
             {isLoading && <LoadingSpinner message={loadingMessage || 'Architecting...'} />}
 
             {generatedPrompt && !isLoading && (
-                <div className="mt-8 space-y-6">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                        <div className="flex items-center gap-2 px-6 py-3 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
-                            <span className="material-icons text-blue-500 text-lg">signal_cellular_alt</span>
-                            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Signal Analysis</h4>
-                        </div>
-                        <div className="p-6 prose prose-sm dark:prose-invert max-w-none text-gray-600 dark:text-gray-400">
+                <div className="mt-12 space-y-10 animate-fade-in">
+                    <div className="space-y-4">
+                        <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center">
+                            <span className="material-icons text-sm mr-2 text-blue-500">signal_cellular_alt</span>
+                            Signal Analysis
+                        </h4>
+                        <div className="prose prose-slate prose-sm dark:prose-invert max-w-none text-slate-600 dark:text-slate-400 leading-relaxed bg-slate-50 dark:bg-slate-900/30 p-5 rounded-2xl border border-slate-100 dark:border-slate-800/50">
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>{generatedPrompt.signal ?? ''}</ReactMarkdown>
                         </div>
                     </div>
 
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                        <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-                            <h3 className="text-xl font-semibold">Generated Prompt</h3>
-                            <div className="flex items-center space-x-2">
-                               <button onClick={() => { navigator.clipboard.writeText(generatedPrompt.prompt); setSuccessMessage('Copied!'); }} className="px-3 py-1.5 border rounded-md text-sm flex items-center"><span className="material-icons text-base mr-1">content_copy</span>Copy</button>
-                               <button onClick={handleOpenSaveModal} className="px-3 py-1.5 bg-blue-500 text-white rounded-md text-sm flex items-center shadow-lg shadow-blue-500/20"><span className="material-icons text-base mr-1">save</span>Save</button>
+                    <div className="space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-slate-200/60 dark:border-slate-800/50 gap-4">
+                            <h3 className="text-xl font-bold">Generated Prompt</h3>
+                            <div className="flex items-center space-x-3">
+                               <button onClick={() => { navigator.clipboard.writeText(generatedPrompt.prompt); setSuccessMessage('Copied!'); }} className="px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-semibold flex items-center hover:bg-slate-100 dark:hover:bg-slate-900/50 transition cursor-pointer"><span className="material-icons text-base mr-2">content_copy</span>Copy</button>
+                               <button onClick={handleOpenSaveModal} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold flex items-center shadow-md shadow-blue-600/10 transition cursor-pointer"><span className="material-icons text-base mr-2">save</span>Save</button>
                             </div>
                         </div>
-                        <div className="p-6 md:p-10 bg-gray-50 dark:bg-gray-900/40">
-                             <div className="prose dark:prose-invert max-w-none">
-                                <ReactMarkdown remarkPlugins={[remarkGfm]}>{generatedPrompt.prompt ?? ''}</ReactMarkdown>
-                             </div>
+                        <div className="prose prose-slate dark:prose-invert max-w-none py-4 px-2">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{generatedPrompt.prompt ?? ''}</ReactMarkdown>
                         </div>
                     </div>
                 </div>
             )}
 
             {generatedSkill && !isLoading && (
-                <div className="mt-8">
+                <div className="mt-12">
                     <GeneratedFilesDisplay files={generatedSkill} onSave={handleOpenSaveModal} agentName="New Skill Module" />
                 </div>
             )}
             
             {(savedPrompts.length > 0 || legacyPrompts.length > 0) && (
-                <div className="mt-12">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-2xl font-bold">Saved {activeTab === 'standard' ? 'Prompts' : 'Skill Bundles'}</h3>
-                        <div className="flex space-x-2">
-                            <button onClick={handleExportAll} className="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/60 flex items-center">
-                                <span className="material-icons text-sm mr-1">download</span>Export All
+                <div className="mt-20 border-t border-slate-200/60 dark:border-slate-800/50 pt-16">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
+                        <h3 className="text-2xl font-extrabold text-slate-800 dark:text-slate-200">Saved {activeTab === 'standard' ? 'Prompts' : 'Skill Bundles'}</h3>
+                        <div className="flex space-x-3">
+                            <button onClick={handleExportAll} className="px-4 py-2 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-500/10 rounded-xl hover:bg-blue-500/15 flex items-center cursor-pointer transition">
+                                <span className="material-icons text-sm mr-2">download</span>Export All
                             </button>
-                            <button onClick={() => setIsClearAllConfirmOpen(true)} className="px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/60 flex items-center">
-                                <span className="material-icons text-sm mr-1">delete_sweep</span>Clear All
+                            <button onClick={() => setIsClearAllConfirmOpen(true)} className="px-4 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-500/10 rounded-xl hover:bg-rose-500/15 flex items-center cursor-pointer transition">
+                                <span className="material-icons text-sm mr-2">delete_sweep</span>Clear All
                             </button>
                         </div>
                     </div>
 
-                    <div className="mb-6 space-y-4">
+                    <div className="mb-8 space-y-4">
                         <StarredPinnedBar
                             type="starred"
                             items={allUnified}
@@ -593,15 +588,15 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                         />
                     </div>
 
-                    <div className="mb-4">
+                    <div className="mb-6">
                         <div className="relative">
-                            <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+                            <span className="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">search</span>
                             <input
                                 type="text"
                                 placeholder="Search saved items..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchText(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                className="w-full pl-11 pr-4 py-3 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-blue-500/40 outline-none transition-all text-sm"
                             />
                         </div>
                     </div>
@@ -648,7 +643,7 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
             )}
 
             <Modal isOpen={isTemplateModalOpen} onClose={() => setIsTemplateModalOpen(false)} title="Load Template">
-                <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+                <div className="space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar">
                     {(activeTab === 'standard' ? PROMPT_TEMPLATES : SKILL_TEMPLATES).map((template: any) => (
                         <button 
                             key={template.name} 
@@ -657,10 +652,10 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                                 else setSkillConfig(template);
                                 setIsTemplateModalOpen(false);
                             }}
-                            className="w-full text-left p-4 rounded-lg bg-gray-50 dark:bg-gray-700 hover:bg-blue-100 dark:hover:bg-blue-900/50 border dark:border-gray-600 transition"
+                            className="w-full text-left p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/30 hover:bg-blue-500/5 hover:border-blue-500/30 border border-slate-100 dark:border-slate-800/80 transition cursor-pointer"
                         >
-                            <h4 className="font-semibold text-gray-800 dark:text-gray-200">{template.name}</h4>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{template.goal || template.role}</p>
+                            <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm">{template.name}</h4>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">{template.goal || template.role}</p>
                         </button>
                     ))}
                 </div>
@@ -712,43 +707,43 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
 
             <Modal isOpen={isClearAllConfirmOpen} onClose={() => setIsClearAllConfirmOpen(false)} title="Confirm Clear All">
                 <div className="space-y-4">
-                    <p className="text-gray-600 dark:text-gray-400">Are you sure you want to delete ALL saved items in this tab? This action cannot be undone.</p>
-                    <div className="flex justify-end space-x-2">
-                        <button onClick={() => setIsClearAllConfirmOpen(false)} className="px-4 py-2 border dark:border-gray-600 rounded-lg transition-colors">Cancel</button>
-                        <button onClick={handleClearAll} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">Clear All</button>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Are you sure you want to delete ALL saved items in this tab? This action cannot be undone.</p>
+                    <div className="flex justify-end gap-3 pt-4">
+                        <button onClick={() => setIsClearAllConfirmOpen(false)} className="px-5 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl font-semibold text-xs cursor-pointer">Cancel</button>
+                        <button onClick={handleClearAll} className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs rounded-xl cursor-pointer">Clear All</button>
                     </div>
                 </div>
             </Modal>
 
             <Modal isOpen={isDeleteConfirmOpen} onClose={() => setIsDeleteConfirmOpen(false)} title="Confirm Deletion">
                 <div className="space-y-4">
-                    <p className="text-gray-600 dark:text-gray-400">Are you sure you want to delete <strong>{previewPrompt?.name}</strong>? This action cannot be undone.</p>
-                    <div className="flex justify-end space-x-2">
-                        <button onClick={() => setIsDeleteConfirmOpen(false)} className="px-4 py-2 border dark:border-gray-600 rounded-lg transition-colors">Cancel</button>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Are you sure you want to delete <strong>{previewPrompt?.name}</strong>? This action cannot be undone.</p>
+                    <div className="flex justify-end gap-3 pt-4">
+                        <button onClick={() => setIsDeleteConfirmOpen(false)} className="px-5 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl font-semibold text-xs cursor-pointer">Cancel</button>
                         <button onClick={() => {
                             const isLegacy = legacyPrompts.some(lp => lp.id === previewPrompt?.id);
                             if (isLegacy) handleLegacyDelete(previewPrompt!.id!);
                             else handleDelete();
-                        }} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">Delete</button>
+                        }} className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs rounded-xl cursor-pointer">Delete</button>
                     </div>
                 </div>
             </Modal>
 
             <Modal isOpen={!!pendingDraft} onClose={() => setPendingDraft(null)} title="Unsaved Draft Found">
                 <div className="space-y-4">
-                    <p className="text-gray-600 dark:text-gray-400">
+                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                         An unsaved {pendingDraft?.type === 'standard' ? 'prompt' : 'skill'} draft was found from your last session. Would you like to restore it?
                     </p>
-                    <div className="flex justify-end space-x-3 mt-6">
+                    <div className="flex justify-end gap-3 pt-4">
                         <button
                             onClick={handleDeclineDraft}
-                            className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                            className="px-5 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl font-semibold text-xs cursor-pointer text-slate-600 dark:text-slate-400 hover:bg-slate-100"
                         >
                             Discard
                         </button>
                         <button
                             onClick={handleAcceptDraft}
-                            className={`px-4 py-2 text-white rounded-lg transition-colors shadow-sm ${activeTab === 'standard' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-purple-600 hover:bg-purple-700'}`}
+                            className={`px-5 py-2.5 text-white font-semibold text-xs rounded-xl cursor-pointer transition ${activeTab === 'standard' ? 'bg-blue-600 hover:bg-blue-500' : 'bg-purple-600 hover:bg-purple-500'}`}
                         >
                             Restore Draft
                         </button>
@@ -758,28 +753,45 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
 
             <Modal isOpen={!!modalState} onClose={() => { setModalState(null); }} title={modalState?.mode === 'edit' ? 'Edit' : 'Save'}>
                 {modalState && (
-                    <div className="space-y-4">
-                        <label className="block text-sm font-medium">Name</label>
-                        <input type="text" value={modalInput.name} onChange={e => setModalInput({...modalInput, name: e.target.value})} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md" />
+                    <div className="space-y-5 animate-fade-in">
+                        <div>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Name</label>
+                            <input type="text" value={modalInput.name} onChange={e => setModalInput({...modalInput, name: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/40" />
+                        </div>
                         
                         {modalState.mode === 'edit' && (
-                            <div className="max-h-96 overflow-y-auto space-y-4 pr-2">
+                            <div className="max-h-96 overflow-y-auto space-y-4 pr-1 custom-scrollbar">
                                 {modalInput.prompt !== undefined ? (
-                                    <textarea rows={10} value={modalInput.prompt} onChange={e => setModalInput({...modalInput, prompt: e.target.value})} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md font-mono text-sm" />
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Prompt Content</label>
+                                        <textarea rows={10} value={modalInput.prompt} onChange={e => setModalInput({...modalInput, prompt: e.target.value})} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl font-mono text-xs focus:ring-2 focus:ring-blue-500/40 outline-none custom-scrollbar" />
+                                    </div>
                                 ) : modalInput.files && (
-                                    <>
-                                        <textarea rows={5} value={modalInput.files.agentFile} onChange={e => setModalInput(prev => ({...prev, files: {...prev.files!, agentFile: e.target.value}}))} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md font-mono text-sm" />
-                                        <textarea rows={5} value={modalInput.files.projectGuidelines} onChange={e => setModalInput(prev => ({...prev, files: {...prev.files!, projectGuidelines: e.target.value}}))} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md font-mono text-sm" />
-                                        <textarea rows={5} value={modalInput.files.constraintsFile} onChange={e => setModalInput(prev => ({...prev, files: {...prev.files!, constraintsFile: e.target.value}}))} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md font-mono text-sm" />
-                                        <textarea rows={5} value={modalInput.files.skillFile} onChange={e => setModalInput(prev => ({...prev, files: {...prev.files!, skillFile: e.target.value}}))} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md font-mono text-sm" />
-                                    </>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Agent Persona</label>
+                                            <textarea rows={5} value={modalInput.files.agentFile} onChange={e => setModalInput(prev => ({...prev, files: {...prev.files!, agentFile: e.target.value}}))} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl font-mono text-xs focus:ring-2 focus:ring-blue-500/40 outline-none custom-scrollbar" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Project Guidelines</label>
+                                            <textarea rows={5} value={modalInput.files.projectGuidelines} onChange={e => setModalInput(prev => ({...prev, files: {...prev.files!, projectGuidelines: e.target.value}}))} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl font-mono text-xs focus:ring-2 focus:ring-blue-500/40 outline-none custom-scrollbar" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Constraints & Guardrails</label>
+                                            <textarea rows={5} value={modalInput.files.constraintsFile} onChange={e => setModalInput(prev => ({...prev, files: {...prev.files!, constraintsFile: e.target.value}}))} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl font-mono text-xs focus:ring-2 focus:ring-blue-500/40 outline-none custom-scrollbar" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">SKILL.md</label>
+                                            <textarea rows={5} value={modalInput.files.skillFile} onChange={e => setModalInput(prev => ({...prev, files: {...prev.files!, skillFile: e.target.value}}))} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl font-mono text-xs focus:ring-2 focus:ring-blue-500/40 outline-none custom-scrollbar" />
+                                        </div>
+                                    </div>
                                 )}
                             </div>
                         )}
                         
-                        <div className="flex justify-end space-x-2 pt-2">
-                            <button onClick={() => setModalState(null)} className="px-4 py-2 rounded-md border dark:border-gray-600">Cancel</button>
-                            <button onClick={handleModalSave} className={`px-4 py-2 rounded-md text-white ${activeTab === 'standard' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-purple-600 hover:bg-purple-700'}`}>{modalState.mode === 'edit' ? 'Update' : 'Save'}</button>
+                        <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800/80">
+                            <button onClick={() => setModalState(null)} className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 font-semibold text-xs cursor-pointer">Cancel</button>
+                            <button onClick={handleModalSave} className={`px-5 py-2.5 rounded-xl text-white font-semibold text-xs cursor-pointer ${activeTab === 'standard' ? 'bg-blue-600 hover:bg-blue-500' : 'bg-purple-600 hover:bg-purple-500'}`}>{modalState.mode === 'edit' ? 'Update' : 'Save'}</button>
                         </div>
                     </div>
                 )}

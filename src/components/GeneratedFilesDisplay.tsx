@@ -14,7 +14,7 @@ interface GeneratedFilesDisplayProps {
 type Tab = 'agentFile' | 'projectGuidelines' | 'constraintsFile' | 'skillFile';
 
 const FileContent: React.FC<{ content: string }> = ({ content }) => (
-    <div className="prose prose-sm sm:prose-base dark:prose-invert max-w-none p-6 md:p-10 bg-white dark:bg-gray-900/50 rounded-b-2xl border-x border-b border-gray-200 dark:border-gray-700/50 shadow-inner overflow-y-auto max-h-[70vh] prose-pre:bg-gray-900 prose-pre:text-gray-100 prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:bg-gray-50 dark:prose-blockquote:bg-gray-800/50 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-blockquote:italic prose-blockquote:text-xl sm:prose-blockquote:text-2xl">
+    <div className="prose prose-slate dark:prose-invert max-w-none py-8 px-2 md:px-4 bg-transparent transition-all duration-300 overflow-y-auto max-h-[75vh] custom-scrollbar prose-pre:bg-slate-900/60 dark:prose-pre:bg-slate-950/40 prose-pre:text-slate-100 prose-pre:rounded-2xl prose-pre:border prose-pre:border-slate-200/50 dark:prose-pre:border-slate-800/40 prose-blockquote:border-l-2 prose-blockquote:border-blue-500 prose-blockquote:bg-blue-500/5 dark:prose-blockquote:bg-blue-500/5 prose-blockquote:py-4 prose-blockquote:px-6 prose-blockquote:rounded-r-2xl prose-blockquote:italic prose-blockquote:text-lg sm:prose-blockquote:text-xl prose-blockquote:font-normal prose-blockquote:not-italic prose-blockquote:my-6 prose-p:leading-relaxed prose-headings:font-semibold">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
     </div>
 );
@@ -56,7 +56,6 @@ ${files.skillFile}
   };
 
   const handleExportAll = () => {
-    // Sanitize the agent name for use as a filename prefix to prevent path traversal or invalid filenames
     const prefix = sanitizeFilename(agentName || 'agent-export');
     const filesToExport = {
         [`${prefix}-persona.md`]: files.agentFile,
@@ -81,41 +80,44 @@ ${files.skillFile}
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg mt-10">
-        <div className="flex flex-wrap justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700 gap-4">
-            <h3 className="text-xl font-semibold">Generated Project Files</h3>
-            <div className="flex items-center space-x-2">
-                <button onClick={handleCopyAll} className="flex items-center px-3 py-1.5 border rounded-md text-sm" title="Copy all files">
-                    <span className="material-icons text-base mr-1.5">collections</span>{copyAllText}
+    <div className="bg-transparent mt-12 animate-fade-in">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-6 mb-2 border-b border-slate-200/60 dark:border-slate-800/50 gap-4">
+            <div>
+                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200">Generated Project Files</h3>
+                <p className="text-xs text-slate-500 mt-1">Crystallized architectural assets based on your configuration.</p>
+            </div>
+            <div className="flex items-center space-x-3">
+                <button onClick={handleCopyAll} className="flex items-center px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900/60 transition-all duration-250 cursor-pointer" title="Copy all files">
+                    <span className="material-icons text-base mr-2">collections</span>{copyAllText}
                 </button>
-                <button onClick={handleExportAll} className="flex items-center px-3 py-1.5 border rounded-md text-sm transition-colors hover:bg-gray-50 dark:hover:bg-gray-700" title="Export all files">
-                    <span className="material-icons text-base mr-1.5">{exportAllText === 'Exported!' ? 'check_circle' : 'download'}</span>{exportAllText}
+                <button onClick={handleExportAll} className="flex items-center px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900/60 transition-all duration-250 cursor-pointer" title="Export all files">
+                    <span className="material-icons text-base mr-2">{exportAllText === 'Exported!' ? 'check_circle' : 'download'}</span>{exportAllText}
                 </button>
-                 <button 
+                <button
                     onClick={onSave} 
-                    className="flex items-center px-3 py-1.5 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition" 
+                    className="flex items-center px-4 py-2 border border-transparent rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 transition-all duration-250 cursor-pointer shadow-sm shadow-blue-500/10"
                     title="Save agent files"
                 >
-                    <span className="material-icons text-base mr-1.5">save</span>
+                    <span className="material-icons text-base mr-2">save</span>
                     Save
                 </button>
             </div>
         </div>
-      <div className="border-b border-gray-200 dark:border-gray-700">
-        <nav className="-mb-px flex space-x-1 sm:space-x-4 px-4" aria-label="Tabs">
+      <div className="mb-4">
+        <nav className="flex flex-wrap gap-2" aria-label="Tabs">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`
                 ${activeTab === tab.id
-                  ? 'border-blue-500 text-blue-600 dark:border-blue-400 dark:text-blue-300'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-600'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/50'
                 }
-                flex items-center whitespace-nowrap py-4 px-1 sm:px-2 border-b-2 font-medium text-sm transition-colors focus:outline-none
+                flex items-center whitespace-nowrap py-2 px-4 rounded-xl font-semibold text-xs transition-all duration-200 cursor-pointer focus:outline-none
               `}
             >
-              <span className="material-icons text-base mr-2">{tab.icon}</span>
+              <span className="material-icons text-sm mr-2">{tab.icon}</span>
               {tab.label}
             </button>
           ))}
