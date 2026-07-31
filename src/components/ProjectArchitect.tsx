@@ -50,7 +50,7 @@ const ProjectArchitect: React.FC = () => {
   const [searchTerm, setSearchText] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [draftStatus, setDraftStatus] = useState<'unloaded' | 'loaded' | 'none'>('unloaded');
-    const [pendingDraft, setPendingDraft] = useState<ProjectConfig | null>(null);
+  const [pendingDraft, setPendingDraft] = useState<ProjectConfig | null>(null);
   const isCheckingDraft = useRef(false);
 
   const [modalState, setModalState] = useState<{ mode: 'save' | 'edit'; project?: SavedProject } | null>(null);
@@ -179,16 +179,13 @@ const ProjectArchitect: React.FC = () => {
         return;
       }
       const files = await generateProjectFiles(projectConfig, controller.signal, (stageIndex: number) => {
-        // Update stage statuses
         setGenerationStages(prev => prev.map((stage, i) => {
           if (i === stageIndex) return { ...stage, status: 'complete' as StageStatus };
           if (i === stageIndex + 1) return { ...stage, status: 'active' as StageStatus };
           return stage;
         }));
-        // Update progress: each stage is ~31%, starting at 5%
         const progress = 5 + (stageIndex + 1) * 31;
         setOverallProgress(Math.min(progress, 95));
-        // Update loading message to next stage
         setLoadingMessage(stageMessages[stageIndex + 1] || 'Finalizing...');
       });
       if (!controller.signal.aborted) {
@@ -210,7 +207,6 @@ const ProjectArchitect: React.FC = () => {
     }
   }, [projectConfig]);
 
-  // Abort on unmount
   useEffect(() => {
     return () => {
       abortControllerRef.current?.abort();
@@ -388,32 +384,32 @@ const ProjectArchitect: React.FC = () => {
   const unifiedProjects = savedProjects.map(projectToUnified);
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto animate-fade-in">
       <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
 
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex justify-between items-center mb-10">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+          <h2 className="text-3xl font-extrabold text-slate-900 dark:text-slate-100">
             {activeTab === 'architect' ? 'Project Architect' : activeTab === 'agentJob' ? 'Agent Job Architect' : 'Roadmap Architect'}
           </h2>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
             {activeTab === 'architect'
               ? 'Establish a high-level vision, standards, and rules for your project.'
               : activeTab === 'agentJob'
-              ? 'Author an employer handbook for an AI agent-employee — defining their role, authority, and how they operate within the project workplace.'
+              ? 'Author an employer handbook for an AI agent-employee — defining their role, authority, and operating boundaries.'
               : 'Transform raw vision text into deeply actionable, rigorously detailed roadmap task entries.'}
           </p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 dark:border-gray-700 mb-8">
-        <nav className="-mb-px flex space-x-8" aria-label="Project Tabs" role="tablist">
+      <div className="mb-10">
+        <nav className="flex flex-wrap gap-2" aria-label="Project Tabs" role="tablist">
           <button
             role="tab"
             aria-selected={activeTab === 'architect'}
             onClick={() => setActiveTab('architect')}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${activeTab === 'architect' ? 'text-green-500 border-green-500' : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}`}
+            className={`whitespace-nowrap py-2.5 px-5 rounded-xl font-semibold text-xs tracking-wider uppercase transition-all duration-200 cursor-pointer ${activeTab === 'architect' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/50'}`}
           >
             Project Architect
           </button>
@@ -421,7 +417,7 @@ const ProjectArchitect: React.FC = () => {
             role="tab"
             aria-selected={activeTab === 'agentJob'}
             onClick={() => setActiveTab('agentJob')}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${activeTab === 'agentJob' ? 'text-indigo-500 border-indigo-500' : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}`}
+            className={`whitespace-nowrap py-2.5 px-5 rounded-xl font-semibold text-xs tracking-wider uppercase transition-all duration-200 cursor-pointer ${activeTab === 'agentJob' ? 'bg-purple-600 text-white shadow-md shadow-purple-600/10' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/50'}`}
           >
             Agent Job Architect
           </button>
@@ -429,7 +425,7 @@ const ProjectArchitect: React.FC = () => {
             role="tab"
             aria-selected={activeTab === 'roadmap'}
             onClick={() => setActiveTab('roadmap')}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${activeTab === 'roadmap' ? 'text-amber-500 border-amber-500' : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}`}
+            className={`whitespace-nowrap py-2.5 px-5 rounded-xl font-semibold text-xs tracking-wider uppercase transition-all duration-200 cursor-pointer ${activeTab === 'roadmap' ? 'bg-amber-600 text-white shadow-md shadow-amber-600/10' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/50'}`}
           >
             Roadmap Architect
           </button>
@@ -438,7 +434,7 @@ const ProjectArchitect: React.FC = () => {
 
       {activeTab === 'architect' ? (
         <>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8">
+          <div className="bg-transparent mb-12">
             <ProjectForm
               projectConfig={projectConfig}
               setProjectConfig={setProjectConfig}
@@ -456,7 +452,7 @@ const ProjectArchitect: React.FC = () => {
           </div>
 
       {error && (
-        <div className="mt-8 bg-red-100 dark:bg-red-900/50 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg relative" role="alert">
+        <div className="mt-8 bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 px-5 py-4 rounded-2xl text-sm relative" role="alert">
           <strong className="font-bold">Error: </strong>
           <span className="block sm:inline">{error}</span>
         </div>
@@ -464,33 +460,29 @@ const ProjectArchitect: React.FC = () => {
 
           {/* Progressive Loading Bar */}
           {isLoading && (
-            <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8">
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-6">Generating Project Files</h3>
+            <div className="mt-8 bg-transparent">
+              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-6 uppercase tracking-wider text-xs">Generating Project Files</h3>
               
-              {/* Stage indicators */}
-              <div className="space-y-3 mb-6">
+              <div className="space-y-4 mb-8">
                 {generationStages.map((stage, idx) => (
-                  <div key={stage.key} className="flex items-center space-x-3">
-                    {/* Status icon */}
-                    <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-500 ${
-                      stage.status === 'complete' ? 'bg-green-500 text-white' :
-                      stage.status === 'active' ? 'bg-blue-500 text-white animate-pulse' :
-                      'bg-gray-200 dark:bg-gray-700 text-gray-400'
+                  <div key={stage.key} className="flex items-center space-x-4">
+                    <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-500 ${
+                      stage.status === 'complete' ? 'bg-emerald-500 text-white' :
+                      stage.status === 'active' ? 'bg-blue-600 text-white animate-pulse' :
+                      'bg-slate-200 dark:bg-slate-800 text-slate-400'
                     }`}>
                       {stage.status === 'complete' ? '✓' :
                        stage.status === 'active' ? '●' :
                        '○'}
                     </div>
-                    {/* Label */}
-                    <span className={`text-sm font-medium ${
-                      stage.status === 'complete' ? 'text-green-600 dark:text-green-400' :
+                    <span className={`text-sm font-semibold ${
+                      stage.status === 'complete' ? 'text-emerald-600 dark:text-emerald-400' :
                       stage.status === 'active' ? 'text-blue-600 dark:text-blue-400' :
-                      'text-gray-400 dark:text-gray-500'
+                      'text-slate-400 dark:text-slate-500'
                     }`}>
                       {stage.label}
                     </span>
-                    {/* Status text */}
-                    <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto">
+                    <span className="text-xs text-slate-400 dark:text-slate-500 ml-auto">
                       {stage.status === 'complete' ? 'Complete' :
                        stage.status === 'active' ? 'Generating...' :
                        'Waiting'}
@@ -499,16 +491,14 @@ const ProjectArchitect: React.FC = () => {
                 ))}
               </div>
               
-              {/* Progress bar */}
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
+              <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
                 <div
-                  className="bg-blue-500 h-2.5 rounded-full transition-all duration-700 ease-out"
+                  className="bg-blue-600 h-1.5 rounded-full transition-all duration-700 ease-out"
                   style={{ width: `${overallProgress}%` }}
                 />
               </div>
               
-              {/* Status message */}
-              <p className="mt-3 text-sm text-gray-500 dark:text-gray-400 text-center">
+              <p className="mt-4 text-xs text-slate-400 dark:text-slate-500 text-center italic">
                 {loadingMessage}
               </p>
             </div>
@@ -521,22 +511,22 @@ const ProjectArchitect: React.FC = () => {
           )}
 
           {savedProjects.length > 0 && (
-            <div className="mt-12">
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-center">Saved Projects</h2>
-                    <div className="flex space-x-2">
-                        <button onClick={handleExportAll} className="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/60 flex items-center">
-                            <span className="material-icons text-sm mr-1">download</span>
+            <div className="mt-20 border-t border-slate-200/60 dark:border-slate-800/50 pt-16">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
+                    <h2 className="text-2xl font-extrabold text-slate-800 dark:text-slate-200">Saved Projects</h2>
+                    <div className="flex space-x-3">
+                        <button onClick={handleExportAll} className="px-4 py-2 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-500/10 rounded-xl hover:bg-blue-500/15 flex items-center cursor-pointer transition">
+                            <span className="material-icons text-sm mr-2">download</span>
                             Export All
                         </button>
-                        <button onClick={handleClearAll} className="px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/60 flex items-center">
-                            <span className="material-icons text-sm mr-1">delete_sweep</span>
+                        <button onClick={() => setIsClearAllConfirmOpen(true)} className="px-4 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-500/10 rounded-xl hover:bg-rose-500/15 flex items-center cursor-pointer transition">
+                            <span className="material-icons text-sm mr-2">delete_sweep</span>
                             Clear All
                         </button>
                     </div>
                 </div>
 
-                <div className="mb-6 space-y-4">
+                <div className="mb-8 space-y-4">
                     <StarredPinnedBar
                         type="starred"
                         items={unifiedProjects}
@@ -565,15 +555,15 @@ const ProjectArchitect: React.FC = () => {
                     />
                 </div>
 
-                <div className="mb-4">
+                <div className="mb-6">
                     <div className="relative">
-                        <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+                        <span className="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">search</span>
                         <input
                             type="text"
                             placeholder="Search saved projects..."
                             value={searchTerm}
                             onChange={(e) => setSearchText(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                            className="w-full pl-11 pr-4 py-3 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-blue-500/40 outline-none transition-all text-sm"
                         />
                     </div>
                 </div>
@@ -597,9 +587,9 @@ const ProjectArchitect: React.FC = () => {
                             />
                         ))}
                     {(savedProjects.filter(p => !p.isArchived && !p.isStarred && !p.isPinned && (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || getDeepSearchText(p).includes(searchTerm.toLowerCase()))).length === 0 && searchTerm) && (
-                        <div className="py-8 text-center text-gray-400 dark:text-gray-500">
-                            <span className="material-icons text-4xl mb-2">search_off</span>
-                            <p>No projects match your search</p>
+                        <div className="py-12 text-center text-slate-500">
+                            <span className="material-icons text-4xl mb-2 text-slate-400">search_off</span>
+                            <p className="text-sm">No projects match your search</p>
                         </div>
                     )}
                 </div>
@@ -614,19 +604,19 @@ const ProjectArchitect: React.FC = () => {
 
       <Modal isOpen={!!pendingDraft} onClose={() => setPendingDraft(null)} title="Unsaved Draft Found">
         <div className="space-y-4">
-            <p className="text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                 An unsaved project draft was found. Would you like to restore it?
             </p>
-            <div className="flex justify-end space-x-3 mt-6">
+            <div className="flex justify-end gap-3 pt-4">
                 <button
                     onClick={handleDeclineDraft}
-                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    className="px-5 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl font-semibold text-xs cursor-pointer text-slate-600 dark:text-slate-400 hover:bg-slate-100"
                 >
                     Discard
                 </button>
                 <button
                     onClick={handleAcceptDraft}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                    className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-xs cursor-pointer shadow-sm transition"
                 >
                     Restore Draft
                 </button>
@@ -666,43 +656,51 @@ const ProjectArchitect: React.FC = () => {
 
       <Modal isOpen={isClearAllConfirmOpen} onClose={() => setIsClearAllConfirmOpen(false)} title="Confirm Clear All">
           <div className="space-y-4">
-              <p className="text-gray-600 dark:text-gray-400">Are you sure you want to delete ALL saved projects? This action cannot be undone.</p>
-              <div className="flex justify-end space-x-2">
-                  <button onClick={() => setIsClearAllConfirmOpen(false)} className="px-4 py-2 border dark:border-gray-600 rounded-lg transition-colors">Cancel</button>
-                  <button onClick={handleClearAll} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">Clear All</button>
+              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Are you sure you want to delete ALL saved projects? This action cannot be undone.</p>
+              <div className="flex justify-end gap-3 pt-4">
+                  <button onClick={() => setIsClearAllConfirmOpen(false)} className="px-5 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl font-semibold text-xs cursor-pointer">Cancel</button>
+                  <button onClick={handleClearAll} className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs rounded-xl cursor-pointer">Clear All</button>
               </div>
           </div>
       </Modal>
 
       <Modal isOpen={isDeleteConfirmOpen} onClose={() => { setIsDeleteConfirmOpen(false); setDeleteTarget(null); }} title="Confirm Deletion">
           <div className="space-y-4">
-              <p className="text-gray-600 dark:text-gray-400">Are you sure you want to delete this project? This action cannot be undone.</p>
-              <div className="flex justify-end space-x-2">
-                  <button onClick={() => { setIsDeleteConfirmOpen(false); setDeleteTarget(null); }} className="px-4 py-2 border dark:border-gray-600 rounded-lg transition-colors">Cancel</button>
-                  <button onClick={confirmDelete} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">Delete</button>
+              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Are you sure you want to delete this project? This action cannot be undone.</p>
+              <div className="flex justify-end gap-3 pt-4">
+                  <button onClick={() => { setIsDeleteConfirmOpen(false); setDeleteTarget(null); }} className="px-5 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl font-semibold text-xs cursor-pointer">Cancel</button>
+                  <button onClick={confirmDelete} className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs rounded-xl cursor-pointer">Delete</button>
               </div>
           </div>
       </Modal>
 
       <Modal isOpen={!!modalState} onClose={() => setModalState(null)} title={modalState?.mode === 'edit' ? 'Edit Project' : 'Save Project Blueprint'}>
-          {modalState && <div className="space-y-4">
-              <label htmlFor="modalProjectName" className="block text-sm font-medium">Name</label>
-              <input type="text" id="modalProjectName" value={modalInput.name} onChange={e => setModalInput({...modalInput, name: e.target.value})} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20" placeholder="e.g., Q3 Marketing Campaign AI Suite" />
+          {modalState && <div className="space-y-5 animate-fade-in">
+              <div>
+                  <label htmlFor="modalProjectName" className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Name</label>
+                  <input type="text" id="modalProjectName" value={modalInput.name} onChange={e => setModalInput({...modalInput, name: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/40" placeholder="e.g., Q3 Marketing Campaign AI Suite" />
+              </div>
               
               {modalState.mode === 'edit' && modalInput.files && (
-                  <div className="max-h-64 overflow-y-auto space-y-4 pr-2">
-                    <label className="block text-sm font-medium pt-2">Project Overview</label>
-                    <textarea rows={5} value={modalInput.files.overviewFile} onChange={e => setModalInput(prev => ({...prev, files: {...prev.files!, overviewFile: e.target.value}}))} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md font-mono text-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20" />
-                    <label className="block text-sm font-medium">Development Standards</label>
-                    <textarea rows={5} value={modalInput.files.standardsFile} onChange={e => setModalInput(prev => ({...prev, files: {...prev.files!, standardsFile: e.target.value}}))} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md font-mono text-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20" />
-                    <label className="block text-sm font-medium">Rules & Guardrails</label>
-                    <textarea rows={5} value={modalInput.files.rulesFile} onChange={e => setModalInput(prev => ({...prev, files: {...prev.files!, rulesFile: e.target.value}}))} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md font-mono text-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20" />
+                  <div className="max-h-64 overflow-y-auto space-y-4 pr-1 custom-scrollbar">
+                    <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 pt-2">Project Overview</label>
+                        <textarea rows={5} value={modalInput.files.overviewFile} onChange={e => setModalInput(prev => ({...prev, files: {...prev.files!, overviewFile: e.target.value}}))} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl font-mono text-xs focus:ring-2 focus:ring-blue-500/40 outline-none custom-scrollbar" />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Development Standards</label>
+                        <textarea rows={5} value={modalInput.files.standardsFile} onChange={e => setModalInput(prev => ({...prev, files: {...prev.files!, standardsFile: e.target.value}}))} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl font-mono text-xs focus:ring-2 focus:ring-blue-500/40 outline-none custom-scrollbar" />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Rules & Guardrails</label>
+                        <textarea rows={5} value={modalInput.files.rulesFile} onChange={e => setModalInput(prev => ({...prev, files: {...prev.files!, rulesFile: e.target.value}}))} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl font-mono text-xs focus:ring-2 focus:ring-blue-500/40 outline-none custom-scrollbar" />
+                    </div>
                   </div>
               )}
 
-              <div className="flex justify-end space-x-2 pt-2">
-                  <button onClick={() => setModalState(null)} className="px-4 py-2 rounded-md border dark:border-gray-600">Cancel</button>
-                  <button onClick={handleModalSave} className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700">{modalState.mode === 'edit' ? 'Update' : 'Save'}</button>
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800/80">
+                  <button onClick={() => setModalState(null)} className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 font-semibold text-xs cursor-pointer">Cancel</button>
+                  <button onClick={handleModalSave} className="px-5 py-2.5 rounded-xl bg-blue-600 text-white hover:bg-blue-700 font-semibold text-xs cursor-pointer">{modalState.mode === 'edit' ? 'Update' : 'Save'}</button>
               </div>
           </div>}
       </Modal>

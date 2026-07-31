@@ -69,42 +69,41 @@ const CustomContextSettings: React.FC = () => {
   };
 
   return (
-    <div className="mt-12 pt-12 border-t border-gray-200 dark:border-gray-700">
-      <div className="flex items-center mb-6">
-        <div className="bg-purple-100 dark:bg-purple-900/50 rounded-full w-12 h-12 flex items-center justify-center mr-4">
-          <span className="material-icons text-purple-600 dark:text-purple-400">settings_suggest</span>
-        </div>
-        <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Custom System Instructions</h2>
+    <div className="mt-16 pt-16 border-t border-slate-200/60 dark:border-slate-800/50 animate-fade-in">
+      <div className="mb-8">
+        <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 flex items-center">
+          <span className="material-icons text-blue-500 mr-3">settings_suggest</span>
+          Custom System Instructions
+        </h2>
+        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+          Add specific custom context to the meta-prompts for each tool. These instructions will be prepended to the AI's internal instructions.
+        </p>
       </div>
-
-      <p className="text-gray-600 dark:text-gray-400 mb-8">
-        Add specific custom context to the meta-prompts for each tool. These instructions will be prepended to the AI's internal instructions.
-      </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {tools.map((tool) => (
-          <div key={tool.id} className="p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center justify-between shadow-sm">
+          <div key={tool.id} className="p-5 bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200/60 dark:border-slate-800/50 flex items-center justify-between transition hover:border-blue-500/20">
             <div className="flex items-center">
-              <span className="material-icons text-gray-500 dark:text-gray-400 mr-3">{tool.icon}</span>
-              <span className="font-medium text-gray-900 dark:text-gray-100">{tool.name}</span>
+              <span className="material-icons text-slate-400 dark:text-slate-500 mr-3.5">{tool.icon}</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-200 text-sm">{tool.name}</span>
             </div>
             <div className="flex gap-2">
               <button
                 onClick={() => handleOpenModal(tool)}
-                className={`p-2 rounded-lg transition-colors flex items-center justify-center ${
+                className={`px-3 py-1.5 rounded-xl font-bold text-[10px] tracking-wider uppercase transition flex items-center justify-center cursor-pointer ${
                   hasContext[tool.id]
-                    ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
+                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/10'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/80'
                 }`}
                 title="Append to System Instructions"
               >
-                <span className="material-icons text-sm mr-1">add</span>
-                <span className="text-xs font-bold">CONTEXT</span>
+                <span className="material-icons text-xs mr-1">{hasContext[tool.id] ? 'edit' : 'add'}</span>
+                Context
               </button>
               {hasContext[tool.id] && (
                 <button
                   onClick={() => setIsConfirmingDelete(tool)}
-                  className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 transition-colors flex items-center justify-center"
+                  className="p-1.5 rounded-xl text-rose-500 hover:bg-rose-500/10 transition cursor-pointer flex items-center justify-center"
                   title="Remove Custom Context"
                 >
                   <span className="material-icons text-sm">delete</span>
@@ -120,30 +119,30 @@ const CustomContextSettings: React.FC = () => {
         onClose={() => setIsModalOpen(false)}
         title={`Custom Context: ${selectedTool?.name}`}
       >
-        <div className="space-y-4">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+        <div className="space-y-5 animate-fade-in">
+          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
             Paste the instructions you want to prepend to the {selectedTool?.name} meta-prompt.
           </p>
           <textarea
             value={contextText}
             onChange={(e) => setContextText(e.target.value)}
-            className="w-full h-64 p-4 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-y font-mono text-sm"
+            className="w-full h-64 p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar font-mono text-xs"
             placeholder="e.g. Always emphasize security principles... Use professional tone..."
           />
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800/80">
             <button
               onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 font-medium transition-colors"
+              className="px-5 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl font-semibold text-xs cursor-pointer"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
               disabled={isSaving}
-              className={`px-6 py-2 rounded-xl font-bold transition-all flex items-center shadow-lg ${
+              className={`px-5 py-2.5 rounded-xl font-semibold text-xs transition flex items-center cursor-pointer shadow-md ${
                 saveSuccess
-                  ? 'bg-green-500 text-white shadow-green-500/25'
-                  : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/25'
+                  ? 'bg-emerald-600 text-white shadow-emerald-600/15'
+                  : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/15'
               }`}
             >
               {isSaving ? (
@@ -166,21 +165,21 @@ const CustomContextSettings: React.FC = () => {
         title="Remove Custom Context?"
       >
         <div className="space-y-4">
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
             Are you sure you want to remove the custom context for <strong>{isConfirmingDelete?.name}</strong>? This action cannot be undone.
           </p>
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800/80">
             <button
               onClick={() => setIsConfirmingDelete(null)}
-              className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 font-medium transition-colors"
+              className="px-5 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl font-semibold text-xs cursor-pointer"
             >
               Cancel
             </button>
             <button
               onClick={handleDelete}
-              className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-red-500/25 flex items-center"
+              className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs rounded-xl cursor-pointer shadow-md transition"
             >
-              <span className="material-icons mr-2 text-sm">delete_forever</span>
+              <span className="material-icons mr-1.5 text-xs">delete_forever</span>
               Remove Context
             </button>
           </div>

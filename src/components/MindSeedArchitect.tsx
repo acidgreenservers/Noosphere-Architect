@@ -5,7 +5,7 @@ import remarkGfm from 'remark-gfm';
 import { MindSeedConfig, GeneratedMindSeed, SavedMindSeed, MindSeedType } from '../types';
 import { generateMindSeed } from '../services/ai/mindSeedService';
 import { AbortError } from '../services/ai/openRouter';
-import { addMindSeed, getAllMindSeeds, deleteMindSeed, updateMindSeed, getMindSeedDraft, saveMindSeedDraft, clearMindSeedDraft } from '../services/dbService';
+import * as db from '../services/dbService';
 import { sanitizeFilename } from '../utils/security';
 import LoadingSpinner from './LoadingSpinner';
 import Toast from './Toast';
@@ -15,7 +15,6 @@ import LibraryItem from './LibraryItem';
 import { StarredPinnedBar } from './StarredPinnedBar';
 import { UnifiedItem } from '../types';
 import { getDeepSearchText } from '../utils/search';
-import styles from './Button.module.css';
 
 const MAX_CHARS = 20000;
 
@@ -33,6 +32,7 @@ const MindSeedArchitect: React.FC = () => {
   const [searchTerm, setSearchText] = useState('');
   const [previewSeed, setPreviewSeed] = useState<SavedMindSeed | null>(null);
   const [seedToDelete, setSeedToDelete] = useState<number | null>(null);
+  const [isClearAllConfirmOpen, setIsClearAllConfirmOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     starredSection: true,
     pinnedSection: true,
@@ -49,7 +49,7 @@ const MindSeedArchitect: React.FC = () => {
 
   const loadSavedSeeds = async () => {
     try {
-      const seeds = await getAllMindSeeds(activeTab);
+      const seeds = await db.getAllMindSeeds(activeTab);
       setSavedSeeds(seeds);
     } catch (error) {
       console.error("Failed to load seeds", error);
@@ -58,7 +58,7 @@ const MindSeedArchitect: React.FC = () => {
 
   const loadDraft = async () => {
     try {
-      const draft = await getMindSeedDraft(1);
+      const draft = await db.getMindSeedDraft(1);
       if (draft) {
         setText(draft.config.text);
         setActiveTab(draft.config.type);
@@ -76,7 +76,7 @@ const MindSeedArchitect: React.FC = () => {
         return;
     }
     setText(newText);
-    saveMindSeedDraft({ id: 1, config: { type: activeTab, text: newText } });
+    db.saveMindSeedDraft({ id: 1, config: { type: activeTab, text: newText } });
   };
 
   const handleGenerate = async () => {
@@ -92,7 +92,7 @@ const MindSeedArchitect: React.FC = () => {
     setLoading(true);
     setResult(null);
 
-    const messages = ['Parsing text structure...', 'Mapping bridges...', 'Synthesizing seed...'];
+    const messages = ['Parsing text structure...', 'Testing semantic stability...', 'Synthesizing compressed seed...'];
     let messageIndex = 0;
     setLoadingMessage(messages[0]);
     const interval = setInterval(() => {
@@ -141,7 +141,7 @@ const MindSeedArchitect: React.FC = () => {
     };
 
     try {
-      await addMindSeed(newSeed);
+      await db.addMindSeed(newSeed);
       await loadSavedSeeds();
       setToast({ message: "MindSeed saved to library!", type: 'success' });
     } catch (error) {
@@ -156,7 +156,7 @@ const MindSeedArchitect: React.FC = () => {
   const confirmDelete = async () => {
     if (seedToDelete === null) return;
     try {
-      await deleteMindSeed(seedToDelete, activeTab);
+      await db.deleteMindSeed(seedToDelete, activeTab);
       await loadSavedSeeds();
       setToast({ message: "MindSeed deleted.", type: 'success' });
     } catch (error) {
@@ -168,7 +168,7 @@ const MindSeedArchitect: React.FC = () => {
 
   const handleUpdateMetadata = async (seed: SavedMindSeed, metadata: any) => {
     const updated = { ...seed, ...metadata };
-    await updateMindSeed(updated);
+    await db.updateMindSeed(updated);
     setSavedSeeds(prev => prev.map(s => s.id === seed.id ? updated : s));
     if (previewSeed?.id === seed.id) setPreviewSeed(updated);
   };
@@ -190,7 +190,14 @@ const MindSeedArchitect: React.FC = () => {
   const handleClear = async () => {
     setText('');
     setResult(null);
-    await clearMindSeedDraft(1);
+    await db.clearMindSeedDraft(1);
+  };
+
+  const handleClearAll = async () => {
+    await db.clearAllMindSeeds(activeTab);
+    await loadSavedSeeds();
+    setToast({ message: 'All seeds cleared.', type: 'success' });
+    setIsClearAllConfirmOpen(false);
   };
 
   const formatAsMarkdown = (seed: GeneratedMindSeed, type: MindSeedType) => {
@@ -230,37 +237,37 @@ const MindSeedArchitect: React.FC = () => {
 
   const charCount = text.length;
   const isNearLimit = charCount > MAX_CHARS * 0.9;
-  const charCountColor = charCount > MAX_CHARS ? 'text-red-600' : isNearLimit ? 'text-orange-500' : 'text-gray-500';
+  const charCountColor = charCount > MAX_CHARS ? 'text-red-600' : isNearLimit ? 'text-orange-500' : 'text-slate-400';
 
   const getTabColor = (tab: MindSeedType) => {
-    if (activeTab !== tab) return 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300';
+    if (activeTab !== tab) return 'text-slate-400 border-transparent hover:text-slate-600';
     switch (tab) {
-        case 'cogni': return 'text-orange-500 border-orange-500';
-        case 'lingua': return 'text-green-500 border-green-500';
-        case 'arch': return 'text-violet-500 border-violet-500';
+        case 'cogni': return 'bg-orange-600 text-white shadow-md shadow-orange-600/10';
+        case 'lingua': return 'bg-emerald-600 text-white shadow-md shadow-emerald-600/10';
+        case 'arch': return 'bg-purple-600 text-white shadow-md shadow-purple-600/10';
     }
   };
 
   const getButtonColorClass = () => {
     switch (activeTab) {
-        case 'cogni': return 'bg-orange-600 hover:bg-orange-700';
-        case 'lingua': return 'bg-green-600 hover:bg-green-700';
-        case 'arch': return 'bg-violet-600 hover:bg-violet-700';
+        case 'cogni': return 'bg-orange-600 hover:bg-orange-500 shadow-orange-600/10';
+        case 'lingua': return 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/10';
+        case 'arch': return 'bg-purple-600 hover:bg-purple-500 shadow-purple-600/10';
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex justify-between items-center mb-8">
+    <div className="max-w-4xl mx-auto animate-fade-in">
+      <div className="flex justify-between items-center mb-10">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">MindSeed Architect</h2>
-          <p className="text-gray-600 dark:text-gray-400">Compress text into generative seeds of wisdom.</p>
+          <h2 className="text-3xl font-extrabold text-slate-900 dark:text-slate-100">MindSeed Architect</h2>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Compress large specification contexts into highly generative seeds of wisdom.</p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 dark:border-gray-700 mb-8">
-        <nav className="-mb-px flex space-x-8" aria-label="MindSeed Type Tabs" role="tablist">
+      <div className="mb-10">
+        <nav className="flex flex-wrap gap-2" aria-label="MindSeed Type Tabs" role="tablist">
           {(['cogni', 'lingua', 'arch'] as MindSeedType[]).map((tab) => (
             <button
               key={tab}
@@ -268,10 +275,10 @@ const MindSeedArchitect: React.FC = () => {
               aria-selected={activeTab === tab}
               onClick={() => {
                 setActiveTab(tab);
-                saveMindSeedDraft({ id: 1, config: { type: tab, text } });
+                db.saveMindSeedDraft({ id: 1, config: { type: tab, text } });
               }}
               className={`
-                whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm capitalize transition-colors duration-200
+                whitespace-nowrap py-2.5 px-5 rounded-xl font-semibold text-xs tracking-wider uppercase transition-all duration-200 cursor-pointer
                 ${getTabColor(tab)}
               `}
             >
@@ -283,26 +290,26 @@ const MindSeedArchitect: React.FC = () => {
 
       <div className="grid grid-cols-1 gap-8">
         {/* Input Form */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div className="bg-transparent">
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Input Text (up to 20,000 characters)
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
+                Input Spec Context (up to 20,000 characters)
             </label>
             <textarea
               value={text}
               onChange={handleTextChange}
-              placeholder="Paste large body of text here..."
-              className="w-full h-64 p-4 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+              placeholder="Paste large body of spec text here..."
+              className="w-full h-64 p-4 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar"
             />
-            <div className={`mt-2 text-right text-sm font-medium ${charCountColor}`}>
+            <div className={`mt-2 text-right text-xs font-semibold ${charCountColor}`}>
               {charCount.toLocaleString()} / {MAX_CHARS.toLocaleString()}
             </div>
           </div>
 
-          <div className="flex justify-end space-x-4">
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-200/60 dark:border-slate-800/50">
             <button
               onClick={handleClear}
-              className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              className="px-6 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/60 transition cursor-pointer"
             >
               Clear
             </button>
@@ -310,7 +317,7 @@ const MindSeedArchitect: React.FC = () => {
               onClick={handleGenerate}
               disabled={loading || !text.trim()}
               data-testid="generate-button"
-              className={`${styles.base} ${getButtonColorClass()} text-white ${loading ? styles.loading : ''}`}
+              className={`px-6 py-2.5 text-white rounded-xl text-sm font-semibold shadow-md transition cursor-pointer ${getButtonColorClass()}`}
             >
               {loading ? 'Architecting...' : 'Generate Seed'}
             </button>
@@ -321,70 +328,69 @@ const MindSeedArchitect: React.FC = () => {
 
         {/* Result Display */}
         {result && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">Generated MindSeed</h3>
-              <div className="flex flex-wrap gap-4">
+          <div className="mt-12 bg-transparent animate-fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-6 mb-4 border-b border-slate-200/60 dark:border-slate-800/50 gap-4">
+              <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200">Crystallized Mind Seed</h3>
+              <div className="flex flex-wrap items-center gap-3">
                 <button
                     onClick={() => handleCopy(result, activeTab)}
-                    className="flex items-center text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
+                    className="flex items-center px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900/60 transition cursor-pointer"
                     title="Copy to Clipboard"
                 >
-                    <span className="material-icons mr-1">content_copy</span> Copy
+                    <span className="material-icons text-base mr-2">content_copy</span> Copy
                 </button>
                 <button
                     onClick={() => handleExport(result, activeTab)}
-                    className="flex items-center text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 font-medium transition-colors"
+                    className="flex items-center px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900/60 transition cursor-pointer"
                     title="Export as Markdown"
                 >
-                    <span className="material-icons mr-1">download</span> Export
+                    <span className="material-icons text-base mr-2">download</span> Export
                 </button>
                 <button
                     onClick={handleSave}
-                    className="flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-700 font-medium transition-colors"
+                    className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold shadow-md shadow-blue-600/10 transition cursor-pointer"
                 >
-                    <span className="material-icons mr-1">save</span> Save to Library
+                    <span className="material-icons text-base mr-2">save</span> Save to Library
                 </button>
               </div>
             </div>
 
-            <div className="mb-8">
-                <blockquote className="border-l-4 border-blue-500 pl-4 py-2 italic text-2xl text-gray-800 dark:text-gray-200">
-                    "{result.seed}"
-                </blockquote>
-            </div>
+            <div className="space-y-10 py-4">
+                <div className="space-y-4">
+                    <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Mind Seed Quote</h4>
+                    <blockquote className="border-l-2 border-blue-500 pl-5 py-4 italic text-lg text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-900/40 rounded-r-2xl">
+                        "{result.seed}"
+                    </blockquote>
+                </div>
 
-            <div className="overflow-hidden border border-gray-200 dark:border-gray-700 rounded-lg">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead className="bg-gray-50 dark:bg-gray-900/50">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Seed</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pattern</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deploy When</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                        <tr>
-                            <td className="px-6 py-4 text-sm italic text-gray-900 dark:text-gray-100 font-medium">"{result.seed}"</td>
-                            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
-                                <div className="prose prose-sm dark:prose-invert">
-                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{result.pattern}</ReactMarkdown>
-                                </div>
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{result.deployWhen}</td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div className="space-y-4">
+                    <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Generative Pattern</h4>
+                    <div className="prose prose-slate prose-sm dark:prose-invert max-w-none bg-slate-50 dark:bg-slate-900/30 p-5 rounded-2xl border border-slate-100 dark:border-slate-800/50">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{result.pattern}</ReactMarkdown>
+                    </div>
+                </div>
+
+                <div className="space-y-4">
+                    <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Deployment Condition</h4>
+                    <div className="prose prose-slate prose-sm dark:prose-invert max-w-none bg-slate-50 dark:bg-slate-900/30 p-5 rounded-2xl border border-slate-100 dark:border-slate-800/50 text-slate-600 dark:text-slate-300">
+                        {result.deployWhen}
+                    </div>
+                </div>
             </div>
           </div>
         )}
 
         {/* Saved Library */}
         {savedSeeds.length > 0 && (
-          <div className="mt-12">
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Saved MindSeeds</h3>
+          <div className="mt-20 border-t border-slate-200/60 dark:border-slate-800/50 pt-16">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
+                <h2 className="text-2xl font-extrabold text-slate-800 dark:text-slate-200">Saved Mind Seeds</h2>
+                <button onClick={() => setIsClearAllConfirmOpen(true)} className="px-4 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-500/10 rounded-xl hover:bg-rose-500/15 flex items-center cursor-pointer transition">
+                    <span className="material-icons text-sm mr-2">delete_sweep</span> Clear All
+                </button>
+            </div>
 
-            <div className="mb-6 space-y-4">
+            <div className="mb-8 space-y-4">
                 <StarredPinnedBar
                     type="starred"
                     items={unifiedSeeds}
@@ -429,15 +435,15 @@ const MindSeedArchitect: React.FC = () => {
                 />
             </div>
 
-            <div className="mb-4">
+            <div className="mb-6">
                 <div className="relative">
-                    <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+                    <span className="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">search</span>
                     <input
                         type="text"
                         placeholder="Search saved seeds..."
                         value={searchTerm}
                         onChange={(e) => setSearchText(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                        className="w-full pl-11 pr-4 py-3 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-blue-500/40 outline-none transition-all text-sm"
                     />
                 </div>
             </div>
@@ -504,19 +510,19 @@ const MindSeedArchitect: React.FC = () => {
         title="Confirm Deletion"
       >
         <div className="space-y-4">
-            <p className="text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                 Are you sure you want to delete this MindSeed? This action cannot be undone.
             </p>
-            <div className="flex justify-end space-x-3 mt-6">
+            <div className="flex justify-end gap-3 pt-4">
                 <button
                     onClick={() => setSeedToDelete(null)}
-                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    className="px-5 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl font-semibold text-xs cursor-pointer text-slate-600 dark:text-slate-400 hover:bg-slate-100"
                 >
                     Cancel
                 </button>
                 <button
                     onClick={confirmDelete}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm"
+                    className="px-5 py-2.5 bg-rose-600 text-white rounded-xl font-semibold text-xs cursor-pointer hover:bg-rose-500 transition shadow-sm"
                 >
                     Delete Permanently
                 </button>
@@ -529,14 +535,41 @@ const MindSeedArchitect: React.FC = () => {
         onClose={() => setShowErrorModal(false)}
         title="Limit Exceeded"
       >
-        <p className="text-gray-600 dark:text-gray-400">{errorMessage}</p>
+        <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">{errorMessage}</p>
         <div className="mt-6 flex justify-end">
             <button
                 onClick={() => setShowErrorModal(false)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-xs font-semibold hover:bg-blue-700 cursor-pointer"
             >
                 Close
             </button>
+        </div>
+      </Modal>
+
+      {/* Clear All Confirmation Modal */}
+      <Modal
+        isOpen={isClearAllConfirmOpen}
+        onClose={() => setIsClearAllConfirmOpen(false)}
+        title="Clear All Seeds"
+      >
+        <div className="space-y-4">
+            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                Are you sure you want to clear ALL saved mind seeds in this tab? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3 pt-4">
+                <button
+                    onClick={() => setIsClearAllConfirmOpen(false)}
+                    className="px-5 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl font-semibold text-xs cursor-pointer text-slate-600 dark:text-slate-400 hover:bg-slate-100"
+                >
+                    Cancel
+                </button>
+                <button
+                    onClick={handleClearAll}
+                    className="px-5 py-2.5 bg-rose-600 text-white rounded-xl font-semibold text-xs cursor-pointer hover:bg-rose-500 transition shadow-sm"
+                >
+                    Delete All
+                </button>
+            </div>
         </div>
       </Modal>
     </div>

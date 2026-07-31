@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { setOpenRouterKey, getOpenRouterKey, setOpenRouterModel, getOpenRouterModel, clearSession } from '../services/sessionService';
 import CustomContextSettings from './CustomContextSettings';
 import Modal from './Modal';
+import Toast from './Toast';
 
 interface ModelGroup {
   name: string;
@@ -60,6 +61,7 @@ const AgentApiSettings: React.FC = () => {
   const [hasSavedKey, setHasSavedKey] = useState(false);
   const [isModelModalOpen, setIsModelModalOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     const savedKey = getOpenRouterKey();
@@ -93,7 +95,7 @@ const AgentApiSettings: React.FC = () => {
       }
 
       setIsSaved(true);
-      alert('OpenRouter settings saved successfully for this session.');
+      setSuccessMessage('OpenRouter settings saved successfully for this session.');
     }
   };
 
@@ -103,7 +105,7 @@ const AgentApiSettings: React.FC = () => {
     setModel('');
     setIsSaved(false);
     setHasSavedKey(false);
-    alert('OpenRouter settings cleared.');
+    setSuccessMessage('OpenRouter settings cleared.');
   };
 
   const toggleGroup = (groupName: string) => {
@@ -116,18 +118,21 @@ const AgentApiSettings: React.FC = () => {
   const selectModel = (modelId: string) => {
     setModel(modelId);
     setIsModelModalOpen(false);
+    setSuccessMessage(`Selected model: ${modelId}`);
   };
 
   return (
-    <div className="max-w-2xl mx-auto bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
-      <div className="flex items-center mb-6">
-        <div className="bg-blue-100 dark:bg-blue-900/50 rounded-full w-12 h-12 flex items-center justify-center mr-4">
-          <span className="material-icons text-blue-600 dark:text-blue-400">vpn_key</span>
-        </div>
-        <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Agent API Settings</h2>
+    <div className="max-w-2xl mx-auto animate-fade-in">
+      <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
+
+      <div className="mb-10">
+        <h2 className="text-3xl font-extrabold text-slate-900 dark:text-slate-100 flex items-center">
+          Agent API Settings
+        </h2>
+        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Configure OpenRouter endpoints and active session settings.</p>
       </div>
 
-      <p className="text-gray-600 dark:text-gray-400 mb-8">
+      <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed mb-8">
         Enter your OpenRouter API key and Model to enable AI generation features.{" "}
         <strong>OpenRouter configuration is required for the architects to function.</strong>{" "}
         Your key is stored <strong>only</strong> in memory for the duration of this session.
@@ -136,7 +141,7 @@ const AgentApiSettings: React.FC = () => {
 
       <div className="space-y-6">
         <div>
-          <label htmlFor="api-key" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label htmlFor="api-key" className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
             OpenRouter API Key
           </label>
           <div className="relative">
@@ -146,13 +151,13 @@ const AgentApiSettings: React.FC = () => {
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder={hasSavedKey ? "•••••••••••••••• (Key is saved, enter to update)" : "sk-or-v1-..."}
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition"
             />
           </div>
         </div>
 
         <div>
-          <label htmlFor="model" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label htmlFor="model" className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
             OpenRouter Model
           </label>
           <div className="flex gap-2">
@@ -162,44 +167,44 @@ const AgentApiSettings: React.FC = () => {
               value={model}
               onChange={(e) => setModel(e.target.value)}
               placeholder="e.g., anthropic/claude-3-opus"
-              className="flex-grow px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="flex-grow px-4 py-3 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition"
             />
             <button
               onClick={() => setIsModelModalOpen(true)}
-              className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl border border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all flex items-center"
+              className="px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900/60 transition cursor-pointer flex items-center"
               title="Select from pre-defined models"
             >
-              <span className="material-icons">list</span>
+              <span className="material-icons text-slate-500">list</span>
             </button>
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4 pt-4">
+        <div className="flex flex-col sm:flex-row gap-3 pt-4">
           <button
             onClick={handleSave}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-blue-500/25 flex items-center justify-center"
+            className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-6 rounded-xl shadow-md shadow-blue-600/10 transition cursor-pointer flex items-center justify-center"
           >
-            <span className="material-icons mr-2">save</span>
+            <span className="material-icons mr-2 text-sm">save</span>
             Save Settings
           </button>
           
           {isSaved && (
             <button
               onClick={handleClear}
-              className="flex-1 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 font-bold py-3 px-6 rounded-xl transition-all flex items-center justify-center border border-red-200 dark:border-red-800"
+              className="flex-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-semibold py-2.5 px-6 rounded-xl transition flex items-center justify-center cursor-pointer border border-rose-500/10"
             >
-              <span className="material-icons mr-2">delete_forever</span>
+              <span className="material-icons mr-2 text-sm">delete_forever</span>
               Clear Key & Settings
             </button>
           )}
         </div>
 
         {isSaved && (
-          <div className="mt-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl flex items-start">
-            <span className="material-icons text-green-600 dark:text-green-400 mr-3">check_circle</span>
+          <div className="mt-6 p-5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-start">
+            <span className="material-icons text-emerald-600 dark:text-emerald-400 mr-3">check_circle</span>
             <div>
-              <p className="text-green-800 dark:text-green-200 font-medium">Settings configured</p>
-              <p className="text-green-700 dark:text-green-300 text-sm mt-1">Your OpenRouter settings are ready to use for enhanced AI capabilities.</p>
+              <p className="text-emerald-800 dark:text-emerald-400 font-semibold text-sm">Settings configured</p>
+              <p className="text-emerald-600 dark:text-emerald-500 text-xs mt-1">Your OpenRouter settings are ready to use for enhanced AI capabilities.</p>
             </div>
           </div>
         )}
@@ -210,28 +215,28 @@ const AgentApiSettings: React.FC = () => {
         onClose={() => setIsModelModalOpen(false)}
         title="Select AI Model"
       >
-        <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
+        <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
           {MODEL_GROUPS.map((group) => (
-            <div key={group.name} className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+            <div key={group.name} className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
               <button
                 onClick={() => toggleGroup(group.name)}
-                className="w-full flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-900/50 hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors"
+                className="w-full flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-900 transition"
               >
-                <span className="font-bold text-gray-900 dark:text-gray-100">{group.name}</span>
-                <span className={`material-icons transform transition-transform ${expandedGroups[group.name] ? 'rotate-180' : ''}`}>
+                <span className="font-bold text-slate-800 dark:text-slate-200 text-sm">{group.name}</span>
+                <span className={`material-icons transform transition ${expandedGroups[group.name] ? 'rotate-180' : ''}`}>
                   expand_more
                 </span>
               </button>
               {expandedGroups[group.name] && (
-                <div className="p-2 space-y-1 bg-white dark:bg-gray-800">
+                <div className="p-2 space-y-1 bg-white dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-800">
                   {group.models.map((modelId) => (
                     <button
                       key={modelId}
                       onClick={() => selectModel(modelId)}
-                      className={`w-full text-left p-3 rounded-lg text-sm transition-colors ${
+                      className={`w-full text-left p-3 rounded-xl text-xs font-semibold transition ${
                         model === modelId
-                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-bold'
-                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                          ? 'bg-blue-600 text-white shadow-sm'
+                          : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/80'
                       }`}
                     >
                       {modelId}

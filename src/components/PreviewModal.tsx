@@ -35,6 +35,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   metadata,
   onUpdateMetadata,
   onCopy,
+  onExport,
   onDelete,
   categoryOptions
 }) => {
@@ -313,6 +314,13 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
             >
               <span className={`material-icons ${copyStatus ? 'text-sm' : ''}`}>{copyStatus ? 'check' : 'content_copy'}</span>
               {copyStatus && <span className="text-xs">Copied!</span>}
+            </button>
+            <button
+              onClick={onExport}
+              className="p-2 rounded-xl text-slate-500 hover:text-emerald-500 hover:bg-emerald-500/10 transition cursor-pointer flex items-center justify-center"
+              title="Export File"
+            >
+              <span className="material-icons">download</span>
             </button>
             <button
               onClick={onClose}

@@ -16,17 +16,17 @@ import Toast from './Toast';
 import { StarredPinnedBar } from './StarredPinnedBar';
 
 const Tooltip: React.FC<{ text: string }> = ({ text }) => (
-  <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-max max-w-xs p-2 bg-gray-800 text-white text-xs rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
+  <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-max max-w-xs p-3 bg-slate-900 text-white text-[11px] font-semibold rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
     {text}
   </span>
 );
 
 const FormField: React.FC<{id: string, label: string, tooltip: string, required: boolean, children: React.ReactNode}> = ({id, label, tooltip, required, children}) => (
     <div className="mb-4">
-        <label htmlFor={id} className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label htmlFor={id} className="flex items-center text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
             {label} {required ? <span className="text-red-500 ml-1">*</span> : ''}
             <div className="group relative flex items-center ml-2">
-                <span className="material-icons text-gray-400 dark:text-gray-500 text-base cursor-help">info_outline</span>
+                <span className="material-icons text-slate-400 dark:text-slate-500 text-sm cursor-help">info_outline</span>
                 <Tooltip text={tooltip} />
             </div>
         </label>
@@ -35,16 +35,10 @@ const FormField: React.FC<{id: string, label: string, tooltip: string, required:
 );
 
 const Fieldset: React.FC<{legend: string, children: React.ReactNode}> = ({legend, children}) => (
-    <fieldset className="border border-gray-300 dark:border-gray-600 rounded-lg p-4 pt-2 mb-6">
-        <legend className="text-lg font-semibold px-2 text-gray-800 dark:text-gray-200">{legend}</legend>
+    <fieldset className="border border-slate-200/60 dark:border-slate-800/50 rounded-2xl p-6 pt-4 mb-6">
+        <legend className="text-sm font-bold uppercase tracking-widest px-3 text-slate-400 dark:text-slate-500">{legend}</legend>
         {children}
     </fieldset>
-);
-
-const LoadingMessage = () => (
-  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 italic">
-    The output should read like a job description written from the perspective of the employer to the employee — not a technical spec.
-  </p>
 );
 
 const AgentJobArchitect: React.FC = () => {
@@ -281,37 +275,27 @@ const AgentJobArchitect: React.FC = () => {
   const isGenerateDisabled = !config.jobTitle || !config.mission || isLoading;
 
   return (
-    <div>
+    <div className="space-y-8 animate-fade-in">
       <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
 
       {/* Draft Restore Modal */}
       <Modal isOpen={!!pendingDraft} onClose={() => setPendingDraft(null)} title="Unsaved Draft Found">
         <div className="space-y-4">
-          <p className="text-gray-600 dark:text-gray-400">
-            An unsaved agent job draft was found. Would you like to restore it?
-          </p>
-          <div className="flex justify-end space-x-3 mt-6">
-            <button
-              onClick={handleDeclineDraft}
-              className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-            >
-              Discard
-            </button>
-            <button
-              onClick={handleAcceptDraft}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
-            >
-              Restore Draft
-            </button>
+          <p className="text-sm text-slate-600 dark:text-slate-400">An unsaved agent job draft was found. Would you like to restore it?</p>
+          <div className="flex justify-end gap-3 pt-4">
+            <button onClick={handleDeclineDraft} className="px-5 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl font-semibold text-xs cursor-pointer text-slate-600 dark:text-slate-400 hover:bg-slate-100">Discard</button>
+            <button onClick={handleAcceptDraft} className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-xs cursor-pointer shadow-sm transition">Restore Draft</button>
           </div>
         </div>
       </Modal>
 
       {/* Form Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8">
-        <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-6">Define Agent Job Description</h3>
+      <div className="bg-transparent">
+        <div className="border-b border-slate-200/60 dark:border-slate-800/50 pb-4 mb-6">
+          <h3 className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Define Agent Job Description</h3>
+        </div>
 
-        <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="space-y-6">
+        <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="space-y-8">
           <Fieldset legend="Role Identity">
             <FormField id="jobTitle" label="Job Title" tooltip="The name of the role this agent-employee will fill." required={true}>
               <input
@@ -322,7 +306,7 @@ const AgentJobArchitect: React.FC = () => {
                 onChange={handleChange}
                 placeholder="e.g., Senior Frontend Engineer"
                 required
-                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20"
+                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition"
               />
             </FormField>
             <FormField id="department" label="Department / Team" tooltip="The organizational unit or team this role belongs to." required={false}>
@@ -333,7 +317,7 @@ const AgentJobArchitect: React.FC = () => {
                 value={config.department}
                 onChange={handleChange}
                 placeholder="e.g., Platform Engineering, AI Research"
-                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20"
+                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition"
               />
             </FormField>
             <FormField id="reportsTo" label="Reports To" tooltip="Who or what this role reports to (a human role, a team, or the system itself)." required={false}>
@@ -344,7 +328,7 @@ const AgentJobArchitect: React.FC = () => {
                 value={config.reportsTo}
                 onChange={handleChange}
                 placeholder="e.g., Lead Architect, Head of Product"
-                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20"
+                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition"
               />
             </FormField>
             <FormField id="mission" label="Mission" tooltip="The high-level purpose of this role — why it exists and what it ultimately serves." required={true}>
@@ -356,7 +340,7 @@ const AgentJobArchitect: React.FC = () => {
                 onChange={handleChange}
                 placeholder="e.g., To ensure the frontend architecture is coherent, performant, and aligned with the product vision."
                 required
-                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20"
+                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar"
               />
             </FormField>
           </Fieldset>
@@ -370,7 +354,7 @@ const AgentJobArchitect: React.FC = () => {
                 value={config.responsibilities}
                 onChange={handleChange}
                 placeholder="e.g., Own the component library. Establish performance budgets. Conduct architecture reviews."
-                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20"
+                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar"
               />
             </FormField>
             <FormField id="qualifications" label="Qualifications" tooltip="Required knowledge, experience, or capabilities the agent must possess." required={false}>
@@ -381,7 +365,7 @@ const AgentJobArchitect: React.FC = () => {
                 value={config.qualifications}
                 onChange={handleChange}
                 placeholder="e.g., Deep understanding of React and TypeScript. Experience with distributed systems."
-                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20"
+                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar"
               />
             </FormField>
             <FormField id="operatingPrinciples" label="Operating Principles" tooltip="The values, conduct, and ethos that guide how this role operates." required={false}>
@@ -392,7 +376,7 @@ const AgentJobArchitect: React.FC = () => {
                 value={config.operatingPrinciples}
                 onChange={handleChange}
                 placeholder="e.g., Write code with intention. Prefer simplicity over cleverness. Assume good intent."
-                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20"
+                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar"
               />
             </FormField>
           </Fieldset>
@@ -406,7 +390,7 @@ const AgentJobArchitect: React.FC = () => {
                 value={config.authority}
                 onChange={handleChange}
                 placeholder="e.g., Can make technical decisions within established patterns. Can approve PRs. Can prioritize bug fixes."
-                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20"
+                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar"
               />
             </FormField>
             <FormField id="escalationPath" label="Escalation Path" tooltip="When and how this role should escalate to a human or higher authority." required={false}>
@@ -417,7 +401,7 @@ const AgentJobArchitect: React.FC = () => {
                 value={config.escalationPath}
                 onChange={handleChange}
                 placeholder="e.g., Security incidents must be escalated immediately. Architectural changes beyond scope require team lead approval."
-                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20"
+                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar"
               />
             </FormField>
             <FormField id="successCriteria" label="Success Criteria" tooltip="How this role's performance and impact are measured." required={false}>
@@ -428,7 +412,7 @@ const AgentJobArchitect: React.FC = () => {
                 value={config.successCriteria}
                 onChange={handleChange}
                 placeholder="e.g., Components are consistently documented. Performance budgets are met. Technical debt is reduced."
-                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20"
+                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar"
               />
             </FormField>
             <FormField id="constraints" label="Boundaries & Constraints" tooltip="What is off-limits or restricted for this role." required={false}>
@@ -439,24 +423,24 @@ const AgentJobArchitect: React.FC = () => {
                 value={config.constraints}
                 onChange={handleChange}
                 placeholder="e.g., Cannot access production secrets. Cannot modify the authentication system without review."
-                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:ring-2 hover:ring-blue-500/20"
+                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar"
               />
             </FormField>
           </Fieldset>
 
-          <div className="flex flex-col sm:flex-row items-center justify-end space-y-4 sm:space-y-0 sm:space-x-4 pt-4">
+          <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-6 border-t border-slate-200/60 dark:border-slate-800/50">
             <button
               type="button"
               onClick={handleReset}
               disabled={isLoading}
-              className="w-full sm:w-auto px-6 py-2 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 transition"
+              className="w-full sm:w-auto px-6 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/60 transition cursor-pointer"
             >
               Reset
             </button>
             <button
               type="submit"
               disabled={isGenerateDisabled}
-              className="w-full sm:w-auto flex items-center justify-center px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-300 dark:disabled:bg-blue-800 disabled:cursor-not-allowed transition"
+              className="w-full sm:w-auto flex items-center justify-center px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold shadow-md shadow-blue-600/10 disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer"
             >
               {isLoading ? 'Generating...' : 'Generate AGENTS.md'}
             </button>
@@ -465,7 +449,7 @@ const AgentJobArchitect: React.FC = () => {
       </div>
 
       {error && (
-        <div className="mt-8 bg-red-100 dark:bg-red-900/50 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg relative" role="alert">
+        <div className="mt-8 bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 px-5 py-4 rounded-2xl text-sm relative" role="alert">
           <strong className="font-bold">Error: </strong>
           <span className="block sm:inline">{error}</span>
         </div>
@@ -475,27 +459,30 @@ const AgentJobArchitect: React.FC = () => {
 
       {/* Generated Output */}
       {generatedFile && !isLoading && (
-        <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg">
-          <div className="flex flex-wrap justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700 gap-4">
-            <h3 className="text-xl font-semibold">Generated AGENTS.md</h3>
-            <div className="flex items-center space-x-2">
+        <div className="bg-transparent mt-12 animate-fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-6 mb-2 border-b border-slate-200/60 dark:border-slate-800/50 gap-4">
+            <div>
+              <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200">Generated AGENTS.md</h3>
+              <p className="text-xs text-slate-500 mt-1">Crystallized employee requirements handbook.</p>
+            </div>
+            <div className="flex items-center space-x-3">
               <button
                 onClick={() => { navigator.clipboard.writeText(generatedFile.agentsFile); setSuccessMessage('Copied to clipboard!'); }}
-                className="flex items-center px-3 py-1.5 border rounded-md text-sm transition-colors hover:bg-gray-50 dark:hover:bg-gray-700"
+                className="flex items-center px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900/60 transition cursor-pointer"
               >
-                <span className="material-icons text-base mr-1.5">content_copy</span>
+                <span className="material-icons text-base mr-2">content_copy</span>
                 Copy
               </button>
               <button
                 onClick={() => { setIsSaveModalOpen(true); setSaveName(generatedFile.agentsFile.slice(0, 40) || ''); }}
-                className="flex items-center px-3 py-1.5 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition"
+                className="flex items-center px-4 py-2 border border-transparent rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 shadow-sm shadow-blue-500/10 transition cursor-pointer"
               >
-                <span className="material-icons text-base mr-1.5">save</span>
+                <span className="material-icons text-base mr-2">save</span>
                 Save
               </button>
             </div>
           </div>
-          <div className="prose prose-sm sm:prose-base dark:prose-invert max-w-none p-6 md:p-10 bg-white dark:bg-gray-900/50 rounded-b-2xl border-x border-b border-gray-200 dark:border-gray-700/50 shadow-inner overflow-y-auto max-h-[70vh] prose-pre:bg-gray-900 prose-pre:text-gray-100 prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:bg-gray-50 dark:prose-blockquote:bg-gray-800/50 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-blockquote:italic">
+          <div className="prose prose-slate dark:prose-invert max-w-none py-4 px-2">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{generatedFile.agentsFile}</ReactMarkdown>
           </div>
         </div>
@@ -503,38 +490,40 @@ const AgentJobArchitect: React.FC = () => {
 
       {/* Save Modal */}
       <Modal isOpen={isSaveModalOpen} onClose={() => setIsSaveModalOpen(false)} title="Save Agent Job Description">
-        <div className="space-y-4">
-          <label htmlFor="saveJobName" className="block text-sm font-medium">Name</label>
-          <input
-            type="text"
-            id="saveJobName"
-            value={saveName}
-            onChange={e => setSaveName(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="e.g., Senior Frontend Engineer Role"
-          />
-          <div className="flex justify-end space-x-2 pt-2">
-            <button onClick={() => setIsSaveModalOpen(false)} className="px-4 py-2 rounded-md border dark:border-gray-600">Cancel</button>
-            <button onClick={handleSave} className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700" disabled={!saveName.trim()}>Save</button>
+        <div className="space-y-4 animate-fade-in">
+          <div>
+            <label htmlFor="saveJobName" className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Name</label>
+            <input
+              type="text"
+              id="saveJobName"
+              value={saveName}
+              onChange={e => setSaveName(e.target.value)}
+              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/40"
+              placeholder="e.g., Senior Frontend Engineer Role"
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800/80">
+            <button onClick={() => setIsSaveModalOpen(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 font-semibold text-xs cursor-pointer">Cancel</button>
+            <button onClick={handleSave} className="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-semibold text-xs cursor-pointer" disabled={!saveName.trim()}>Save</button>
           </div>
         </div>
       </Modal>
 
       {/* Library Section */}
       {savedAgentJobs.length > 0 && (
-        <div className="mt-12">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-center">Saved Agent Jobs</h2>
+        <div className="mt-20 border-t border-slate-200/60 dark:border-slate-800/50 pt-16">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
+            <h2 className="text-2xl font-extrabold text-slate-800 dark:text-slate-200">Saved Agent Jobs</h2>
             <button
               onClick={() => setIsClearAllConfirmOpen(true)}
-              className="px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/60 flex items-center"
+              className="px-4 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-500/10 rounded-xl hover:bg-rose-500/15 flex items-center cursor-pointer transition"
             >
-              <span className="material-icons text-sm mr-1">delete_sweep</span>
+              <span className="material-icons text-sm mr-2">delete_sweep</span>
               Clear All
             </button>
           </div>
 
-          <div className="mb-6 space-y-4">
+          <div className="mb-8 space-y-4">
             <StarredPinnedBar
               type="starred"
               items={unifiedJobs}
@@ -563,15 +552,15 @@ const AgentJobArchitect: React.FC = () => {
             />
           </div>
 
-          <div className="mb-4">
+          <div className="mb-6">
             <div className="relative">
-              <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+              <span className="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">search</span>
               <input
                 type="text"
                 placeholder="Search saved agent jobs..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                className="w-full pl-11 pr-4 py-3 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-blue-500/40 outline-none transition-all text-sm"
               />
             </div>
           </div>
@@ -595,9 +584,9 @@ const AgentJobArchitect: React.FC = () => {
                 />
               ))}
             {savedAgentJobs.filter(j => !j.isArchived && !j.isStarred && !j.isPinned && (j.name.toLowerCase().includes(searchTerm.toLowerCase()) || getDeepSearchText(j).includes(searchTerm.toLowerCase()))).length === 0 && searchTerm && (
-              <div className="py-8 text-center text-gray-400 dark:text-gray-500">
-                <span className="material-icons text-4xl mb-2">search_off</span>
-                <p>No agent jobs match your search</p>
+              <div className="py-12 text-center text-slate-500">
+                <span className="material-icons text-4xl mb-2 text-slate-400">search_off</span>
+                <p className="text-sm">No agent jobs match your search</p>
               </div>
             )}
           </div>
@@ -625,10 +614,10 @@ const AgentJobArchitect: React.FC = () => {
       {/* Delete Confirmation */}
       <Modal isOpen={isDeleteConfirmOpen} onClose={() => setIsDeleteConfirmOpen(false)} title="Delete Agent Job">
         <div className="space-y-4">
-          <p className="text-gray-600 dark:text-gray-400">Are you sure you want to delete this agent job description? This cannot be undone.</p>
-          <div className="flex justify-end space-x-3">
-            <button onClick={() => setIsDeleteConfirmOpen(false)} className="px-4 py-2 border dark:border-gray-600 rounded-lg">Cancel</button>
-            <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Delete</button>
+          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Are you sure you want to delete this agent job description? This cannot be undone.</p>
+          <div className="flex justify-end gap-3 pt-4">
+            <button onClick={() => setIsDeleteConfirmOpen(false)} className="px-5 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl font-semibold text-xs cursor-pointer">Cancel</button>
+            <button onClick={handleDelete} className="px-5 py-2.5 bg-rose-600 text-white font-semibold text-xs rounded-xl cursor-pointer">Delete</button>
           </div>
         </div>
       </Modal>
@@ -636,10 +625,10 @@ const AgentJobArchitect: React.FC = () => {
       {/* Clear All Confirmation */}
       <Modal isOpen={isClearAllConfirmOpen} onClose={() => setIsClearAllConfirmOpen(false)} title="Clear All Agent Jobs">
         <div className="space-y-4">
-          <p className="text-gray-600 dark:text-gray-400">Are you sure you want to delete ALL saved agent job descriptions? This action cannot be undone.</p>
-          <div className="flex justify-end space-x-3">
-            <button onClick={() => setIsClearAllConfirmOpen(false)} className="px-4 py-2 border dark:border-gray-600 rounded-lg">Cancel</button>
-            <button onClick={handleClearAll} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Delete All</button>
+          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Are you sure you want to delete ALL saved agent job descriptions? This action cannot be undone.</p>
+          <div className="flex justify-end gap-3 pt-4">
+            <button onClick={() => setIsClearAllConfirmOpen(false)} className="px-5 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl font-semibold text-xs cursor-pointer">Cancel</button>
+            <button onClick={handleClearAll} className="px-5 py-2.5 bg-rose-600 text-white font-semibold text-xs rounded-xl cursor-pointer">Delete All</button>
           </div>
         </div>
       </Modal>
