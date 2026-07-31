@@ -273,7 +273,7 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
         <div className="max-w-4xl mx-auto animate-fade-in">
             <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
 
-            <PipelineIndicator currentView="signalExtractor" />
+            <PipelineIndicator currentView="signal-extractor" />
 
             <div className="flex justify-between items-center mb-10">
                 <div>

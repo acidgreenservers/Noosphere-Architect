@@ -258,7 +258,7 @@ const MindSeedArchitect: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto animate-fade-in">
-      <PipelineIndicator currentView="mindSeedArchitect" />
+      <PipelineIndicator currentView="mindseed" />
 
       <div className="flex justify-between items-center mb-10">
         <div>

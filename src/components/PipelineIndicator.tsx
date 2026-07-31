@@ -1,24 +1,23 @@
 import React from 'react';
-import { View } from '../App';
 
 interface PipelineIndicatorProps {
-  currentView: View;
-  onNavigate?: (view: View) => void;
+  currentView: string;
+  onNavigate?: (view: string) => void;
 }
 
 interface Step {
-  view: View;
+  view: string;
   label: string;
   icon: string;
 }
 
 const STEPS: Step[] = [
-  { view: 'signalExtractor', label: 'Signal Extractor', icon: 'unarchive' },
-  { view: 'mindSeedArchitect', label: 'MindSeed', icon: 'spa' },
-  { view: 'promptArchitect', label: 'Prompt Architect', icon: 'psychology' },
-  { view: 'agentArchitect', label: 'Agent Architect', icon: 'group_work' },
-  { view: 'projectArchitect', label: 'Project Architect', icon: 'architecture' },
-  { view: 'architectureOrganization', label: 'Organization', icon: 'inventory_2' }
+  { view: 'signal-extractor', label: 'Signal Extractor', icon: 'unarchive' },
+  { view: 'mindseed', label: 'MindSeed', icon: 'spa' },
+  { view: 'prompt-standard', label: 'Prompt Architect', icon: 'psychology' },
+  { view: 'agent-architect', label: 'Agent Architect', icon: 'group_work' },
+  { view: 'project-architect', label: 'Project Architect', icon: 'architecture' },
+  { view: 'command-center', label: 'Organization', icon: 'inventory_2' }
 ];
 
 export const PipelineIndicator: React.FC<PipelineIndicatorProps> = ({ currentView, onNavigate }) => {

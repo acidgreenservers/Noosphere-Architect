@@ -24,10 +24,11 @@ type Tab = 'architect' | 'roadmap' | 'agentJob';
 interface ProjectArchitectProps {
   initialConfig?: ProjectConfig;
   onClearInitialConfig?: () => void;
+  initialTab?: Tab;
 }
 
-const ProjectArchitect: React.FC<ProjectArchitectProps> = ({ initialConfig, onClearInitialConfig }) => {
-  const [activeTab, setActiveTab] = useState<Tab>('architect');
+const ProjectArchitect: React.FC<ProjectArchitectProps> = ({ initialConfig, onClearInitialConfig, initialTab }) => {
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab || 'architect');
   const [projectConfig, setProjectConfig] = useState<ProjectConfig>({
     title: '', idea: '', vision: '', goal: '',
     techStack: '', architecture: '', securityPosition: '', accessibilityPosition: '',
@@ -74,6 +75,12 @@ const ProjectArchitect: React.FC<ProjectArchitectProps> = ({ initialConfig, onCl
     const projects = await db.getAllProjects();
     setSavedProjects(projects);
   }, []);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   useEffect(() => {
     if (initialConfig) {
@@ -401,7 +408,7 @@ const ProjectArchitect: React.FC<ProjectArchitectProps> = ({ initialConfig, onCl
     <div className="max-w-4xl mx-auto animate-fade-in">
       <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
 
-      <PipelineIndicator currentView="projectArchitect" />
+      <PipelineIndicator currentView="project-architect" />
 
       <div className="flex justify-between items-center mb-10">
         <div>

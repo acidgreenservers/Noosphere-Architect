@@ -365,7 +365,7 @@ const AgentArchitect: React.FC<AgentArchitectProps> = ({ initialConfig, onClearI
     <div className="max-w-4xl mx-auto animate-fade-in">
       <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
 
-      <PipelineIndicator currentView="agentArchitect" />
+      <PipelineIndicator currentView="agent-architect" />
 
       <div className="flex justify-between items-center mb-10">
           <div>

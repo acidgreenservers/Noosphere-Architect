@@ -1,9 +1,9 @@
 import React from 'react';
-import { View } from '../App';
+import { ActiveView } from './Sidebar';
 import CustomContextSettings from './CustomContextSettings';
 
 interface LandingPageProps {
-  onSelectView: (view: View) => void;
+  onSelectActiveView: (view: ActiveView) => void;
 }
 
 const InfoCard: React.FC<{icon: string, title: string, children: React.ReactNode}> = ({icon, title, children}) => (
@@ -91,7 +91,7 @@ const PipelinePhase: React.FC<{
   </div>
 );
 
-const LandingPage: React.FC<LandingPageProps> = ({ onSelectView }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ onSelectActiveView }) => {
     return (
         <div className="max-w-5xl mx-auto space-y-16 animate-fade-in pb-20">
             {/* Premium centered marketing-grade hero */}
@@ -142,7 +142,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectView }) => {
                       colorClass="text-blue-600 dark:text-blue-400"
                       hoverBorderClass="hover:border-blue-500"
                       iconBgClass="bg-blue-500/10"
-                      onClick={() => onSelectView('signalExtractor')}
+                      onClick={() => onSelectActiveView('signal-extractor')}
                     />
                     <PipelineCard
                       icon="compress"
@@ -153,7 +153,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectView }) => {
                       colorClass="text-cyan-600 dark:text-cyan-400"
                       hoverBorderClass="hover:border-cyan-500"
                       iconBgClass="bg-cyan-500/10"
-                      onClick={() => onSelectView('signalCompressionArchitect')}
+                      onClick={() => onSelectActiveView('signal-compression')}
                     />
                     <PipelineCard
                       icon="spa"
@@ -164,7 +164,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectView }) => {
                       colorClass="text-orange-600 dark:text-orange-400"
                       hoverBorderClass="hover:border-orange-500"
                       iconBgClass="bg-orange-500/10"
-                      onClick={() => onSelectView('mindSeedArchitect')}
+                      onClick={() => onSelectActiveView('mindseed')}
                     />
                   </PipelinePhase>
 
@@ -183,7 +183,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectView }) => {
                       colorClass="text-indigo-600 dark:text-indigo-400"
                       hoverBorderClass="hover:border-indigo-500"
                       iconBgClass="bg-indigo-500/10"
-                      onClick={() => onSelectView('promptArchitect')}
+                      onClick={() => onSelectActiveView('prompt-standard')}
                     />
                   </PipelinePhase>
 
@@ -202,7 +202,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectView }) => {
                       colorClass="text-purple-600 dark:text-purple-400"
                       hoverBorderClass="hover:border-purple-500"
                       iconBgClass="bg-purple-500/10"
-                      onClick={() => onSelectView('agentArchitect')}
+                      onClick={() => onSelectActiveView('agent-architect')}
                     />
                   </PipelinePhase>
 
@@ -221,7 +221,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectView }) => {
                       colorClass="text-emerald-600 dark:text-emerald-400"
                       hoverBorderClass="hover:border-emerald-500"
                       iconBgClass="bg-emerald-500/10"
-                      onClick={() => onSelectView('projectArchitect')}
+                      onClick={() => onSelectActiveView('project-architect')}
                     />
                     <PipelineCard
                       icon="inventory_2"
@@ -232,7 +232,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectView }) => {
                       colorClass="text-rose-600 dark:text-rose-400"
                       hoverBorderClass="hover:border-rose-500"
                       iconBgClass="bg-rose-500/10"
-                      onClick={() => onSelectView('architectureOrganization')}
+                      onClick={() => onSelectActiveView('command-center')}
                     />
                   </PipelinePhase>
                 </div>
@@ -245,7 +245,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectView }) => {
               </h3>
               <div className="flex justify-center">
                 <button
-                  onClick={() => onSelectView('agentApiSettings')}
+                  onClick={() => onSelectActiveView('settings')}
                   className="flex items-center gap-2 px-5 py-2.5 bg-slate-500/5 hover:bg-slate-500/10 border border-slate-200/60 dark:border-slate-800/60 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer transition-all"
                 >
                   <span className="material-icons text-sm">settings_input_component</span>
