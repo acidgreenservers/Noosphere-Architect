@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { ProjectConfig, GeneratedProjectFiles, SavedProject, GenerationStage, StageStatus } from '../types';
 import { generateProjectFiles } from '../services/ai/projectFilesService';
@@ -18,10 +17,16 @@ import Toast from './Toast';
 import { StarredPinnedBar } from './StarredPinnedBar';
 import { UnifiedItem } from '../types';
 import { getDeepSearchText } from '../utils/search';
+import PipelineIndicator from './PipelineIndicator';
 
 type Tab = 'architect' | 'roadmap' | 'agentJob';
 
-const ProjectArchitect: React.FC = () => {
+interface ProjectArchitectProps {
+  initialConfig?: ProjectConfig;
+  onClearInitialConfig?: () => void;
+}
+
+const ProjectArchitect: React.FC<ProjectArchitectProps> = ({ initialConfig, onClearInitialConfig }) => {
   const [activeTab, setActiveTab] = useState<Tab>('architect');
   const [projectConfig, setProjectConfig] = useState<ProjectConfig>({
     title: '', idea: '', vision: '', goal: '',
@@ -71,6 +76,15 @@ const ProjectArchitect: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (initialConfig) {
+      setProjectConfig(prev => ({
+        ...prev,
+        ...initialConfig
+      }));
+      if (onClearInitialConfig) onClearInitialConfig();
+      return;
+    }
+
     loadSavedProjects();
     const loadDraft = async () => {
       if (isCheckingDraft.current) return;
@@ -84,7 +98,7 @@ const ProjectArchitect: React.FC = () => {
       }
     };
     loadDraft();
-  }, [loadSavedProjects]);
+  }, [loadSavedProjects, initialConfig, onClearInitialConfig]);
 
   useEffect(() => {
     if (draftStatus === 'unloaded') return;
@@ -387,6 +401,8 @@ const ProjectArchitect: React.FC = () => {
     <div className="max-w-4xl mx-auto animate-fade-in">
       <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
 
+      <PipelineIndicator currentView="projectArchitect" />
+
       <div className="flex justify-between items-center mb-10">
         <div>
           <h2 className="text-3xl font-extrabold text-slate-900 dark:text-slate-100">
@@ -555,7 +571,7 @@ const ProjectArchitect: React.FC = () => {
                     />
                 </div>
 
-                <div className="mb-6">
+                <div className="mb-8 font-semibold">
                     <div className="relative">
                         <span className="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">search</span>
                         <input

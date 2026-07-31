@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -15,6 +14,7 @@ import LibraryItem from './LibraryItem';
 import { StarredPinnedBar } from './StarredPinnedBar';
 import { UnifiedItem } from '../types';
 import { getDeepSearchText } from '../utils/search';
+import PipelineIndicator from './PipelineIndicator';
 
 const MAX_CHARS = 20000;
 
@@ -258,6 +258,8 @@ const MindSeedArchitect: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto animate-fade-in">
+      <PipelineIndicator currentView="mindSeedArchitect" />
+
       <div className="flex justify-between items-center mb-10">
         <div>
           <h2 className="text-3xl font-extrabold text-slate-900 dark:text-slate-100">MindSeed Architect</h2>

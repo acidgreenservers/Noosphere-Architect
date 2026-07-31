@@ -2,7 +2,7 @@ import React, { useState, Suspense, lazy } from 'react';
 import Header from './components/Header';
 import LandingPage from './components/LandingPage';
 import LoadingSpinner from './components/LoadingSpinner';
-import { PromptConfig } from './types';
+import { PromptConfig, AgentConfig, ProjectConfig, SignalConfig } from './types';
 
 // Lazy load tool components to improve initial load time and reduce main bundle size.
 const AgentArchitect = lazy(() => import('./components/AgentArchitect'));
@@ -19,33 +19,80 @@ export type View = 'landing' | 'agentArchitect' | 'promptArchitect' | 'projectAr
 const App: React.FC = () => {
   const [view, setView] = useState<View>('landing');
   const [promptArchitectInitialConfig, setPromptArchitectInitialConfig] = useState<PromptConfig | undefined>(undefined);
+  const [agentArchitectInitialConfig, setAgentArchitectInitialConfig] = useState<AgentConfig | undefined>(undefined);
+  const [projectArchitectInitialConfig, setProjectArchitectInitialConfig] = useState<ProjectConfig | undefined>(undefined);
+  const [signalExtractorInitialConfig, setSignalExtractorInitialConfig] = useState<SignalConfig | undefined>(undefined);
 
   const handleTransferToPromptArchitect = (config: PromptConfig) => {
     setPromptArchitectInitialConfig(config);
     setView('promptArchitect');
   };
 
+  const handleIncept = (targetView: View, config: any) => {
+    if (targetView === 'signalExtractor') {
+      setSignalExtractorInitialConfig(config);
+    } else if (targetView === 'promptArchitect') {
+      setPromptArchitectInitialConfig(config);
+    } else if (targetView === 'agentArchitect') {
+      setAgentArchitectInitialConfig(config);
+    } else if (targetView === 'projectArchitect') {
+      setProjectArchitectInitialConfig(config);
+    }
+    setView(targetView);
+  };
+
   const renderView = () => {
     switch (view) {
       case 'agentArchitect':
-        return <AgentArchitect />;
+        return (
+          <AgentArchitect
+            initialConfig={agentArchitectInitialConfig}
+            onClearInitialConfig={() => setAgentArchitectInitialConfig(undefined)}
+          />
+        );
       case 'promptArchitect':
-        return <PromptArchitect initialConfig={promptArchitectInitialConfig} onClearInitialConfig={() => setPromptArchitectInitialConfig(undefined)} />;
+        return (
+          <PromptArchitect
+            initialConfig={promptArchitectInitialConfig}
+            onClearInitialConfig={() => setPromptArchitectInitialConfig(undefined)}
+          />
+        );
       case 'projectArchitect':
-        return <ProjectArchitect />;
+        return (
+          <ProjectArchitect
+            initialConfig={projectArchitectInitialConfig}
+            onClearInitialConfig={() => setProjectArchitectInitialConfig(undefined)}
+          />
+        );
       case 'mindSeedArchitect':
         return <MindSeedArchitect />;
       case 'agentApiSettings':
         return <AgentApiSettings />;
       case 'signalExtractor':
-        return <SignalExtractor onTransfer={handleTransferToPromptArchitect} />;
+        return (
+          <SignalExtractor
+            onTransfer={handleTransferToPromptArchitect}
+            initialConfig={signalExtractorInitialConfig}
+            onClearInitialConfig={() => setSignalExtractorInitialConfig(undefined)}
+          />
+        );
       case 'signalCompressionArchitect':
-        return <SignalExtractor onTransfer={handleTransferToPromptArchitect} initialTab="compression" />;
+        return (
+          <SignalExtractor
+            onTransfer={handleTransferToPromptArchitect}
+            initialTab="compression"
+          />
+        );
       case 'architectureOrganization':
         return <ArchitectureOrganization />;
       case 'landing':
       default:
-        return <LandingPage onSelectView={setView} />;
+        return (
+          <LandingPage
+            onSelectView={setView}
+            onIncept={handleIncept}
+          />
+        );
     }
   };
 

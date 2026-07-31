@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -17,15 +16,18 @@ import { UnifiedItem } from '../types';
 import SeedArchitect from './SeedArchitect';
 import SignalCompressionArchitect from './SignalCompressionArchitect';
 import { getDeepSearchText } from '../utils/search';
+import PipelineIndicator from './PipelineIndicator';
 
 interface SignalExtractorProps {
     onTransfer: (config: PromptConfig) => void;
     initialTab?: 'extractor' | 'seed' | 'compression';
+    initialConfig?: SignalConfig;
+    onClearInitialConfig?: () => void;
 }
 
 type Tab = 'extractor' | 'seed' | 'compression';
 
-const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTab = 'extractor' }) => {
+const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTab = 'extractor', initialConfig, onClearInitialConfig }) => {
     const [activeTab, setActiveTab] = useState<Tab>(initialTab);
     const [config, setConfig] = useState<SignalConfig>({ messyPrompt: '' });
     const [result, setResult] = useState<ExtractedSignal | null>(null);
@@ -60,6 +62,12 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
     }, []);
 
     useEffect(() => {
+        if (initialConfig) {
+            setConfig(initialConfig);
+            if (onClearInitialConfig) onClearInitialConfig();
+            return;
+        }
+
         loadSavedSignals();
         const loadDraft = async () => {
             if (isCheckingDraft.current) return;
@@ -73,7 +81,7 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
             }
         };
         loadDraft();
-    }, [loadSavedSignals]);
+    }, [loadSavedSignals, initialConfig, onClearInitialConfig]);
 
     useEffect(() => {
         if (draftStatus === 'unloaded') return;
@@ -264,6 +272,8 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
     return (
         <div className="max-w-4xl mx-auto animate-fade-in">
             <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
+
+            <PipelineIndicator currentView="signalExtractor" />
 
             <div className="flex justify-between items-center mb-10">
                 <div>

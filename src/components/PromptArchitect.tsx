@@ -18,6 +18,7 @@ import GeneratedFilesDisplay from './GeneratedFilesDisplay';
 import { StarredPinnedBar } from './StarredPinnedBar';
 import { UnifiedItem } from '../types';
 import { getDeepSearchText } from '../utils/search';
+import PipelineIndicator from './PipelineIndicator';
 
 const PROMPT_TEMPLATES = [
     {
@@ -383,6 +384,8 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
     return (
         <div className="max-w-4xl mx-auto animate-fade-in">
             <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
+
+            <PipelineIndicator currentView="promptArchitect" />
 
             <div className="flex justify-between items-center mb-10">
                 <div>

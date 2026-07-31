@@ -16,6 +16,7 @@ import Toast from './Toast';
 import { StarredPinnedBar } from './StarredPinnedBar';
 import { UnifiedItem } from '../types';
 import { getDeepSearchText } from '../utils/search';
+import PipelineIndicator from './PipelineIndicator';
 
 const AGENT_TEMPLATES = [
     {
@@ -41,7 +42,12 @@ const AGENT_TEMPLATES = [
     }
 ];
 
-const AgentArchitect: React.FC = () => {
+interface AgentArchitectProps {
+  initialConfig?: AgentConfig;
+  onClearInitialConfig?: () => void;
+}
+
+const AgentArchitect: React.FC<AgentArchitectProps> = ({ initialConfig, onClearInitialConfig }) => {
   const [agentConfig, setAgentConfig] = useState<AgentConfig>({ role: '', scope: '', goals: '', constraints: '' });
   const [generatedPrompt, setGeneratedPrompt] = useState<GeneratedPrompt | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -75,6 +81,12 @@ const AgentArchitect: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (initialConfig) {
+      setAgentConfig(initialConfig);
+      if (onClearInitialConfig) onClearInitialConfig();
+      return;
+    }
+
     loadSavedAgents();
     const loadDraft = async () => {
         if (isCheckingDraft.current) return;
@@ -88,7 +100,7 @@ const AgentArchitect: React.FC = () => {
         }
     };
     loadDraft();
-  }, [loadSavedAgents]);
+  }, [loadSavedAgents, initialConfig, onClearInitialConfig]);
 
   const [pendingDraft, setPendingDraft] = useState<AgentConfig | null>(null);
 
@@ -321,6 +333,7 @@ const AgentArchitect: React.FC = () => {
     const updated = { ...agent, ...metadata };
     await db.updateAgent(updated);
     setSavedAgents(prev => prev.map(a => a.id === agent.id ? updated : a));
+    loadSavedAgents();
     if (previewAgent?.id === agent.id) setPreviewAgent(updated);
   };
 
@@ -351,6 +364,8 @@ const AgentArchitect: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto animate-fade-in">
       <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
+
+      <PipelineIndicator currentView="agentArchitect" />
 
       <div className="flex justify-between items-center mb-10">
           <div>
