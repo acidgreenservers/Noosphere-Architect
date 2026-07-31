@@ -35,7 +35,7 @@ const FormField: React.FC<{id: string, label: string, tooltip: string, required:
 );
 
 const Fieldset: React.FC<{legend: string, children: React.ReactNode}> = ({legend, children}) => (
-    <fieldset className="border border-slate-200/60 dark:border-slate-800/50 rounded-2xl p-6 pt-4 mb-6">
+    <fieldset className="border border-slate-200/60 dark:border-slate-800/50 rounded-2xl p-6 pt-4 mb-6 animate-fade-in">
         <legend className="text-sm font-bold uppercase tracking-widest px-3 text-slate-400 dark:text-slate-500">{legend}</legend>
         {children}
     </fieldset>
@@ -291,8 +291,8 @@ const AgentJobArchitect: React.FC = () => {
 
       {/* Form Section */}
       <div className="bg-transparent">
-        <div className="border-b border-slate-200/60 dark:border-slate-800/50 pb-4 mb-6">
-          <h3 className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Define Agent Job Description</h3>
+        <div className="pb-4 mb-6">
+          <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Define Agent Job Description</h3>
         </div>
 
         <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="space-y-8">
@@ -306,7 +306,7 @@ const AgentJobArchitect: React.FC = () => {
                 onChange={handleChange}
                 placeholder="e.g., Senior Frontend Engineer"
                 required
-                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition"
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition"
               />
             </FormField>
             <FormField id="department" label="Department / Team" tooltip="The organizational unit or team this role belongs to." required={false}>
@@ -317,7 +317,7 @@ const AgentJobArchitect: React.FC = () => {
                 value={config.department}
                 onChange={handleChange}
                 placeholder="e.g., Platform Engineering, AI Research"
-                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition"
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition"
               />
             </FormField>
             <FormField id="reportsTo" label="Reports To" tooltip="Who or what this role reports to (a human role, a team, or the system itself)." required={false}>
@@ -328,7 +328,7 @@ const AgentJobArchitect: React.FC = () => {
                 value={config.reportsTo}
                 onChange={handleChange}
                 placeholder="e.g., Lead Architect, Head of Product"
-                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition"
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition"
               />
             </FormField>
             <FormField id="mission" label="Mission" tooltip="The high-level purpose of this role — why it exists and what it ultimately serves." required={true}>
@@ -340,7 +340,7 @@ const AgentJobArchitect: React.FC = () => {
                 onChange={handleChange}
                 placeholder="e.g., To ensure the frontend architecture is coherent, performant, and aligned with the product vision."
                 required
-                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar"
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar"
               />
             </FormField>
           </Fieldset>
@@ -354,7 +354,7 @@ const AgentJobArchitect: React.FC = () => {
                 value={config.responsibilities}
                 onChange={handleChange}
                 placeholder="e.g., Own the component library. Establish performance budgets. Conduct architecture reviews."
-                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar"
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar"
               />
             </FormField>
             <FormField id="qualifications" label="Qualifications" tooltip="Required knowledge, experience, or capabilities the agent must possess." required={false}>
@@ -365,7 +365,7 @@ const AgentJobArchitect: React.FC = () => {
                 value={config.qualifications}
                 onChange={handleChange}
                 placeholder="e.g., Deep understanding of React and TypeScript. Experience with distributed systems."
-                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar"
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar"
               />
             </FormField>
             <FormField id="operatingPrinciples" label="Operating Principles" tooltip="The values, conduct, and ethos that guide how this role operates." required={false}>
@@ -376,7 +376,7 @@ const AgentJobArchitect: React.FC = () => {
                 value={config.operatingPrinciples}
                 onChange={handleChange}
                 placeholder="e.g., Write code with intention. Prefer simplicity over cleverness. Assume good intent."
-                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar"
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar"
               />
             </FormField>
           </Fieldset>
@@ -390,7 +390,7 @@ const AgentJobArchitect: React.FC = () => {
                 value={config.authority}
                 onChange={handleChange}
                 placeholder="e.g., Can make technical decisions within established patterns. Can approve PRs. Can prioritize bug fixes."
-                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar"
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar"
               />
             </FormField>
             <FormField id="escalationPath" label="Escalation Path" tooltip="When and how this role should escalate to a human or higher authority." required={false}>
@@ -401,7 +401,7 @@ const AgentJobArchitect: React.FC = () => {
                 value={config.escalationPath}
                 onChange={handleChange}
                 placeholder="e.g., Security incidents must be escalated immediately. Architectural changes beyond scope require team lead approval."
-                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar"
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar"
               />
             </FormField>
             <FormField id="successCriteria" label="Success Criteria" tooltip="How this role's performance and impact are measured." required={false}>
@@ -412,7 +412,7 @@ const AgentJobArchitect: React.FC = () => {
                 value={config.successCriteria}
                 onChange={handleChange}
                 placeholder="e.g., Components are consistently documented. Performance budgets are met. Technical debt is reduced."
-                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar"
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar"
               />
             </FormField>
             <FormField id="constraints" label="Boundaries & Constraints" tooltip="What is off-limits or restricted for this role." required={false}>
@@ -423,7 +423,7 @@ const AgentJobArchitect: React.FC = () => {
                 value={config.constraints}
                 onChange={handleChange}
                 placeholder="e.g., Cannot access production secrets. Cannot modify the authentication system without review."
-                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar"
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar"
               />
             </FormField>
           </Fieldset>
@@ -433,7 +433,7 @@ const AgentJobArchitect: React.FC = () => {
               type="button"
               onClick={handleReset}
               disabled={isLoading}
-              className="w-full sm:w-auto px-6 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/60 transition cursor-pointer"
+              className="w-full sm:w-auto px-5 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/60 transition cursor-pointer"
             >
               Reset
             </button>
@@ -462,20 +462,20 @@ const AgentJobArchitect: React.FC = () => {
         <div className="bg-transparent mt-12 animate-fade-in">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-6 mb-2 border-b border-slate-200/60 dark:border-slate-800/50 gap-4">
             <div>
-              <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200">Generated AGENTS.md</h3>
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Generated AGENTS.md</h3>
               <p className="text-xs text-slate-500 mt-1">Crystallized employee requirements handbook.</p>
             </div>
             <div className="flex items-center space-x-3">
               <button
                 onClick={() => { navigator.clipboard.writeText(generatedFile.agentsFile); setSuccessMessage('Copied to clipboard!'); }}
-                className="flex items-center px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900/60 transition cursor-pointer"
+                className="flex items-center px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900/60 transition cursor-pointer"
               >
                 <span className="material-icons text-base mr-2">content_copy</span>
                 Copy
               </button>
               <button
                 onClick={() => { setIsSaveModalOpen(true); setSaveName(generatedFile.agentsFile.slice(0, 40) || ''); }}
-                className="flex items-center px-4 py-2 border border-transparent rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 shadow-sm shadow-blue-500/10 transition cursor-pointer"
+                className="flex items-center px-4 py-2 border border-transparent rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 shadow-sm shadow-blue-500/10 transition cursor-pointer"
               >
                 <span className="material-icons text-base mr-2">save</span>
                 Save

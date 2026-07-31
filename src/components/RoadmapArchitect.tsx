@@ -324,21 +324,20 @@ const RoadmapArchitect: React.FC = () => {
     <div className="max-w-4xl mx-auto">
       <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
 
-      {/* Input Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8 border border-gray-200 dark:border-gray-700/50">
-        <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="space-y-6">
+      {/* Input Section - Refactored to match minimalist slate design */}
+      <div className="bg-transparent">
+        <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="space-y-8">
           <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 flex items-center">
-              <span className="material-icons mr-2 text-amber-500 dark:text-amber-400">map</span>
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center">
               Define Roadmap Task
             </h3>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="project" className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+                  <label htmlFor="project" className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
                     Project
                   </label>
                   <input
@@ -346,12 +345,12 @@ const RoadmapArchitect: React.FC = () => {
                     type="text"
                     value={config.project || ''}
                     onChange={(e) => setConfig(prev => ({ ...prev, project: e.target.value }))}
-                    placeholder="e.g. Noosphere-Architect"
-                    className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none transition text-sm text-gray-900 dark:text-gray-100"
+                    placeholder="e.g., Noosphere-Architect"
+                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/80 rounded-xl focus:ring-2 focus:ring-amber-500/40 outline-none transition-all duration-200 text-sm text-slate-900 dark:text-slate-100"
                   />
                 </div>
                 <div>
-                  <label htmlFor="framework" className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+                  <label htmlFor="framework" className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
                     Framework
                   </label>
                   <input
@@ -359,12 +358,12 @@ const RoadmapArchitect: React.FC = () => {
                     type="text"
                     value={config.framework || ''}
                     onChange={(e) => setConfig(prev => ({ ...prev, framework: e.target.value }))}
-                    placeholder="e.g. React 19, Vite 6, Tailwind 4"
-                    className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none transition text-sm text-gray-900 dark:text-gray-100"
+                    placeholder="e.g., React 19, Vite 6, Tailwind 4"
+                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/80 rounded-xl focus:ring-2 focus:ring-amber-500/40 outline-none transition-all duration-200 text-sm text-slate-900 dark:text-slate-100"
                   />
                 </div>
                 <div>
-                  <label htmlFor="architecture" className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+                  <label htmlFor="architecture" className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
                     Architecture
                   </label>
                   <input
@@ -372,12 +371,12 @@ const RoadmapArchitect: React.FC = () => {
                     type="text"
                     value={config.architecture || ''}
                     onChange={(e) => setConfig(prev => ({ ...prev, architecture: e.target.value }))}
-                    placeholder="e.g. Client-side SPA, IndexedDB"
-                    className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none transition text-sm text-gray-900 dark:text-gray-100"
+                    placeholder="e.g., Client-side SPA, IndexedDB"
+                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/80 rounded-xl focus:ring-2 focus:ring-amber-500/40 outline-none transition-all duration-200 text-sm text-slate-900 dark:text-slate-100"
                   />
                 </div>
                 <div>
-                  <label htmlFor="purpose" className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+                  <label htmlFor="purpose" className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
                     Purpose
                   </label>
                   <input
@@ -385,12 +384,12 @@ const RoadmapArchitect: React.FC = () => {
                     type="text"
                     value={config.purpose || ''}
                     onChange={(e) => setConfig(prev => ({ ...prev, purpose: e.target.value }))}
-                    placeholder="e.g. Architectural asset stewardship"
-                    className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none transition text-sm text-gray-900 dark:text-gray-100"
+                    placeholder="e.g., Architectural asset stewardship"
+                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/80 rounded-xl focus:ring-2 focus:ring-amber-500/40 outline-none transition-all duration-200 text-sm text-slate-900 dark:text-slate-100"
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label htmlFor="direction" className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+                  <label htmlFor="direction" className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
                     Direction
                   </label>
                   <input
@@ -398,15 +397,15 @@ const RoadmapArchitect: React.FC = () => {
                     type="text"
                     value={config.direction || ''}
                     onChange={(e) => setConfig(prev => ({ ...prev, direction: e.target.value }))}
-                    placeholder="e.g. Enhance grounding with deep context inputs"
-                    className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none transition text-sm text-gray-900 dark:text-gray-100"
+                    placeholder="e.g., Enhance grounding with deep context inputs"
+                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/80 rounded-xl focus:ring-2 focus:ring-amber-500/40 outline-none transition-all duration-200 text-sm text-slate-900 dark:text-slate-100"
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="rawText" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Paste Vision / Context <span className="text-red-500 ml-1">*</span>
+                <label htmlFor="rawText" className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                  Paste Vision / Context <span className="text-red-500 ml-0.5">*</span>
                 </label>
                 <textarea
                   id="rawText"
@@ -414,15 +413,15 @@ const RoadmapArchitect: React.FC = () => {
                   value={config.rawText}
                   onChange={(e) => setConfig(prev => ({ ...prev, rawText: e.target.value }))}
                   placeholder="Paste your raw thoughts, vision notes, requirements, or any unstructured text up to 20,000 characters..."
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm transition focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent hover:ring-2 hover:ring-amber-500/20 text-gray-900 dark:text-gray-100"
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/80 rounded-xl focus:ring-2 focus:ring-amber-500/40 outline-none transition-all duration-200 text-sm text-slate-900 dark:text-slate-100 custom-scrollbar"
                   required
                 />
               </div>
               <div className="flex justify-end mt-1">
-                <span className={`text-xs font-mono px-2 py-1 rounded ${
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${
                   charCount > MAX_CHARS
-                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                    ? 'bg-red-500/10 text-red-600 dark:text-red-400'
+                    : 'bg-slate-100 dark:bg-slate-900 text-slate-500'
                 }`}>
                   {charCount.toLocaleString()} / {MAX_CHARS.toLocaleString()} characters
                 </span>
@@ -430,7 +429,7 @@ const RoadmapArchitect: React.FC = () => {
             </div>
 
             <div className="space-y-2 lg:mt-[21px]">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
                 Anchor File Context (Optional)
               </label>
               {!config.fileContext ? (
@@ -438,10 +437,10 @@ const RoadmapArchitect: React.FC = () => {
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
-                  className={`border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer h-[400px] flex flex-col items-center justify-center ${
+                  className={`border border-dashed rounded-xl p-6 text-center transition-all duration-200 cursor-pointer h-[380px] flex flex-col items-center justify-center ${
                     isDragging
-                      ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20'
-                      : 'border-gray-300 dark:border-gray-600 hover:border-amber-500 dark:hover:border-amber-400 bg-gray-50/50 dark:bg-gray-900/20'
+                      ? 'border-amber-500/80 bg-amber-500/5'
+                      : 'border-slate-200 dark:border-slate-800 hover:border-amber-500/60 dark:hover:border-amber-500/40 bg-slate-50/50 dark:bg-slate-950/20'
                   }`}
                   onClick={() => document.getElementById('fileInput')?.click()}
                 >
@@ -452,42 +451,42 @@ const RoadmapArchitect: React.FC = () => {
                     onChange={handleFileChange}
                     accept=".txt,.md,.json,.js,.ts,.tsx,.html,.css"
                   />
-                  <span className={`material-icons text-4xl mb-2 transition-colors ${isDragging ? 'text-amber-500' : 'text-gray-400'}`}>upload_file</span>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                  <span className={`material-icons text-3xl mb-2 transition-colors ${isDragging ? 'text-amber-500' : 'text-slate-400'}`}>upload_file</span>
+                  <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
                     Drop anchor file here
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  <p className="text-[10px] text-slate-400 mt-1">
                     Or click to browse
                   </p>
-                  <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-4 px-2">
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-4 px-2 leading-relaxed">
                     Supports .txt, .md, and code files. This file grounds the AI's inference patterns.
                   </p>
                 </div>
               ) : (
-                <div className="flex flex-col h-[400px] bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50 rounded-xl overflow-hidden">
-                  <div className="p-3 border-b border-amber-200 dark:border-amber-800/50 flex items-center justify-between bg-amber-100/50 dark:bg-amber-900/30">
+                <div className="flex flex-col h-[380px] bg-amber-500/5 border border-amber-500/20 rounded-xl overflow-hidden">
+                  <div className="p-3 border-b border-amber-500/20 flex items-center justify-between bg-amber-500/10">
                     <div className="flex items-center overflow-hidden mr-2">
-                      <span className="material-icons text-amber-600 dark:text-amber-400 text-sm mr-2">description</span>
-                      <span className="text-xs font-bold text-amber-800 dark:text-amber-200 truncate">
+                      <span className="material-icons text-amber-500 text-sm mr-2">description</span>
+                      <span className="text-xs font-bold text-amber-600 dark:text-amber-400 truncate">
                         {config.fileContext.name}
                       </span>
                     </div>
                     <button
                       type="button"
                       onClick={removeFile}
-                      className="p-1 hover:bg-amber-200 dark:hover:bg-amber-800 rounded-full text-amber-600 dark:text-amber-400 transition-colors"
+                      className="p-1 hover:bg-amber-500/20 rounded-full text-amber-500 transition-colors"
                       title="Remove file"
                     >
                       <span className="material-icons text-sm">close</span>
                     </button>
                   </div>
-                  <div className="flex-1 p-4 overflow-y-auto">
-                    <div className="text-[10px] font-mono text-amber-800/70 dark:text-amber-300/60 whitespace-pre-wrap line-clamp-[20]">
+                  <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
+                    <div className="text-[10px] font-mono text-amber-600/80 dark:text-amber-400/80 whitespace-pre-wrap line-clamp-[20]">
                       {config.fileContext.content}
                     </div>
                   </div>
-                  <div className="p-3 bg-amber-100/30 dark:bg-amber-900/20 text-center">
-                    <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">
+                  <div className="p-3 bg-amber-500/5 text-center">
+                    <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
                       Attached as Anchor Context
                     </span>
                   </div>
@@ -497,13 +496,13 @@ const RoadmapArchitect: React.FC = () => {
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-end space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
-            <button type="button" onClick={handleReset} disabled={isLoading} className="w-full sm:w-auto px-6 py-2 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 transition">
+            <button type="button" onClick={handleReset} disabled={isLoading} className="w-full sm:w-auto px-5 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl font-semibold text-xs cursor-pointer text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 transition">
               Reset
             </button>
             <button
               type="submit"
               disabled={!config.rawText.trim() || charCount > MAX_CHARS || isLoading}
-              className="w-full sm:w-auto flex items-center justify-center px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:bg-amber-300 dark:disabled:bg-amber-800 disabled:cursor-not-allowed transition"
+              className="w-full sm:w-auto flex items-center justify-center px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-md shadow-amber-600/10 cursor-pointer"
             >
               {isLoading ? 'Generating...' : 'Generate Roadmap Task'}
             </button>
@@ -513,7 +512,7 @@ const RoadmapArchitect: React.FC = () => {
 
       {/* Error Display */}
       {error && (
-        <div className="mt-8 bg-red-100 dark:bg-red-900/50 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg relative" role="alert">
+        <div className="mt-8 bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 px-5 py-4 rounded-2xl text-sm relative" role="alert">
           <strong className="font-bold">Error: </strong>
           <span className="block sm:inline">{error}</span>
         </div>
@@ -524,48 +523,46 @@ const RoadmapArchitect: React.FC = () => {
 
       {/* Generated Output */}
       {generatedTask && !isLoading && (
-        <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-          <div className="flex flex-col md:flex-row justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Generated Roadmap Task</h3>
-            <div className="flex flex-wrap items-center justify-center md:justify-end gap-3 mt-3 md:mt-0">
-              <button onClick={() => handleCopy(generatedTask)} className="flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700 transition" title="Copy to clipboard">
-                <span className="material-icons text-base mr-1.5">content_copy</span>Copy
+        <div className="mt-12 bg-transparent">
+          <div className="flex flex-col md:flex-row justify-between items-center pb-4 border-b border-slate-100 dark:border-slate-800/80 mb-6 gap-4">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Generated Roadmap Task</h3>
+            <div className="flex flex-wrap items-center justify-center md:justify-end gap-3">
+              <button onClick={() => handleCopy(generatedTask)} className="flex items-center px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900 transition cursor-pointer" title="Copy to clipboard">
+                <span className="material-icons text-sm mr-2">content_copy</span>Copy
               </button>
               <button
                 onClick={() => { handleExport(saveName, generatedTask); setSuccessMessage('Roadmap task exported successfully!'); }}
-                className="flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700 transition"
+                className="flex items-center px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900 transition cursor-pointer"
                 title="Export file"
               >
-                <span className="material-icons text-base mr-1.5">download</span>Export
+                <span className="material-icons text-sm mr-2">download</span>Export
               </button>
-              <button onClick={() => setIsSaveModalOpen(true)} className="flex items-center px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-md text-sm transition" title="Save entry">
-                <span className="material-icons text-base mr-1.5">save</span>Save
+              <button onClick={() => setIsSaveModalOpen(true)} className="flex items-center px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition shadow-md shadow-amber-600/10 cursor-pointer" title="Save entry">
+                <span className="material-icons text-sm mr-2">save</span>Save
               </button>
             </div>
           </div>
 
-          <div className="p-6">
-            <div className="prose prose-sm sm:prose-base dark:prose-invert max-w-none bg-gray-50 dark:bg-gray-900/70 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-inner">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{generatedTask}</ReactMarkdown>
-            </div>
+          <div className="prose prose-sm sm:prose-base dark:prose-invert max-w-none bg-slate-50/50 dark:bg-slate-950/20 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 p-6 sm:p-8">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{generatedTask}</ReactMarkdown>
           </div>
         </div>
       )}
 
       {/* Saved Roadmaps */}
       {savedRoadmaps.length > 0 && (
-        <div className="mt-12">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Saved Roadmap Entries</h2>
+        <div className="mt-20 border-t border-slate-200/60 dark:border-slate-800/50 pt-16">
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-2xl font-extrabold text-slate-800 dark:text-slate-200">Saved Roadmap Entries</h2>
             <button
               onClick={() => setIsClearAllConfirmOpen(true)}
-              className="text-sm text-red-500 hover:text-red-600 flex items-center"
+              className="px-4 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-500/10 rounded-xl hover:bg-rose-500/15 flex items-center cursor-pointer transition"
             >
-              <span className="material-icons text-sm mr-1">delete_sweep</span> Clear All
+              <span className="material-icons text-sm mr-2">delete_sweep</span> Clear All
             </button>
           </div>
 
-          <div className="mb-6 space-y-4">
+          <div className="mb-8 space-y-4">
             <StarredPinnedBar
               type="starred"
               items={unifiedRoadmaps}
@@ -594,15 +591,15 @@ const RoadmapArchitect: React.FC = () => {
             />
           </div>
 
-          <div className="mb-4">
+          <div className="mb-6">
             <div className="relative">
-              <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+              <span className="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">search</span>
               <input
                 type="text"
                 placeholder="Search saved roadmap entries..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 outline-none transition-all"
+                className="w-full pl-11 pr-4 py-3 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/40 outline-none transition-all text-sm"
               />
             </div>
           </div>
@@ -633,19 +630,19 @@ const RoadmapArchitect: React.FC = () => {
       {/* Draft Restore Modal */}
       <Modal isOpen={!!pendingDraft} onClose={() => setPendingDraft(null)} title="Unsaved Draft Found">
         <div className="space-y-4">
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
             An unsaved roadmap draft was found. Would you like to restore it?
           </p>
-          <div className="flex justify-end space-x-3 mt-6">
+          <div className="flex justify-end gap-3 pt-4">
             <button
               onClick={handleDeclineDraft}
-              className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              className="px-5 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl font-semibold text-xs cursor-pointer text-slate-600 dark:text-slate-400 hover:bg-slate-100"
             >
               Discard
             </button>
             <button
               onClick={handleAcceptDraft}
-              className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors shadow-sm"
+              className="px-5 py-2.5 bg-amber-600 text-white rounded-xl font-semibold text-xs cursor-pointer shadow-sm transition"
             >
               Restore Draft
             </button>
@@ -656,19 +653,19 @@ const RoadmapArchitect: React.FC = () => {
       {/* Clear All Confirmation */}
       <Modal isOpen={isClearAllConfirmOpen} onClose={() => setIsClearAllConfirmOpen(false)} title="Confirm Clear All">
         <div className="space-y-4">
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
             Are you sure you want to clear ALL roadmap entries? This action cannot be undone.
           </p>
-          <div className="flex justify-end space-x-3 mt-6">
+          <div className="flex justify-end gap-3 pt-4">
             <button
               onClick={() => setIsClearAllConfirmOpen(false)}
-              className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition"
+              className="px-5 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl font-semibold text-xs cursor-pointer"
             >
               Cancel
             </button>
             <button
               onClick={handleClearAll}
-              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition"
+              className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs rounded-xl cursor-pointer"
             >
               Clear All
             </button>
@@ -708,23 +705,23 @@ const RoadmapArchitect: React.FC = () => {
       <Modal isOpen={isSaveModalOpen} onClose={() => setIsSaveModalOpen(false)} title="Save Roadmap Entry">
         <div className="space-y-4">
           <div>
-            <label htmlFor="saveName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Entry Name</label>
+            <label htmlFor="saveName" className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Entry Name</label>
             <input
               type="text"
               id="saveName"
               value={saveName}
               onChange={(e) => setSaveName(e.target.value)}
               placeholder="e.g., Database Schema Migration Task"
-              className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-amber-500 outline-none transition text-gray-900 dark:text-gray-100"
+              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500/40"
               autoFocus
             />
           </div>
-          <div className="flex justify-end space-x-3 mt-6">
-            <button onClick={() => setIsSaveModalOpen(false)} className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition">Cancel</button>
+          <div className="flex justify-end gap-3 pt-4">
+            <button onClick={() => setIsSaveModalOpen(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 font-semibold text-xs cursor-pointer">Cancel</button>
             <button
               onClick={handleSaveRoadmap}
               disabled={!saveName.trim()}
-              className="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 disabled:opacity-50 transition"
+              className="px-5 py-2.5 rounded-xl bg-amber-600 text-white hover:bg-amber-700 font-semibold text-xs cursor-pointer disabled:opacity-50"
             >
               Save Entry
             </button>
@@ -735,19 +732,19 @@ const RoadmapArchitect: React.FC = () => {
       {/* Delete Confirmation */}
       <Modal isOpen={isDeleteConfirmOpen} onClose={() => { setIsDeleteConfirmOpen(false); setDeleteTarget(null); }} title="Confirm Delete">
         <div className="space-y-4">
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
             Are you sure you want to delete this roadmap entry? This action cannot be undone.
           </p>
-          <div className="flex justify-end space-x-3 mt-6">
+          <div className="flex justify-end gap-3 pt-4">
             <button
               onClick={() => { setIsDeleteConfirmOpen(false); setDeleteTarget(null); }}
-              className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition"
+              className="px-5 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl font-semibold text-xs cursor-pointer"
             >
               Cancel
             </button>
             <button
               onClick={confirmDelete}
-              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition"
+              className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs rounded-xl cursor-pointer"
             >
               Delete
             </button>
