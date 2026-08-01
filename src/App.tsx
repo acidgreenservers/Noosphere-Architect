@@ -1,17 +1,16 @@
-import React, { useState, Suspense, lazy } from 'react';
-import Header from './components/Header';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import LandingPage from './components/LandingPage';
 import LoadingSpinner from './components/LoadingSpinner';
 import Sidebar, { ActiveView } from './components/Sidebar';
-import HubScreen from './components/HubScreen';
-import { PromptConfig, AgentConfig, ProjectConfig, SignalConfig } from './types';
+import SettingsModal from './components/SettingsModal';
+import { PromptConfig, AgentConfig, ProjectConfig, SignalConfig, UserPreferences } from './types';
+import { loadPreferences } from './services/preferencesService';
 
 // Lazy load tool components to improve initial load time and reduce main bundle size.
 const AgentArchitect = lazy(() => import('./components/AgentArchitect'));
 const PromptArchitect = lazy(() => import('./components/PromptArchitect'));
 const ProjectArchitect = lazy(() => import('./components/ProjectArchitect'));
 const MindSeedArchitect = lazy(() => import('./components/MindSeedArchitect'));
-const AgentApiSettings = lazy(() => import('./components/AgentApiSettings'));
 const SignalExtractor = lazy(() => import('./components/SignalExtractor'));
 const ArchitectureOrganization = lazy(() => import('./components/ArchitectureOrganization'));
 
@@ -19,11 +18,18 @@ const App: React.FC = () => {
   // Use ActiveView to drive full responsive sidebar layout
   const [activeView, setActiveView] = useState<ActiveView>('home');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [preferences, setPreferences] = useState<UserPreferences | null>(null);
 
   const [promptArchitectInitialConfig, setPromptArchitectInitialConfig] = useState<PromptConfig | undefined>(undefined);
   const [agentArchitectInitialConfig, setAgentArchitectInitialConfig] = useState<AgentConfig | undefined>(undefined);
   const [projectArchitectInitialConfig, setProjectArchitectInitialConfig] = useState<ProjectConfig | undefined>(undefined);
   const [signalExtractorInitialConfig, setSignalExtractorInitialConfig] = useState<SignalConfig | undefined>(undefined);
+
+  // Load the persisted profile identity once per session (drives the sidebar profile area)
+  useEffect(() => {
+    loadPreferences().then(setPreferences);
+  }, []);
 
   const handleTransferToPromptArchitect = (config: PromptConfig) => {
     setPromptArchitectInitialConfig(config);
@@ -32,8 +38,6 @@ const App: React.FC = () => {
 
   const renderActiveViewContent = () => {
     switch (activeView) {
-      case 'signal-hub':
-        return <HubScreen hubId="signal-hub" onSelectView={setActiveView} />;
       case 'signal-extractor':
         return (
           <SignalExtractor
@@ -49,11 +53,16 @@ const App: React.FC = () => {
             initialTab="compression"
           />
         );
+      case 'seed-architect':
+        return (
+          <SignalExtractor
+            onTransfer={handleTransferToPromptArchitect}
+            initialTab="seed"
+          />
+        );
       case 'mindseed':
         return <MindSeedArchitect />;
 
-      case 'prompt-hub':
-        return <HubScreen hubId="prompt-hub" onSelectView={setActiveView} />;
       case 'prompt-standard':
         return (
           <PromptArchitect
@@ -71,8 +80,6 @@ const App: React.FC = () => {
           />
         );
 
-      case 'agent-hub':
-        return <HubScreen hubId="agent-hub" onSelectView={setActiveView} />;
       case 'agent-architect':
         return (
           <AgentArchitect
@@ -81,8 +88,6 @@ const App: React.FC = () => {
           />
         );
 
-      case 'governance-hub':
-        return <HubScreen hubId="governance-hub" onSelectView={setActiveView} />;
       case 'project-architect':
         return (
           <ProjectArchitect
@@ -111,14 +116,12 @@ const App: React.FC = () => {
       case 'command-center':
         return <ArchitectureOrganization />;
 
-      case 'settings':
-        return <AgentApiSettings />;
-
       case 'home':
       default:
         return (
           <LandingPage
             onSelectActiveView={setActiveView}
+            onOpenSettings={() => setIsSettingsOpen(true)}
           />
         );
     }
@@ -129,38 +132,20 @@ const App: React.FC = () => {
     const parts = [{ label: 'Home', view: 'home' as ActiveView }];
     if (activeView === 'home') return parts;
 
-    // Direct mapping
-    if (activeView.endsWith('-hub')) {
-      const hubLabel = activeView.split('-')[0];
-      const capitalize = hubLabel.charAt(0).toUpperCase() + hubLabel.slice(1);
-      parts.push({ label: `${capitalize} Hub`, view: activeView });
-    } else {
-      // Find parent hub
-      if (['signal-extractor', 'signal-compression', 'mindseed'].includes(activeView)) {
-        parts.push({ label: 'Signal Center', view: 'signal-hub' as ActiveView });
-      } else if (['prompt-standard', 'prompt-skill'].includes(activeView)) {
-        parts.push({ label: 'Prompt Center', view: 'prompt-hub' as ActiveView });
-      } else if (['agent-architect'].includes(activeView)) {
-        parts.push({ label: 'Agent Forge', view: 'agent-hub' as ActiveView });
-      } else if (['project-architect', 'roadmap-architect', 'agent-job'].includes(activeView)) {
-        parts.push({ label: 'Governance', view: 'governance-hub' as ActiveView });
-      }
-
-      const viewLabels: Record<string, string> = {
-        'signal-extractor': 'Signal Extractor',
-        'signal-compression': 'Compression Architect',
-        'mindseed': 'MindSeed Architect',
-        'prompt-standard': 'Standard Prompt',
-        'prompt-skill': 'Skill Bundle',
-        'agent-architect': 'Agent Architect',
-        'project-architect': 'Project Architect',
-        'roadmap-architect': 'Roadmap Architect',
-        'agent-job': 'Agent Job Book',
-        'command-center': 'Command Center',
-        'settings': 'API Settings'
-      };
-      parts.push({ label: viewLabels[activeView] || activeView, view: activeView });
-    }
+    const viewLabels: Record<string, string> = {
+      'signal-extractor': 'Signal Extractor',
+      'signal-compression': 'Compression Architect',
+      'seed-architect': 'Seed Architect',
+      'mindseed': 'MindSeed Architect',
+      'prompt-standard': 'Standard Prompt',
+      'prompt-skill': 'Skill Bundle',
+      'agent-architect': 'Agent Architect',
+      'project-architect': 'Project Architect',
+      'roadmap-architect': 'Roadmap Architect',
+      'agent-job': 'Agent Job Book',
+      'command-center': 'Command Center'
+    };
+    parts.push({ label: viewLabels[activeView] || activeView, view: activeView });
 
     return parts;
   };
@@ -173,6 +158,8 @@ const App: React.FC = () => {
         onNavigate={setActiveView}
         isOpenMobile={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
+        preferences={preferences}
+        onOpenSettings={() => setIsSettingsOpen(true)}
       />
 
       {/* Main content viewport wrapping breadcrumb bar and main panel */}
@@ -197,11 +184,10 @@ const App: React.FC = () => {
                   <button
                     onClick={() => setActiveView(part.view)}
                     disabled={idx === arr.length - 1}
-                    className={`transition-colors cursor-pointer ${
-                      idx === arr.length - 1
+                    className={`transition-colors cursor-pointer ${idx === arr.length - 1
                         ? 'text-slate-700 dark:text-slate-200 font-bold pointer-events-none'
                         : 'hover:text-blue-600 dark:hover:text-blue-400'
-                    }`}
+                      }`}
                   >
                     {part.label}
                   </button>
@@ -244,6 +230,13 @@ const App: React.FC = () => {
           <p className="mt-3">Built with React, Vite & Tailwind CSS.</p>
         </footer>
       </div>
+
+      {/* Floating settings — overlays any screen without disturbing the work underneath */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        onPreferencesSaved={setPreferences}
+      />
     </div>
   );
 };

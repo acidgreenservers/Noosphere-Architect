@@ -69,12 +69,12 @@ const CustomContextSettings: React.FC = () => {
   };
 
   return (
-    <div className="mt-16 pt-16 border-t border-slate-200/60 dark:border-slate-800/50 animate-fade-in">
+    <div className="animate-fade-in">
       <div className="mb-8">
-        <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 flex items-center">
+        <h3 className="text-lg font-extrabold text-slate-900 dark:text-slate-100 flex items-center">
           <span className="material-icons text-blue-500 mr-3">settings_suggest</span>
           Custom System Instructions
-        </h2>
+        </h3>
         <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
           Add specific custom context to the meta-prompts for each tool. These instructions will be prepended to the AI's internal instructions.
         </p>
@@ -90,11 +90,10 @@ const CustomContextSettings: React.FC = () => {
             <div className="flex gap-2">
               <button
                 onClick={() => handleOpenModal(tool)}
-                className={`px-3 py-1.5 rounded-xl font-bold text-[10px] tracking-wider uppercase transition flex items-center justify-center cursor-pointer ${
-                  hasContext[tool.id]
+                className={`px-3 py-1.5 rounded-xl font-bold text-[10px] tracking-wider uppercase transition flex items-center justify-center cursor-pointer ${hasContext[tool.id]
                     ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/10'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/80'
-                }`}
+                  }`}
                 title="Append to System Instructions"
               >
                 <span className="material-icons text-xs mr-1">{hasContext[tool.id] ? 'edit' : 'add'}</span>
@@ -139,11 +138,10 @@ const CustomContextSettings: React.FC = () => {
             <button
               onClick={handleSave}
               disabled={isSaving}
-              className={`px-5 py-2.5 rounded-xl font-semibold text-xs transition flex items-center cursor-pointer shadow-md ${
-                saveSuccess
+              className={`px-5 py-2.5 rounded-xl font-semibold text-xs transition flex items-center cursor-pointer shadow-md ${saveSuccess
                   ? 'bg-emerald-600 text-white shadow-emerald-600/15'
                   : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/15'
-              }`}
+                }`}
             >
               {isSaving ? (
                 <span className="material-icons animate-spin mr-2 text-sm">sync</span>

@@ -1,8 +1,8 @@
-import { SavedAgent, SavedPrompt, AgentConfig, PromptConfig, SavedProject, ProjectConfig, SavedSignal, SignalConfig, SavedMindSeed, MindSeedConfig, SavedSynthesis, SavedRoadmap, RoadmapConfig, SavedAgentJob, AgentJobConfig, MindSeedType, PromptType, UnifiedItem, SavedSeed, SeedConfig, CompressionConfig, SavedCompressedSignal } from '../types';
+import { SavedAgent, SavedPrompt, AgentConfig, PromptConfig, SavedProject, ProjectConfig, SavedSignal, SignalConfig, SavedMindSeed, MindSeedConfig, SavedSynthesis, SavedRoadmap, RoadmapConfig, SavedAgentJob, AgentJobConfig, MindSeedType, PromptType, UnifiedItem, SavedSeed, SeedConfig, CompressionConfig, SavedCompressedSignal, UserPreferences } from '../types';
 import { encryptData, decryptData } from '../utils/encryption';
 
 const DB_NAME = 'NoosphereArchitectDB';
-const DB_VERSION = 17;
+const DB_VERSION = 18;
 const AGENT_STORE = 'savedAgents';
 const PROMPT_STORE = 'savedPrompts'; // Legacy, keeping for migration or reference
 const STANDARD_PROMPT_STORE = 'standardPrompts';
@@ -36,6 +36,7 @@ const AGENT_JOB_DRAFT_STORE = 'agentJobDraft';
 const SEED_STORE = 'savedSeeds';
 const SEED_TEMP_STORE = 'seedTemp';
 const SEED_DRAFT_STORE = 'seedDraft';
+const USER_PREFERENCES_STORE = 'userPreferences';
 const SCHEMA_VERSION_STORE = '_schemaVersion'; // Internal store for migration verification
 
 
@@ -43,305 +44,311 @@ let dbInstance: IDBDatabase | null = null;
 let initPromise: Promise<IDBDatabase> | null = null; // Concurrency guard
 
 export const initDB = (): Promise<IDBDatabase> => {
-  // Deduplicate concurrent init calls
-  if (initPromise) return initPromise;
+    // Deduplicate concurrent init calls
+    if (initPromise) return initPromise;
 
-  initPromise = new Promise((resolve, reject) => {
-    if (dbInstance) {
-      resolve(dbInstance);
-      initPromise = null;
-      return;
-    }
-
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-    request.onerror = () => {
-      console.error('Error opening DB', request.error);
-      initPromise = null;
-      reject(request.error?.message || 'Error opening DB');
-    };
-
-    request.onblocked = () => {
-      console.warn('IndexedDB open blocked. Another tab may have an older version open.');
-      // Don't reject — the block may resolve if the user closes other tabs
-    };
-
-    request.onsuccess = () => {
-      dbInstance = request.result;
-      initPromise = null;
-
-      // Handle unexpected close (e.g., storage quota exceeded, browser crash)
-      dbInstance.onclose = () => {
-        console.warn('IndexedDB connection unexpectedly closed. Resetting instance.');
-        dbInstance = null;
-      };
-      // Handle version change from another tab
-      dbInstance.onversionchange = () => {
-        dbInstance?.close();
-        dbInstance = null;
-        initPromise = null;
-      };
-
-      resolve(dbInstance);
-    };
-
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      const oldVersion = event.oldVersion;
-      const newVersion = event.newVersion || DB_VERSION;
-      const tx = (event.target as IDBOpenDBRequest).transaction;
-
-      console.log(`Upgrading DB from v${oldVersion} to v${newVersion}`);
-
-      // Create schema version store if it doesn't exist (migration v12+)
-      // This must happen before any migration runs
-      if (newVersion >= 12 && !db.objectStoreNames.contains(SCHEMA_VERSION_STORE)) {
-        db.createObjectStore(SCHEMA_VERSION_STORE, { keyPath: 'version' });
-      }
-
-      // Write the current version as starting state BEFORE migrations
-      if (tx && db.objectStoreNames.contains(SCHEMA_VERSION_STORE)) {
-        const metaStore = tx.objectStore(SCHEMA_VERSION_STORE);
-        // Set starting state: "migrating_from_v_<oldVersion>"
-        metaStore.put({ version: 'status', value: `migrating_from_${oldVersion}`, updatedAt: new Date().toISOString() });
-      }
-
-      // Modular Migration Registry
-      // Each migration receives (db, tx) for explicit transaction access
-      const migrations: Record<number, (db: IDBDatabase, tx: IDBTransaction | null) => void> = {
-        1: (db, tx) => {
-          if (!db.objectStoreNames.contains(AGENT_STORE)) {
-            const agentStore = db.createObjectStore(AGENT_STORE, { keyPath: 'id', autoIncrement: true });
-            agentStore.createIndex('name', 'name', { unique: false });
-            agentStore.createIndex('createdAt', 'createdAt', { unique: false });
-          }
-          if (!db.objectStoreNames.contains(PROMPT_STORE)) {
-            const promptStore = db.createObjectStore(PROMPT_STORE, { keyPath: 'id', autoIncrement: true });
-            promptStore.createIndex('name', 'name', { unique: false });
-            promptStore.createIndex('createdAt', 'createdAt', { unique: false });
-          }
-        },
-        2: (db, tx) => {
-          if (!db.objectStoreNames.contains(PROJECT_STORE)) {
-            const projectStore = db.createObjectStore(PROJECT_STORE, { keyPath: 'id', autoIncrement: true });
-            projectStore.createIndex('name', 'name', { unique: false });
-            projectStore.createIndex('createdAt', 'createdAt', { unique: false });
-          }
-        },
-        3: (db, tx) => {
-          if (!db.objectStoreNames.contains(AGENT_DRAFT_STORE)) db.createObjectStore(AGENT_DRAFT_STORE, { keyPath: 'id' });
-          if (!db.objectStoreNames.contains(PROMPT_DRAFT_STORE)) db.createObjectStore(PROMPT_DRAFT_STORE, { keyPath: 'id' });
-          if (!db.objectStoreNames.contains(PROJECT_DRAFT_STORE)) db.createObjectStore(PROJECT_DRAFT_STORE, { keyPath: 'id' });
-        },
-        4: (db, tx) => {
-          if (!db.objectStoreNames.contains(SIGNAL_STORE)) {
-            const signalStore = db.createObjectStore(SIGNAL_STORE, { keyPath: 'id', autoIncrement: true });
-            signalStore.createIndex('name', 'name', { unique: false });
-            signalStore.createIndex('createdAt', 'createdAt', { unique: false });
-          }
-          if (!db.objectStoreNames.contains(SIGNAL_DRAFT_STORE)) db.createObjectStore(SIGNAL_DRAFT_STORE, { keyPath: 'id' });
-        },
-        5: (db, tx) => {
-          if (!db.objectStoreNames.contains(COGNISEED_STORE)) {
-            const store = db.createObjectStore(COGNISEED_STORE, { keyPath: 'id', autoIncrement: true });
-            store.createIndex('name', 'name', { unique: false });
-            store.createIndex('createdAt', 'createdAt', { unique: false });
-          }
-          if (!db.objectStoreNames.contains(LINGUASEED_STORE)) {
-            const store = db.createObjectStore(LINGUASEED_STORE, { keyPath: 'id', autoIncrement: true });
-            store.createIndex('name', 'name', { unique: false });
-            store.createIndex('createdAt', 'createdAt', { unique: false });
-          }
-          if (!db.objectStoreNames.contains(ARCHSEED_STORE)) {
-            const store = db.createObjectStore(ARCHSEED_STORE, { keyPath: 'id', autoIncrement: true });
-            store.createIndex('name', 'name', { unique: false });
-            store.createIndex('createdAt', 'createdAt', { unique: false });
-          }
-          if (!db.objectStoreNames.contains(MINDSEED_DRAFT_STORE)) db.createObjectStore(MINDSEED_DRAFT_STORE, { keyPath: 'id' });
-        },
-        6: (db, tx) => {
-          if (!db.objectStoreNames.contains(AGENT_CONTEXT_STORE)) db.createObjectStore(AGENT_CONTEXT_STORE, { keyPath: 'id' });
-          if (!db.objectStoreNames.contains(MINDSEED_CONTEXT_STORE)) db.createObjectStore(MINDSEED_CONTEXT_STORE, { keyPath: 'id' });
-          if (!db.objectStoreNames.contains(SIGNAL_CONTEXT_STORE)) db.createObjectStore(SIGNAL_CONTEXT_STORE, { keyPath: 'id' });
-          if (!db.objectStoreNames.contains(PROMPT_CONTEXT_STORE)) db.createObjectStore(PROMPT_CONTEXT_STORE, { keyPath: 'id' });
-          if (!db.objectStoreNames.contains(PROJECT_CONTEXT_STORE)) db.createObjectStore(PROJECT_CONTEXT_STORE, { keyPath: 'id' });
-        },
-        7: (db, tx) => {
-          if (!db.objectStoreNames.contains(STANDARD_PROMPT_STORE)) {
-            const store = db.createObjectStore(STANDARD_PROMPT_STORE, { keyPath: 'id', autoIncrement: true });
-            store.createIndex('name', 'name', { unique: false });
-            store.createIndex('createdAt', 'createdAt', { unique: false });
-          }
-          if (!db.objectStoreNames.contains(SYSTEM_PROMPT_STORE)) {
-            const store = db.createObjectStore(SYSTEM_PROMPT_STORE, { keyPath: 'id', autoIncrement: true });
-            store.createIndex('name', 'name', { unique: false });
-            store.createIndex('createdAt', 'createdAt', { unique: false });
-          }
-        },
-        8: (db, tx) => {
-          if (!db.objectStoreNames.contains(STANDARD_PROMPT_DRAFT_STORE)) db.createObjectStore(STANDARD_PROMPT_DRAFT_STORE, { keyPath: 'id' });
-          if (!db.objectStoreNames.contains(SYSTEM_PROMPT_DRAFT_STORE)) db.createObjectStore(SYSTEM_PROMPT_DRAFT_STORE, { keyPath: 'id' });
-        },
-        9: (db, tx) => {
-          if (!db.objectStoreNames.contains(SYSTEM_PROMPT_CONTEXT_STORE)) db.createObjectStore(SYSTEM_PROMPT_CONTEXT_STORE, { keyPath: 'id' });
-        },
-        10: (db, tx) => {
-          console.log("Migration to v10 complete: Stewarding state integrity.");
-        },
-        11: (db, tx) => {
-            // Create synthesis store
-            if (!db.objectStoreNames.contains(SYNTHESIS_STORE)) {
-                const store = db.createObjectStore(SYNTHESIS_STORE, { keyPath: 'id', autoIncrement: true });
-                store.createIndex('name', 'name', { unique: false });
-                store.createIndex('createdAt', 'createdAt', { unique: false });
-            }
-
-            if (!tx) {
-              console.warn("Migration v11: no transaction available for cursor data migration — skipping metadata unification.");
-              return;
-            }
-
-            // Unify metadata fields across all existing records
-            const stores = [
-                AGENT_STORE, PROMPT_STORE, STANDARD_PROMPT_STORE, SYSTEM_PROMPT_STORE,
-                PROJECT_STORE, SIGNAL_STORE, COGNISEED_STORE, LINGUASEED_STORE, ARCHSEED_STORE,
-                SYNTHESIS_STORE
-            ];
-
-            stores.forEach(storeName => {
-                if (db.objectStoreNames.contains(storeName)) {
-                    const store = tx.objectStore(storeName);
-                    const request = store.openCursor();
-
-                    request.onerror = (e) => {
-                      console.error(`Cursor migration v11 failed in store "${storeName}":`, (e.target as IDBRequest).error);
-                    };
-
-                    request.onsuccess = (e) => {
-                        const cursor = (e.target as IDBRequest).result as IDBCursorWithValue;
-                        if (cursor) {
-                            const data = cursor.value;
-                            let updated = false;
-                            if (data.isStarred === undefined) { data.isStarred = false; updated = true; }
-                            if (data.isPinned === undefined) { data.isPinned = false; updated = true; }
-                            if (data.isArchived === undefined) { data.isArchived = false; updated = true; }
-                            if (data.category === undefined) { data.category = ''; updated = true; }
-
-                            if (updated) {
-                              try {
-                                cursor.update(data);
-                              } catch (updateErr) {
-                                console.error(`Migration v11: cursor.update failed in "${storeName}" for record:`, data?.id, updateErr);
-                              }
-                            }
-                            cursor.continue();
-                        }
-                    };
-                }
-            });
-            console.log("Migration to v11 complete: Unified metadata initialized.");
-        },
-        12: (db, tx) => {
-            // Migration v12: Create _schemaVersion store for independent verification trail
-            // The store is already created at the top of onupgradeneeded (if version >= 12),
-            // so this migration is deliberately minimal — it just marks completion.
-            console.log("Migration to v12 complete: Schema version store initialized.");
-        },
-        13: (db, tx) => {
-            if (!db.objectStoreNames.contains(ROADMAP_STORE)) {
-                const store = db.createObjectStore(ROADMAP_STORE, { keyPath: 'id', autoIncrement: true });
-                store.createIndex('name', 'name', { unique: false });
-                store.createIndex('createdAt', 'createdAt', { unique: false });
-            }
-            if (!db.objectStoreNames.contains(ROADMAP_DRAFT_STORE)) {
-                db.createObjectStore(ROADMAP_DRAFT_STORE, { keyPath: 'id' });
-            }
-            console.log("Migration to v13 complete: Roadmap store initialized.");
-        },
-        14: (_db, _tx) => {
-            console.log("Migration to v14 complete: Schema version reconciled with existing DB state.");
-        },
-        15: (db, tx) => {
-            if (!db.objectStoreNames.contains(AGENT_JOB_STORE)) {
-                const store = db.createObjectStore(AGENT_JOB_STORE, { keyPath: 'id', autoIncrement: true });
-                store.createIndex('name', 'name', { unique: false });
-                store.createIndex('createdAt', 'createdAt', { unique: false });
-            }
-            if (!db.objectStoreNames.contains(AGENT_JOB_DRAFT_STORE)) {
-                db.createObjectStore(AGENT_JOB_DRAFT_STORE, { keyPath: 'id' });
-            }
-            console.log("Migration to v15 complete: Agent Job store initialized.");
-        },
-        16: (db, tx) => {
-            if (!db.objectStoreNames.contains(SEED_STORE)) {
-                const store = db.createObjectStore(SEED_STORE, { keyPath: 'id', autoIncrement: true });
-                store.createIndex('name', 'name', { unique: false });
-                store.createIndex('createdAt', 'createdAt', { unique: false });
-            }
-            if (!db.objectStoreNames.contains(SEED_TEMP_STORE)) {
-                db.createObjectStore(SEED_TEMP_STORE, { keyPath: 'id', autoIncrement: true });
-            }
-            if (!db.objectStoreNames.contains(COMPRESSED_SIGNAL_STORE)) {
-                const store = db.createObjectStore(COMPRESSED_SIGNAL_STORE, { keyPath: 'id', autoIncrement: true });
-                store.createIndex('name', 'name', { unique: false });
-                store.createIndex('createdAt', 'createdAt', { unique: false });
-            }
-            if (!db.objectStoreNames.contains(COMPRESSED_SIGNAL_DRAFT_STORE)) {
-                db.createObjectStore(COMPRESSED_SIGNAL_DRAFT_STORE, { keyPath: 'id' });
-            }
-            if (!db.objectStoreNames.contains(COMPRESSED_SIGNAL_CONTEXT_STORE)) {
-                db.createObjectStore(COMPRESSED_SIGNAL_CONTEXT_STORE, { keyPath: 'id' });
-            }
-            console.log("Migration to v16 complete: Seed Architect and Compressed Signal stores initialized.");
-        },
-        17: (db, tx) => {
-            if (!db.objectStoreNames.contains(SEED_DRAFT_STORE)) {
-                db.createObjectStore(SEED_DRAFT_STORE, { keyPath: 'id' });
-            }
-            console.log("Migration to v17 complete: Seed Architect draft store initialized.");
-        }
-      };
-
-      for (let v = oldVersion + 1; v <= newVersion; v++) {
-        if (migrations[v]) {
-          try {
-            console.log(`Running migration for v${v}`);
-            migrations[v](db, tx);
-            // Record successful completion of this migration in the schema version store
-            if (tx && db.objectStoreNames.contains(SCHEMA_VERSION_STORE)) {
-              const metaStore = tx.objectStore(SCHEMA_VERSION_STORE);
-              metaStore.put({
-                version: v,
-                value: 'completed',
-                completedAt: new Date().toISOString()
-              });
-            }
-          } catch (err) {
-            console.error(`Migration v${v} FAILED:`, err);
-            // Record failure in schema version store
-            if (tx && db.objectStoreNames.contains(SCHEMA_VERSION_STORE)) {
-              try {
-                const metaStore = tx.objectStore(SCHEMA_VERSION_STORE);
-                metaStore.put({
-                  version: v,
-                  value: 'failed',
-                  error: String(err),
-                  failedAt: new Date().toISOString()
-                });
-              } catch (metaErr) {
-                console.error(`Failed to record migration failure in schema version store:`, metaErr);
-              }
-            }
-            // Reject the overall promise so the caller knows the DB is in an inconsistent state
-            reject(`Migration v${v} failed: ${err}`);
+    initPromise = new Promise((resolve, reject) => {
+        if (dbInstance) {
+            resolve(dbInstance);
+            initPromise = null;
             return;
-          }
         }
-      }
-    };
-  });
 
-  return initPromise;
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+        request.onerror = () => {
+            console.error('Error opening DB', request.error);
+            initPromise = null;
+            reject(request.error?.message || 'Error opening DB');
+        };
+
+        request.onblocked = () => {
+            console.warn('IndexedDB open blocked. Another tab may have an older version open.');
+            // Don't reject — the block may resolve if the user closes other tabs
+        };
+
+        request.onsuccess = () => {
+            dbInstance = request.result;
+            initPromise = null;
+
+            // Handle unexpected close (e.g., storage quota exceeded, browser crash)
+            dbInstance.onclose = () => {
+                console.warn('IndexedDB connection unexpectedly closed. Resetting instance.');
+                dbInstance = null;
+            };
+            // Handle version change from another tab
+            dbInstance.onversionchange = () => {
+                dbInstance?.close();
+                dbInstance = null;
+                initPromise = null;
+            };
+
+            resolve(dbInstance);
+        };
+
+        request.onupgradeneeded = (event) => {
+            const db = (event.target as IDBOpenDBRequest).result;
+            const oldVersion = event.oldVersion;
+            const newVersion = event.newVersion || DB_VERSION;
+            const tx = (event.target as IDBOpenDBRequest).transaction;
+
+            console.log(`Upgrading DB from v${oldVersion} to v${newVersion}`);
+
+            // Create schema version store if it doesn't exist (migration v12+)
+            // This must happen before any migration runs
+            if (newVersion >= 12 && !db.objectStoreNames.contains(SCHEMA_VERSION_STORE)) {
+                db.createObjectStore(SCHEMA_VERSION_STORE, { keyPath: 'version' });
+            }
+
+            // Write the current version as starting state BEFORE migrations
+            if (tx && db.objectStoreNames.contains(SCHEMA_VERSION_STORE)) {
+                const metaStore = tx.objectStore(SCHEMA_VERSION_STORE);
+                // Set starting state: "migrating_from_v_<oldVersion>"
+                metaStore.put({ version: 'status', value: `migrating_from_${oldVersion}`, updatedAt: new Date().toISOString() });
+            }
+
+            // Modular Migration Registry
+            // Each migration receives (db, tx) for explicit transaction access
+            const migrations: Record<number, (db: IDBDatabase, tx: IDBTransaction | null) => void> = {
+                1: (db, tx) => {
+                    if (!db.objectStoreNames.contains(AGENT_STORE)) {
+                        const agentStore = db.createObjectStore(AGENT_STORE, { keyPath: 'id', autoIncrement: true });
+                        agentStore.createIndex('name', 'name', { unique: false });
+                        agentStore.createIndex('createdAt', 'createdAt', { unique: false });
+                    }
+                    if (!db.objectStoreNames.contains(PROMPT_STORE)) {
+                        const promptStore = db.createObjectStore(PROMPT_STORE, { keyPath: 'id', autoIncrement: true });
+                        promptStore.createIndex('name', 'name', { unique: false });
+                        promptStore.createIndex('createdAt', 'createdAt', { unique: false });
+                    }
+                },
+                2: (db, tx) => {
+                    if (!db.objectStoreNames.contains(PROJECT_STORE)) {
+                        const projectStore = db.createObjectStore(PROJECT_STORE, { keyPath: 'id', autoIncrement: true });
+                        projectStore.createIndex('name', 'name', { unique: false });
+                        projectStore.createIndex('createdAt', 'createdAt', { unique: false });
+                    }
+                },
+                3: (db, tx) => {
+                    if (!db.objectStoreNames.contains(AGENT_DRAFT_STORE)) db.createObjectStore(AGENT_DRAFT_STORE, { keyPath: 'id' });
+                    if (!db.objectStoreNames.contains(PROMPT_DRAFT_STORE)) db.createObjectStore(PROMPT_DRAFT_STORE, { keyPath: 'id' });
+                    if (!db.objectStoreNames.contains(PROJECT_DRAFT_STORE)) db.createObjectStore(PROJECT_DRAFT_STORE, { keyPath: 'id' });
+                },
+                4: (db, tx) => {
+                    if (!db.objectStoreNames.contains(SIGNAL_STORE)) {
+                        const signalStore = db.createObjectStore(SIGNAL_STORE, { keyPath: 'id', autoIncrement: true });
+                        signalStore.createIndex('name', 'name', { unique: false });
+                        signalStore.createIndex('createdAt', 'createdAt', { unique: false });
+                    }
+                    if (!db.objectStoreNames.contains(SIGNAL_DRAFT_STORE)) db.createObjectStore(SIGNAL_DRAFT_STORE, { keyPath: 'id' });
+                },
+                5: (db, tx) => {
+                    if (!db.objectStoreNames.contains(COGNISEED_STORE)) {
+                        const store = db.createObjectStore(COGNISEED_STORE, { keyPath: 'id', autoIncrement: true });
+                        store.createIndex('name', 'name', { unique: false });
+                        store.createIndex('createdAt', 'createdAt', { unique: false });
+                    }
+                    if (!db.objectStoreNames.contains(LINGUASEED_STORE)) {
+                        const store = db.createObjectStore(LINGUASEED_STORE, { keyPath: 'id', autoIncrement: true });
+                        store.createIndex('name', 'name', { unique: false });
+                        store.createIndex('createdAt', 'createdAt', { unique: false });
+                    }
+                    if (!db.objectStoreNames.contains(ARCHSEED_STORE)) {
+                        const store = db.createObjectStore(ARCHSEED_STORE, { keyPath: 'id', autoIncrement: true });
+                        store.createIndex('name', 'name', { unique: false });
+                        store.createIndex('createdAt', 'createdAt', { unique: false });
+                    }
+                    if (!db.objectStoreNames.contains(MINDSEED_DRAFT_STORE)) db.createObjectStore(MINDSEED_DRAFT_STORE, { keyPath: 'id' });
+                },
+                6: (db, tx) => {
+                    if (!db.objectStoreNames.contains(AGENT_CONTEXT_STORE)) db.createObjectStore(AGENT_CONTEXT_STORE, { keyPath: 'id' });
+                    if (!db.objectStoreNames.contains(MINDSEED_CONTEXT_STORE)) db.createObjectStore(MINDSEED_CONTEXT_STORE, { keyPath: 'id' });
+                    if (!db.objectStoreNames.contains(SIGNAL_CONTEXT_STORE)) db.createObjectStore(SIGNAL_CONTEXT_STORE, { keyPath: 'id' });
+                    if (!db.objectStoreNames.contains(PROMPT_CONTEXT_STORE)) db.createObjectStore(PROMPT_CONTEXT_STORE, { keyPath: 'id' });
+                    if (!db.objectStoreNames.contains(PROJECT_CONTEXT_STORE)) db.createObjectStore(PROJECT_CONTEXT_STORE, { keyPath: 'id' });
+                },
+                7: (db, tx) => {
+                    if (!db.objectStoreNames.contains(STANDARD_PROMPT_STORE)) {
+                        const store = db.createObjectStore(STANDARD_PROMPT_STORE, { keyPath: 'id', autoIncrement: true });
+                        store.createIndex('name', 'name', { unique: false });
+                        store.createIndex('createdAt', 'createdAt', { unique: false });
+                    }
+                    if (!db.objectStoreNames.contains(SYSTEM_PROMPT_STORE)) {
+                        const store = db.createObjectStore(SYSTEM_PROMPT_STORE, { keyPath: 'id', autoIncrement: true });
+                        store.createIndex('name', 'name', { unique: false });
+                        store.createIndex('createdAt', 'createdAt', { unique: false });
+                    }
+                },
+                8: (db, tx) => {
+                    if (!db.objectStoreNames.contains(STANDARD_PROMPT_DRAFT_STORE)) db.createObjectStore(STANDARD_PROMPT_DRAFT_STORE, { keyPath: 'id' });
+                    if (!db.objectStoreNames.contains(SYSTEM_PROMPT_DRAFT_STORE)) db.createObjectStore(SYSTEM_PROMPT_DRAFT_STORE, { keyPath: 'id' });
+                },
+                9: (db, tx) => {
+                    if (!db.objectStoreNames.contains(SYSTEM_PROMPT_CONTEXT_STORE)) db.createObjectStore(SYSTEM_PROMPT_CONTEXT_STORE, { keyPath: 'id' });
+                },
+                10: (db, tx) => {
+                    console.log("Migration to v10 complete: Stewarding state integrity.");
+                },
+                11: (db, tx) => {
+                    // Create synthesis store
+                    if (!db.objectStoreNames.contains(SYNTHESIS_STORE)) {
+                        const store = db.createObjectStore(SYNTHESIS_STORE, { keyPath: 'id', autoIncrement: true });
+                        store.createIndex('name', 'name', { unique: false });
+                        store.createIndex('createdAt', 'createdAt', { unique: false });
+                    }
+
+                    if (!tx) {
+                        console.warn("Migration v11: no transaction available for cursor data migration — skipping metadata unification.");
+                        return;
+                    }
+
+                    // Unify metadata fields across all existing records
+                    const stores = [
+                        AGENT_STORE, PROMPT_STORE, STANDARD_PROMPT_STORE, SYSTEM_PROMPT_STORE,
+                        PROJECT_STORE, SIGNAL_STORE, COGNISEED_STORE, LINGUASEED_STORE, ARCHSEED_STORE,
+                        SYNTHESIS_STORE
+                    ];
+
+                    stores.forEach(storeName => {
+                        if (db.objectStoreNames.contains(storeName)) {
+                            const store = tx.objectStore(storeName);
+                            const request = store.openCursor();
+
+                            request.onerror = (e) => {
+                                console.error(`Cursor migration v11 failed in store "${storeName}":`, (e.target as IDBRequest).error);
+                            };
+
+                            request.onsuccess = (e) => {
+                                const cursor = (e.target as IDBRequest).result as IDBCursorWithValue;
+                                if (cursor) {
+                                    const data = cursor.value;
+                                    let updated = false;
+                                    if (data.isStarred === undefined) { data.isStarred = false; updated = true; }
+                                    if (data.isPinned === undefined) { data.isPinned = false; updated = true; }
+                                    if (data.isArchived === undefined) { data.isArchived = false; updated = true; }
+                                    if (data.category === undefined) { data.category = ''; updated = true; }
+
+                                    if (updated) {
+                                        try {
+                                            cursor.update(data);
+                                        } catch (updateErr) {
+                                            console.error(`Migration v11: cursor.update failed in "${storeName}" for record:`, data?.id, updateErr);
+                                        }
+                                    }
+                                    cursor.continue();
+                                }
+                            };
+                        }
+                    });
+                    console.log("Migration to v11 complete: Unified metadata initialized.");
+                },
+                12: (db, tx) => {
+                    // Migration v12: Create _schemaVersion store for independent verification trail
+                    // The store is already created at the top of onupgradeneeded (if version >= 12),
+                    // so this migration is deliberately minimal — it just marks completion.
+                    console.log("Migration to v12 complete: Schema version store initialized.");
+                },
+                13: (db, tx) => {
+                    if (!db.objectStoreNames.contains(ROADMAP_STORE)) {
+                        const store = db.createObjectStore(ROADMAP_STORE, { keyPath: 'id', autoIncrement: true });
+                        store.createIndex('name', 'name', { unique: false });
+                        store.createIndex('createdAt', 'createdAt', { unique: false });
+                    }
+                    if (!db.objectStoreNames.contains(ROADMAP_DRAFT_STORE)) {
+                        db.createObjectStore(ROADMAP_DRAFT_STORE, { keyPath: 'id' });
+                    }
+                    console.log("Migration to v13 complete: Roadmap store initialized.");
+                },
+                14: (_db, _tx) => {
+                    console.log("Migration to v14 complete: Schema version reconciled with existing DB state.");
+                },
+                15: (db, tx) => {
+                    if (!db.objectStoreNames.contains(AGENT_JOB_STORE)) {
+                        const store = db.createObjectStore(AGENT_JOB_STORE, { keyPath: 'id', autoIncrement: true });
+                        store.createIndex('name', 'name', { unique: false });
+                        store.createIndex('createdAt', 'createdAt', { unique: false });
+                    }
+                    if (!db.objectStoreNames.contains(AGENT_JOB_DRAFT_STORE)) {
+                        db.createObjectStore(AGENT_JOB_DRAFT_STORE, { keyPath: 'id' });
+                    }
+                    console.log("Migration to v15 complete: Agent Job store initialized.");
+                },
+                16: (db, tx) => {
+                    if (!db.objectStoreNames.contains(SEED_STORE)) {
+                        const store = db.createObjectStore(SEED_STORE, { keyPath: 'id', autoIncrement: true });
+                        store.createIndex('name', 'name', { unique: false });
+                        store.createIndex('createdAt', 'createdAt', { unique: false });
+                    }
+                    if (!db.objectStoreNames.contains(SEED_TEMP_STORE)) {
+                        db.createObjectStore(SEED_TEMP_STORE, { keyPath: 'id', autoIncrement: true });
+                    }
+                    if (!db.objectStoreNames.contains(COMPRESSED_SIGNAL_STORE)) {
+                        const store = db.createObjectStore(COMPRESSED_SIGNAL_STORE, { keyPath: 'id', autoIncrement: true });
+                        store.createIndex('name', 'name', { unique: false });
+                        store.createIndex('createdAt', 'createdAt', { unique: false });
+                    }
+                    if (!db.objectStoreNames.contains(COMPRESSED_SIGNAL_DRAFT_STORE)) {
+                        db.createObjectStore(COMPRESSED_SIGNAL_DRAFT_STORE, { keyPath: 'id' });
+                    }
+                    if (!db.objectStoreNames.contains(COMPRESSED_SIGNAL_CONTEXT_STORE)) {
+                        db.createObjectStore(COMPRESSED_SIGNAL_CONTEXT_STORE, { keyPath: 'id' });
+                    }
+                    console.log("Migration to v16 complete: Seed Architect and Compressed Signal stores initialized.");
+                },
+                17: (db, tx) => {
+                    if (!db.objectStoreNames.contains(SEED_DRAFT_STORE)) {
+                        db.createObjectStore(SEED_DRAFT_STORE, { keyPath: 'id' });
+                    }
+                    console.log("Migration to v17 complete: Seed Architect draft store initialized.");
+                },
+                18: (db, tx) => {
+                    if (!db.objectStoreNames.contains(USER_PREFERENCES_STORE)) {
+                        db.createObjectStore(USER_PREFERENCES_STORE, { keyPath: 'id' });
+                    }
+                    console.log("Migration to v18 complete: User Preferences store initialized.");
+                }
+            };
+
+            for (let v = oldVersion + 1; v <= newVersion; v++) {
+                if (migrations[v]) {
+                    try {
+                        console.log(`Running migration for v${v}`);
+                        migrations[v](db, tx);
+                        // Record successful completion of this migration in the schema version store
+                        if (tx && db.objectStoreNames.contains(SCHEMA_VERSION_STORE)) {
+                            const metaStore = tx.objectStore(SCHEMA_VERSION_STORE);
+                            metaStore.put({
+                                version: v,
+                                value: 'completed',
+                                completedAt: new Date().toISOString()
+                            });
+                        }
+                    } catch (err) {
+                        console.error(`Migration v${v} FAILED:`, err);
+                        // Record failure in schema version store
+                        if (tx && db.objectStoreNames.contains(SCHEMA_VERSION_STORE)) {
+                            try {
+                                const metaStore = tx.objectStore(SCHEMA_VERSION_STORE);
+                                metaStore.put({
+                                    version: v,
+                                    value: 'failed',
+                                    error: String(err),
+                                    failedAt: new Date().toISOString()
+                                });
+                            } catch (metaErr) {
+                                console.error(`Failed to record migration failure in schema version store:`, metaErr);
+                            }
+                        }
+                        // Reject the overall promise so the caller knows the DB is in an inconsistent state
+                        reject(`Migration v${v} failed: ${err}`);
+                        return;
+                    }
+                }
+            }
+        };
+    });
+
+    return initPromise;
 };
 
 /**
@@ -350,91 +357,102 @@ export const initDB = (): Promise<IDBDatabase> => {
  * Components can call this to detect corruption early.
  */
 export const checkDatabaseHealth = async (): Promise<{
-  healthy: boolean;
-  storesPresent: string[];
-  storesMissing: string[];
-  schemaVersions: Record<string, unknown>;
-  errors: string[];
+    healthy: boolean;
+    storesPresent: string[];
+    storesMissing: string[];
+    schemaVersions: Record<string, unknown>;
+    errors: string[];
 }> => {
-  const diagnostics = {
-    healthy: true,
-    storesPresent: [] as string[],
-    storesMissing: [] as string[],
-    schemaVersions: {} as Record<string, unknown>,
-    errors: [] as string[]
-  };
+    const diagnostics = {
+        healthy: true,
+        storesPresent: [] as string[],
+        storesMissing: [] as string[],
+        schemaVersions: {} as Record<string, unknown>,
+        errors: [] as string[]
+    };
 
-  try {
-    const db = await initDB();
+    try {
+        const db = await initDB();
 
-    const expectedStores = [
-      AGENT_STORE, PROMPT_STORE, STANDARD_PROMPT_STORE, SYSTEM_PROMPT_STORE,
-      PROJECT_STORE, SIGNAL_STORE, COGNISEED_STORE, LINGUASEED_STORE, ARCHSEED_STORE,
-      SYNTHESIS_STORE, ROADMAP_STORE, AGENT_JOB_STORE, SCHEMA_VERSION_STORE
-    ];
+        const expectedStores = [
+            AGENT_STORE, PROMPT_STORE, STANDARD_PROMPT_STORE, SYSTEM_PROMPT_STORE,
+            PROJECT_STORE, SIGNAL_STORE, COGNISEED_STORE, LINGUASEED_STORE, ARCHSEED_STORE,
+            SYNTHESIS_STORE, ROADMAP_STORE, AGENT_JOB_STORE, SCHEMA_VERSION_STORE
+        ];
 
-    expectedStores.forEach(storeName => {
-      if (db.objectStoreNames.contains(storeName)) {
-        diagnostics.storesPresent.push(storeName);
-      } else {
-        diagnostics.storesMissing.push(storeName);
+        expectedStores.forEach(storeName => {
+            if (db.objectStoreNames.contains(storeName)) {
+                diagnostics.storesPresent.push(storeName);
+            } else {
+                diagnostics.storesMissing.push(storeName);
+                diagnostics.healthy = false;
+                diagnostics.errors.push(`Missing expected store: ${storeName}`);
+            }
+        });
+
+        const v16Stores = [COMPRESSED_SIGNAL_STORE, COMPRESSED_SIGNAL_DRAFT_STORE, COMPRESSED_SIGNAL_CONTEXT_STORE];
+        v16Stores.forEach(storeName => {
+            if (db.objectStoreNames.contains(storeName)) {
+                diagnostics.storesPresent.push(storeName);
+            } else {
+                diagnostics.storesMissing.push(storeName);
+                diagnostics.healthy = false;
+                diagnostics.errors.push(`Missing expected v16 store: ${storeName}`);
+            }
+        });
+
+        const v18Stores = [USER_PREFERENCES_STORE];
+        v18Stores.forEach(storeName => {
+            if (db.objectStoreNames.contains(storeName)) {
+                diagnostics.storesPresent.push(storeName);
+            } else {
+                diagnostics.storesMissing.push(storeName);
+                diagnostics.healthy = false;
+                diagnostics.errors.push(`Missing expected v18 store: ${storeName}`);
+            }
+        });
+
+        // Read schema version store
+        if (db.objectStoreNames.contains(SCHEMA_VERSION_STORE)) {
+            const tx = db.transaction(SCHEMA_VERSION_STORE, 'readonly');
+            const store = tx.objectStore(SCHEMA_VERSION_STORE);
+            const allVersions = await new Promise<Record<string, unknown>>((resolve, reject) => {
+                const request = store.getAll();
+                request.onsuccess = () => {
+                    const result: Record<string, unknown> = {};
+                    (request.result as any[]).forEach((item: any) => {
+                        result[item.version] = item;
+                    });
+                    resolve(result);
+                };
+                request.onerror = () => reject(request.error);
+            });
+            diagnostics.schemaVersions = allVersions;
+
+            // Check for any recorded failures
+            for (const [version, record] of Object.entries(allVersions)) {
+                const rec = record as any;
+                if (rec.value === 'failed') {
+                    diagnostics.healthy = false;
+                    diagnostics.errors.push(`Migration v${version} recorded as FAILED: ${rec.error}`);
+                }
+            }
+        }
+    } catch (err: any) {
         diagnostics.healthy = false;
-        diagnostics.errors.push(`Missing expected store: ${storeName}`);
-      }
-    });
-
-    const v16Stores = [COMPRESSED_SIGNAL_STORE, COMPRESSED_SIGNAL_DRAFT_STORE, COMPRESSED_SIGNAL_CONTEXT_STORE];
-    v16Stores.forEach(storeName => {
-        if (db.objectStoreNames.contains(storeName)) {
-            diagnostics.storesPresent.push(storeName);
-        } else {
-            diagnostics.storesMissing.push(storeName);
-            diagnostics.healthy = false;
-            diagnostics.errors.push(`Missing expected v16 store: ${storeName}`);
-        }
-    });
-
-    // Read schema version store
-    if (db.objectStoreNames.contains(SCHEMA_VERSION_STORE)) {
-      const tx = db.transaction(SCHEMA_VERSION_STORE, 'readonly');
-      const store = tx.objectStore(SCHEMA_VERSION_STORE);
-      const allVersions = await new Promise<Record<string, unknown>>((resolve, reject) => {
-        const request = store.getAll();
-        request.onsuccess = () => {
-          const result: Record<string, unknown> = {};
-          (request.result as any[]).forEach((item: any) => {
-            result[item.version] = item;
-          });
-          resolve(result);
-        };
-        request.onerror = () => reject(request.error);
-      });
-      diagnostics.schemaVersions = allVersions;
-
-      // Check for any recorded failures
-      for (const [version, record] of Object.entries(allVersions)) {
-        const rec = record as any;
-        if (rec.value === 'failed') {
-          diagnostics.healthy = false;
-          diagnostics.errors.push(`Migration v${version} recorded as FAILED: ${rec.error}`);
-        }
-      }
+        diagnostics.errors.push(`Database init failed: ${err.message || String(err)}`);
     }
-  } catch (err: any) {
-    diagnostics.healthy = false;
-    diagnostics.errors.push(`Database init failed: ${err.message || String(err)}`);
-  }
 
-  return diagnostics;
+    return diagnostics;
 };
 
 const getStore = async (storeName: string, mode: IDBTransactionMode) => {
-  const db = await initDB();
-  if (!db.objectStoreNames.contains(storeName)) {
-    throw new Error(`Store "${storeName}" does not exist in the database.`);
-  }
-  const tx = db.transaction(storeName, mode);
-  return tx.objectStore(storeName);
+    const db = await initDB();
+    if (!db.objectStoreNames.contains(storeName)) {
+        throw new Error(`Store "${storeName}" does not exist in the database.`);
+    }
+    const tx = db.transaction(storeName, mode);
+    return tx.objectStore(storeName);
 };
 
 /**
@@ -538,7 +556,7 @@ const encryptCompressedSignal = (signal: SavedCompressedSignal) => processEntity
 const decryptCompressedSignal = (data: any) => processEntity(data, SCHEMAS.compression, (v, isObj) => decryptField(v, isObj)) as SavedCompressedSignal;
 
 // Agent Draft Functions
-export const saveDraft = async (draft: {id: number, config: AgentConfig}): Promise<number> => {
+export const saveDraft = async (draft: { id: number, config: AgentConfig }): Promise<number> => {
     const store = await getStore(AGENT_DRAFT_STORE, 'readwrite');
     return new Promise((resolve, reject) => {
         const encryptedDraft = { ...draft, config: encryptField(draft.config) };
@@ -613,7 +631,7 @@ export const clearAllSynthesis = async (): Promise<void> => {
 };
 
 // Generic Prompt Draft Functions
-export const saveTypedPromptDraft = async (type: PromptType, draft: {id: number, config: PromptConfig | AgentConfig}): Promise<number> => {
+export const saveTypedPromptDraft = async (type: PromptType, draft: { id: number, config: PromptConfig | AgentConfig }): Promise<number> => {
     const storeName = type === 'standard' ? STANDARD_PROMPT_DRAFT_STORE : SYSTEM_PROMPT_DRAFT_STORE;
     const store = await getStore(storeName, 'readwrite');
     return new Promise((resolve, reject) => {
@@ -629,7 +647,7 @@ export const saveTypedPromptDraft = async (type: PromptType, draft: {id: number,
     });
 };
 
-export const getTypedPromptDraft = async (type: PromptType, id: number): Promise<{id: number, config: PromptConfig | AgentConfig} | undefined> => {
+export const getTypedPromptDraft = async (type: PromptType, id: number): Promise<{ id: number, config: PromptConfig | AgentConfig } | undefined> => {
     const storeName = type === 'standard' ? STANDARD_PROMPT_DRAFT_STORE : SYSTEM_PROMPT_DRAFT_STORE;
     const store = await getStore(storeName, 'readonly');
     return new Promise((resolve, reject) => {
@@ -653,7 +671,7 @@ export const clearTypedPromptDraft = async (type: PromptType, id: number): Promi
 };
 
 // MindSeed Draft Functions
-export const saveMindSeedDraft = async (draft: {id: number, config: MindSeedConfig}): Promise<number> => {
+export const saveMindSeedDraft = async (draft: { id: number, config: MindSeedConfig }): Promise<number> => {
     const store = await getStore(MINDSEED_DRAFT_STORE, 'readwrite');
     return new Promise((resolve, reject) => {
         const encryptedDraft = { ...draft, config: encryptField(draft.config) };
@@ -695,7 +713,7 @@ export const getAllTypedPrompts = async (type: PromptType): Promise<SavedPrompt[
         const request = store.getAll();
         request.onsuccess = () => {
             const results = (request.result as any[]).map(decryptPrompt);
-            resolve(results.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+            resolve(results.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
         };
         request.onerror = () => reject(request.error);
     });
@@ -736,7 +754,7 @@ export const clearAllTypedPrompts = async (type: PromptType): Promise<void> => {
     });
 };
 
-export const getMindSeedDraft = async (id: number): Promise<{id: number, config: MindSeedConfig} | undefined> => {
+export const getMindSeedDraft = async (id: number): Promise<{ id: number, config: MindSeedConfig } | undefined> => {
     const store = await getStore(MINDSEED_DRAFT_STORE, 'readonly');
     return new Promise((resolve, reject) => {
         const request = store.get(id);
@@ -815,6 +833,32 @@ export const deleteCustomContext = async (storeName: ContextStoreName): Promise<
     });
 };
 
+// User Preferences Functions
+// Single-record store ('current'), whole object encrypted as one field —
+// mirrors the custom-context pattern. Non-secret identity data.
+export const saveUserPreferences = async (prefs: UserPreferences): Promise<void> => {
+    const store = await getStore(USER_PREFERENCES_STORE, 'readwrite');
+    return new Promise((resolve, reject) => {
+        const request = store.put({ id: 'current', prefs: encryptField(prefs) });
+        request.onsuccess = () => {
+            // Atomic read-back verification before resolving
+            const getReq = store.get('current');
+            getReq.onsuccess = () => resolve();
+            getReq.onerror = () => reject(new Error("Verification failed after user preferences write."));
+        };
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const getUserPreferences = async (): Promise<UserPreferences | undefined> => {
+    const store = await getStore(USER_PREFERENCES_STORE, 'readonly');
+    return new Promise((resolve, reject) => {
+        const request = store.get('current');
+        request.onsuccess = () => resolve(decryptField(request.result?.prefs, true));
+        request.onerror = () => reject(request.error);
+    });
+};
+
 export const getAllMindSeeds = async (type: MindSeedType): Promise<SavedMindSeed[]> => {
     const storeName = getMindSeedStoreName(type);
     const store = await getStore(storeName, 'readonly');
@@ -822,7 +866,7 @@ export const getAllMindSeeds = async (type: MindSeedType): Promise<SavedMindSeed
         const request = store.getAll();
         request.onsuccess = () => {
             const results = (request.result as any[]).map(decryptMindSeed);
-            resolve(results.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+            resolve(results.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
         };
         request.onerror = () => reject(request.error);
     });
@@ -863,7 +907,7 @@ export const clearAllMindSeeds = async (type: MindSeedType): Promise<void> => {
     });
 };
 
-export const getDraft = async (id: number): Promise<{id: number, config: AgentConfig} | undefined> => {
+export const getDraft = async (id: number): Promise<{ id: number, config: AgentConfig } | undefined> => {
     const store = await getStore(AGENT_DRAFT_STORE, 'readonly');
     return new Promise((resolve, reject) => {
         const request = store.get(id);
@@ -885,7 +929,7 @@ export const clearDraft = async (id: number): Promise<void> => {
 };
 
 // Prompt Draft Functions
-export const savePromptDraft = async (draft: {id: number, config: PromptConfig}): Promise<number> => {
+export const savePromptDraft = async (draft: { id: number, config: PromptConfig }): Promise<number> => {
     const store = await getStore(PROMPT_DRAFT_STORE, 'readwrite');
     return new Promise((resolve, reject) => {
         const encryptedDraft = { ...draft, config: encryptField(draft.config) };
@@ -900,7 +944,7 @@ export const savePromptDraft = async (draft: {id: number, config: PromptConfig})
     });
 };
 
-export const getPromptDraft = async (id: number): Promise<{id: number, config: PromptConfig} | undefined> => {
+export const getPromptDraft = async (id: number): Promise<{ id: number, config: PromptConfig } | undefined> => {
     const store = await getStore(PROMPT_DRAFT_STORE, 'readonly');
     return new Promise((resolve, reject) => {
         const request = store.get(id);
@@ -922,7 +966,7 @@ export const clearPromptDraft = async (id: number): Promise<void> => {
 };
 
 // Project Draft Functions
-export const saveProjectDraft = async (draft: {id: number, config: ProjectConfig}): Promise<number> => {
+export const saveProjectDraft = async (draft: { id: number, config: ProjectConfig }): Promise<number> => {
     const store = await getStore(PROJECT_DRAFT_STORE, 'readwrite');
     return new Promise((resolve, reject) => {
         const encryptedDraft = { ...draft, config: encryptField(draft.config) };
@@ -937,7 +981,7 @@ export const saveProjectDraft = async (draft: {id: number, config: ProjectConfig
     });
 };
 
-export const getProjectDraft = async (id: number): Promise<{id: number, config: ProjectConfig} | undefined> => {
+export const getProjectDraft = async (id: number): Promise<{ id: number, config: ProjectConfig } | undefined> => {
     const store = await getStore(PROJECT_DRAFT_STORE, 'readonly');
     return new Promise((resolve, reject) => {
         const request = store.get(id);
@@ -959,7 +1003,7 @@ export const clearProjectDraft = async (id: number): Promise<void> => {
 };
 
 // Signal Draft Functions
-export const saveSignalDraft = async (draft: {id: number, config: SignalConfig}): Promise<number> => {
+export const saveSignalDraft = async (draft: { id: number, config: SignalConfig }): Promise<number> => {
     const store = await getStore(SIGNAL_DRAFT_STORE, 'readwrite');
     return new Promise((resolve, reject) => {
         const encryptedDraft = { ...draft, config: encryptField(draft.config) };
@@ -974,7 +1018,7 @@ export const saveSignalDraft = async (draft: {id: number, config: SignalConfig})
     });
 };
 
-export const getSignalDraft = async (id: number): Promise<{id: number, config: SignalConfig} | undefined> => {
+export const getSignalDraft = async (id: number): Promise<{ id: number, config: SignalConfig } | undefined> => {
     const store = await getStore(SIGNAL_DRAFT_STORE, 'readonly');
     return new Promise((resolve, reject) => {
         const request = store.get(id);
@@ -1076,7 +1120,7 @@ export const getAllAgents = async (): Promise<SavedAgent[]> => {
         const request = store.getAll();
         request.onsuccess = () => {
             const results = (request.result as any[]).map(decryptAgent);
-            resolve(results.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+            resolve(results.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
         };
         request.onerror = () => reject(request.error);
     });
@@ -1136,7 +1180,7 @@ export const getAllPrompts = async (): Promise<SavedPrompt[]> => {
         const request = store.getAll();
         request.onsuccess = () => {
             const results = (request.result as any[]).map(decryptPrompt);
-            resolve(results.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+            resolve(results.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
         };
         request.onerror = () => reject(request.error);
     });
@@ -1195,7 +1239,7 @@ export const getAllProjects = async (): Promise<SavedProject[]> => {
         const request = store.getAll();
         request.onsuccess = () => {
             const results = (request.result as any[]).map(decryptProject);
-            resolve(results.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+            resolve(results.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
         };
         request.onerror = () => reject(request.error);
     });
@@ -1292,7 +1336,7 @@ export const clearAllCompressedSignals = async (): Promise<void> => {
     });
 };
 
-export const saveCompressedSignalDraft = async (draft: {id: number, config: CompressionConfig}): Promise<number> => {
+export const saveCompressedSignalDraft = async (draft: { id: number, config: CompressionConfig }): Promise<number> => {
     const store = await getStore(COMPRESSED_SIGNAL_DRAFT_STORE, 'readwrite');
     return new Promise((resolve, reject) => {
         const encryptedDraft = { ...draft, config: encryptField(draft.config) };
@@ -1302,7 +1346,7 @@ export const saveCompressedSignalDraft = async (draft: {id: number, config: Comp
     });
 };
 
-export const getCompressedSignalDraft = async (id: number): Promise<{id: number, config: CompressionConfig} | undefined> => {
+export const getCompressedSignalDraft = async (id: number): Promise<{ id: number, config: CompressionConfig } | undefined> => {
     const store = await getStore(COMPRESSED_SIGNAL_DRAFT_STORE, 'readonly');
     return new Promise((resolve, reject) => {
         const request = store.get(id);
@@ -1344,7 +1388,7 @@ export const getAllRoadmaps = async (): Promise<SavedRoadmap[]> => {
         const request = store.getAll();
         request.onsuccess = () => {
             const results = (request.result as any[]).map(decryptRoadmap);
-            resolve(results.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+            resolve(results.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
         };
         request.onerror = () => reject(request.error);
     });
@@ -1382,7 +1426,7 @@ export const clearAllRoadmaps = async (): Promise<void> => {
     });
 };
 
-export const saveRoadmapDraft = async (draft: {id: number, config: RoadmapConfig}): Promise<number> => {
+export const saveRoadmapDraft = async (draft: { id: number, config: RoadmapConfig }): Promise<number> => {
     const store = await getStore(ROADMAP_DRAFT_STORE, 'readwrite');
     return new Promise((resolve, reject) => {
         const encryptedDraft = { ...draft, config: encryptField(draft.config) };
@@ -1397,7 +1441,7 @@ export const saveRoadmapDraft = async (draft: {id: number, config: RoadmapConfig
     });
 };
 
-export const getRoadmapDraft = async (id: number): Promise<{id: number, config: RoadmapConfig} | undefined> => {
+export const getRoadmapDraft = async (id: number): Promise<{ id: number, config: RoadmapConfig } | undefined> => {
     const store = await getStore(ROADMAP_DRAFT_STORE, 'readonly');
     return new Promise((resolve, reject) => {
         const request = store.get(id);
@@ -1439,7 +1483,7 @@ export const getAllAgentJobs = async (): Promise<SavedAgentJob[]> => {
         const request = store.getAll();
         request.onsuccess = () => {
             const results = (request.result as any[]).map(decryptAgentJob);
-            resolve(results.sort((a: any,b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+            resolve(results.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
         };
         request.onerror = () => reject(request.error);
     });
@@ -1567,7 +1611,7 @@ export const clearSeedTempResponses = async (): Promise<void> => {
     });
 };
 
-export const saveSeedDraft = async (draft: {id: number, config: SeedConfig}): Promise<number> => {
+export const saveSeedDraft = async (draft: { id: number, config: SeedConfig }): Promise<number> => {
     const store = await getStore(SEED_DRAFT_STORE, 'readwrite');
     return new Promise((resolve, reject) => {
         const encryptedDraft = { ...draft, config: encryptField(draft.config) };
@@ -1577,7 +1621,7 @@ export const saveSeedDraft = async (draft: {id: number, config: SeedConfig}): Pr
     });
 };
 
-export const getSeedDraft = async (id: number): Promise<{id: number, config: SeedConfig} | undefined> => {
+export const getSeedDraft = async (id: number): Promise<{ id: number, config: SeedConfig } | undefined> => {
     const store = await getStore(SEED_DRAFT_STORE, 'readonly');
     return new Promise((resolve, reject) => {
         const request = store.get(id);
@@ -1698,7 +1742,7 @@ export const deleteUnifiedItem = async (item: UnifiedItem): Promise<void> => {
     }
 };
 
-export const saveAgentJobDraft = async (draft: {id: number, config: AgentJobConfig}): Promise<number> => {
+export const saveAgentJobDraft = async (draft: { id: number, config: AgentJobConfig }): Promise<number> => {
     const store = await getStore(AGENT_JOB_DRAFT_STORE, 'readwrite');
     return new Promise((resolve, reject) => {
         const encryptedDraft = { ...draft, config: encryptField(draft.config) };
@@ -1713,7 +1757,7 @@ export const saveAgentJobDraft = async (draft: {id: number, config: AgentJobConf
     });
 };
 
-export const getAgentJobDraft = async (id: number): Promise<{id: number, config: AgentJobConfig} | undefined> => {
+export const getAgentJobDraft = async (id: number): Promise<{ id: number, config: AgentJobConfig } | undefined> => {
     const store = await getStore(AGENT_JOB_DRAFT_STORE, 'readonly');
     return new Promise((resolve, reject) => {
         const request = store.get(id);

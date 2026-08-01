@@ -64,47 +64,47 @@ export interface SavedPrompt extends LibraryMetadata {
 }
 
 export interface ProjectConfig {
-    title: string;
-    idea: string;
-    vision: string;
-    goal: string;
-    // Core identity — PROJECT.md fields
-    techStack: string;
-    architecture: string;
-    securityPosition: string;
-    accessibilityPosition: string;
-    // Project context fields
-    guidingPrinciples: string;
-    targetAudience: string;
-    keyConstraints: string;
-    successCriteria: string;
-    // File context — uploaded file for AI to synthesize from
-    fileContext?: {
-        name: string;
-        content: string;
-    };
-    // Legacy fields — kept for backward compatibility with saved projects
-    // These are no longer used in the form but preserved in stored data
-    rules: string;
-    constraints: string;
-    guidelines: string;
-    roles: string;
-    standards: string;
-    consistency: string;
+  title: string;
+  idea: string;
+  vision: string;
+  goal: string;
+  // Core identity — PROJECT.md fields
+  techStack: string;
+  architecture: string;
+  securityPosition: string;
+  accessibilityPosition: string;
+  // Project context fields
+  guidingPrinciples: string;
+  targetAudience: string;
+  keyConstraints: string;
+  successCriteria: string;
+  // File context — uploaded file for AI to synthesize from
+  fileContext?: {
+    name: string;
+    content: string;
+  };
+  // Legacy fields — kept for backward compatibility with saved projects
+  // These are no longer used in the form but preserved in stored data
+  rules: string;
+  constraints: string;
+  guidelines: string;
+  roles: string;
+  standards: string;
+  consistency: string;
 }
 
 export interface GeneratedProjectFiles {
-    overviewFile: string;   // Now outputs as PROJECT.md
-    standardsFile: string;  // Now outputs as ARCHITECTURE.md
-    rulesFile: string;      // Now outputs as SECURITY.md
+  overviewFile: string;   // Now outputs as PROJECT.md
+  standardsFile: string;  // Now outputs as ARCHITECTURE.md
+  rulesFile: string;      // Now outputs as SECURITY.md
 }
 
 export interface SavedProject extends LibraryMetadata {
-    id?: number;
-    name: string;
-    config: ProjectConfig;
-    files: GeneratedProjectFiles;
-    createdAt: string;
+  id?: number;
+  name: string;
+  config: ProjectConfig;
+  files: GeneratedProjectFiles;
+  createdAt: string;
 }
 
 export interface GeneratedPrompt {
@@ -278,15 +278,15 @@ export interface SavedSeed extends LibraryMetadata {
 // fields from all library entities (agents, prompts, projects, etc.).
 // ----------------------------------------------------------------------
 export interface UnifiedItem {
-    id: number | string;
-    name: string;
-    type: 'agent' | 'prompt-standard' | 'prompt-system' | 'project' | 'mindseed' | 'signal' | 'synthesis' | 'roadmap' | 'legacy-prompt' | 'agentJob' | 'seed-architect' | 'compressed-signal';
-    original: any;
-    createdAt: string;
-    isStarred: boolean;
-    isPinned: boolean;
-    isArchived: boolean;
-    category: string;
+  id: number | string;
+  name: string;
+  type: 'agent' | 'prompt-standard' | 'prompt-system' | 'project' | 'mindseed' | 'signal' | 'synthesis' | 'roadmap' | 'legacy-prompt' | 'agentJob' | 'seed-architect' | 'compressed-signal';
+  original: any;
+  createdAt: string;
+  isStarred: boolean;
+  isPinned: boolean;
+  isArchived: boolean;
+  category: string;
 }
 
 // ----------------------------------------------------------------------
@@ -295,6 +295,18 @@ export interface UnifiedItem {
 // ----------------------------------------------------------------------
 export type ExportFormat = 'markdown' | 'html' | 'json';
 export type HtmlTheme = 'light' | 'dark';
+
+// ----------------------------------------------------------------------
+// User Preferences — profile identity for the sidebar profile area and
+// (future) model-address personalization. Persisted in IndexedDB
+// (userPreferences store, encrypted at rest). Non-secret by design:
+// the OpenRouter API key remains memory-only in sessionService.
+// ----------------------------------------------------------------------
+export interface UserPreferences {
+  username: string;
+  preferredName: string;
+  updatedAt: string;
+}
 
 // ----------------------------------------------------------------------
 // Generation progress tracking

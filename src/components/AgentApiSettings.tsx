@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { setOpenRouterKey, getOpenRouterKey, setOpenRouterModel, getOpenRouterModel, clearSession } from '../services/sessionService';
-import CustomContextSettings from './CustomContextSettings';
 import Modal from './Modal';
 import Toast from './Toast';
 
@@ -66,11 +65,11 @@ const AgentApiSettings: React.FC = () => {
   useEffect(() => {
     const savedKey = getOpenRouterKey();
     const savedModel = getOpenRouterModel();
-    
+
     if (savedKey) {
       setHasSavedKey(true);
     }
-    
+
     if (savedModel) {
       setModel(savedModel);
     }
@@ -122,13 +121,11 @@ const AgentApiSettings: React.FC = () => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto animate-fade-in">
+    <div className="animate-fade-in">
       <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
 
-      <div className="mb-10">
-        <h2 className="text-3xl font-extrabold text-slate-900 dark:text-slate-100 flex items-center">
-          Agent API Settings
-        </h2>
+      <div className="mb-8">
+        <h3 className="text-lg font-extrabold text-slate-900 dark:text-slate-100">API Key</h3>
         <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Configure OpenRouter endpoints and active session settings.</p>
       </div>
 
@@ -187,7 +184,7 @@ const AgentApiSettings: React.FC = () => {
             <span className="material-icons mr-2 text-sm">save</span>
             Save Settings
           </button>
-          
+
           {isSaved && (
             <button
               onClick={handleClear}
@@ -233,11 +230,10 @@ const AgentApiSettings: React.FC = () => {
                     <button
                       key={modelId}
                       onClick={() => selectModel(modelId)}
-                      className={`w-full text-left p-3 rounded-xl text-xs font-semibold transition ${
-                        model === modelId
+                      className={`w-full text-left p-3 rounded-xl text-xs font-semibold transition ${model === modelId
                           ? 'bg-blue-600 text-white shadow-sm'
                           : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/80'
-                      }`}
+                        }`}
                     >
                       {modelId}
                     </button>
@@ -248,8 +244,6 @@ const AgentApiSettings: React.FC = () => {
           ))}
         </div>
       </Modal>
-
-      <CustomContextSettings />
     </div>
   );
 };
