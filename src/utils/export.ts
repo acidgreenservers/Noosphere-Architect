@@ -1,5 +1,6 @@
 import { ExportFormat, HtmlTheme, UnifiedItem } from '../types';
 import { marked } from 'marked';
+import { sanitizeFilename } from './security';
 
 // ── HTML entity escaping — constructed at runtime to survive formatters ────────
 function esc(text: string): string {
@@ -42,7 +43,7 @@ export function getPreviewContent(item: UnifiedItem): string | Record<string, st
 
 // ── Build a safe filename from item name ───────────────────────────────────────
 export function getExportFilename(item: UnifiedItem, format: ExportFormat): string {
-  const base = item.name.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 50);
+  const base = sanitizeFilename(item.name);
   const timestamp = new Date().toISOString().slice(0, 10);
   const extMap: Record<ExportFormat, string> = {
     markdown: '.md',
@@ -175,6 +176,11 @@ export function buildExport(
           exportedAt: new Date().toISOString(),
           tool: 'Noosphere-Architect',
           type: item.type,
+          category: item.category || '',
+          isStarred: !!item.isStarred,
+          isPinned: !!item.isPinned,
+          isArchived: !!item.isArchived,
+          createdAt: item.createdAt,
           content: typeof content === 'string' ? content : content
         },
         null,
@@ -200,7 +206,7 @@ export function triggerDownload(result: ExportResult): void {
 
 // ── Sanitize a name for use as a filesystem directory/file ──────────────────────
 function sanitizeFsName(name: string): string {
-  return name.replace(/[^a-zA-Z0-9_\- ]/g, '_').slice(0, 60).trim();
+  return sanitizeFilename(name);
 }
 
 // ── Build a single item's content blob for a given format ───────────────────────
@@ -227,8 +233,20 @@ function buildItemBlob(
     }
     case 'json': {
       const json = JSON.stringify(
-        { title, exportedAt: new Date().toISOString(), tool: 'Noosphere-Architect', type: item.type, content: raw },
-        null, 2
+        {
+          title,
+          exportedAt: new Date().toISOString(),
+          tool: 'Noosphere-Architect',
+          type: item.type,
+          category: item.category || '',
+          isStarred: !!item.isStarred,
+          isPinned: !!item.isPinned,
+          isArchived: !!item.isArchived,
+          createdAt: item.createdAt,
+          content: raw
+        },
+        null,
+        2
       );
       return { content: json, filename };
     }

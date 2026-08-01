@@ -72,14 +72,14 @@
 * **Metadata Unification:** All architectural assets share a common metadata
   schema (starred, pinned, archived, category) managed by
   `ArchitectureOrganization`.
-*   **Semantic Grounding:** AI services utilize a standardized preamble
-    (Grounding, Purpose, Territory) to anchor pattern inference to the
-    project's purpose.
+* **Semantic Grounding:** AI services utilize a standardized preamble
+  (Grounding, Purpose, Territory) to anchor pattern inference to the
+  project's purpose.
 * **Encryption at Rest:** Sensitive data in IndexedDB is obfuscated using a
   user-provided `VITE_ENCRYPTION_KEY`.
-*   **Atomic Write Verification:** `dbService.ts` implements a read-back check
-    pattern for all write operations to guarantee state persistence before
-    resolving.
+* **Atomic Write Verification:** `dbService.ts` implements a read-back check
+  pattern for all write operations to guarantee state persistence before
+  resolving.
 
 ## Repos & Conventions
 
