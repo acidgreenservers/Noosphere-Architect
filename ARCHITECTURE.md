@@ -34,7 +34,7 @@
 
           +-----------------------------------------------------------+
           |                      Persistence Layer                    |
-          |           (IndexedDB v15 + Metadata Unification)          |
+          |           (IndexedDB v17 + Metadata Unification)          |
           +-----------------------------+-----------------------------+
                                         |
               +-------------------------+-------------------------+
@@ -43,6 +43,7 @@
       [Saved Prompts]           [Saved Agents]            [Saved Roadmaps]
       [Saved Signals]           [Saved Projects]          [Saved Seeds]
       [Saved Agent Jobs]        [Saved Synthesis]         [Temporary Seeds]
+      [Compressed Signals]      [Seed Architects]         [Draft Stores]
 ```
 
 ## Data Flow (AI Generation)
@@ -65,21 +66,21 @@
 * **Modular AI Services:** Each tool has a dedicated service in
   `src/services/ai/` to maintain clean boundaries.
 * **IndexedDB Migration Registry:** `dbService.ts` implements a versioned
-  migration system (currently v15) to ensure data integrity as the schema
-  evolves.
+  migration system (currently v17) to ensure data integrity as the schema
+  evolves. Specifically, the schema transitions handle legacy metadata unification (v11), roadmap tracking (v13), employer handbook agent jobs (v15), compressed signal / seed architecture (v16), and seed drafts (v17).
 * **Code Splitting:** `React.lazy` is used in `App.tsx` for all major tool
   components to keep the initial bundle size minimal.
 * **Metadata Unification:** All architectural assets share a common metadata
   schema (starred, pinned, archived, category) managed by
   `ArchitectureOrganization`.
-*   **Semantic Grounding:** AI services utilize a standardized preamble
-    (Grounding, Purpose, Territory) to anchor pattern inference to the
-    project's purpose.
+* **Semantic Grounding:** AI services utilize a standardized preamble
+  (Grounding, Purpose, Territory) to anchor pattern inference to the
+  project's purpose.
 * **Encryption at Rest:** Sensitive data in IndexedDB is obfuscated using a
   user-provided `VITE_ENCRYPTION_KEY`.
-*   **Atomic Write Verification:** `dbService.ts` implements a read-back check
-    pattern for all write operations to guarantee state persistence before
-    resolving.
+* **Atomic Write Verification:** `dbService.ts` implements a read-back check
+  pattern for all write operations to guarantee state persistence before
+  resolving.
 
 ## Repos & Conventions
 

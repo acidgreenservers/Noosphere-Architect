@@ -25,6 +25,8 @@ substrate, accelerating the path from concept to code.
 * **npm:** (included with Node)
 * **OpenRouter API Key:** Required for AI generation features.
 
+> 💡 **Stack Note:** Noosphere-Architect is a 100% client-side React Single Page Application (SPA). Python or Docker/Compose environments are **not** required to run, build, or deploy this project.
+
 ### 1) Setup
 
 ```bash
