@@ -15,6 +15,11 @@ export const getOpenRouterConfig = () => {
   return null;
 };
 
+export interface AiCallOptions {
+  systemPrompt?: string;
+  maxTokens?: number;
+}
+
 /**
  * Raw fetch to OpenRouter. Accepts an optional AbortSignal for cancellation.
  */
@@ -23,7 +28,8 @@ export const callOpenRouter = async (
   apiKey: string,
   model: string,
   expectJson: boolean = false,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  options?: AiCallOptions
 ): Promise<string> => {
   const timeoutController = new AbortController();
   const timeoutId = setTimeout(() => timeoutController.abort(new Error("Request timed out after 45 seconds")), 45000);
@@ -31,6 +37,12 @@ export const callOpenRouter = async (
   const combinedSignal = signal ? AbortSignal.any([signal, timeoutController.signal]) : timeoutController.signal;
 
   try {
+    const messages = [];
+    if (options?.systemPrompt) {
+      messages.push({ role: "system", content: options.systemPrompt });
+    }
+    messages.push({ role: "user", content: prompt });
+
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       signal: combinedSignal,
       method: "POST",
@@ -42,7 +54,8 @@ export const callOpenRouter = async (
       },
       body: JSON.stringify({
         model: model,
-        messages: [{ role: "user", content: prompt }],
+        messages: messages,
+        max_tokens: options?.maxTokens || 8192,
         response_format: expectJson ? { type: "json_object" } : undefined,
       })
     });
@@ -79,13 +92,14 @@ async function callOpenRouterWithRetry(
   apiKey: string,
   model: string,
   expectJson: boolean,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  options?: AiCallOptions
 ): Promise<string> {
   let lastError: any = null;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      return await callOpenRouter(prompt, apiKey, model, expectJson, signal);
+      return await callOpenRouter(prompt, apiKey, model, expectJson, signal, options);
     } catch (err: any) {
       // If the request was aborted, don't retry — just propagate
       if (err.name === 'AbortError') {
@@ -133,7 +147,8 @@ export const handleAiCall = async <T>(
   prompt: string,
   expectJson: boolean,
   errorContext: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  options?: AiCallOptions
 ): Promise<T> => {
   try {
     const config = getOpenRouterConfig();
@@ -147,7 +162,8 @@ export const handleAiCall = async <T>(
       config.apiKey,
       config.model,
       expectJson,
-      signal
+      signal,
+      options
     );
 
     if (expectJson) {
