@@ -629,7 +629,7 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                     </div>
                     <div className="space-y-4">
                         {savedPrompts
-                            .filter(p => !p.isArchived && !p.isStarred && !p.isPinned && (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || getDeepSearchText(p).toLowerCase().includes(searchTerm.toLowerCase())))
+                            .filter(p => !p.isArchived && !p.isStarred && !p.isPinned && (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || getDeepSearchText(p).includes(searchTerm.toLowerCase())))
                             .map(p => (
                                 <LibraryItem
                                     key={p.id}
@@ -648,7 +648,7 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                             ))}
 
                         {legacyPrompts
-                            .filter(p => !p.isArchived && !p.isStarred && !p.isPinned && (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || getDeepSearchText(p).toLowerCase().includes(searchTerm.toLowerCase())))
+                            .filter(p => !p.isArchived && !p.isStarred && !p.isPinned && (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || getDeepSearchText(p).includes(searchTerm.toLowerCase())))
                             .map(p => (
                                 <LibraryItem
                                     key={`legacy-${p.id}`}
