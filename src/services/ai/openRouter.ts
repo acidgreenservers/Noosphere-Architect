@@ -87,47 +87,6 @@ const RETRYABLE_STATUSES = new Set([429, 502, 503, 504]);
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 1000;
 
-async function callOpenRouterWithRetry(
-  prompt: string,
-  apiKey: string,
-  model: string,
-  expectJson: boolean,
-  signal?: AbortSignal,
-  options?: AiCallOptions
-): Promise<string> {
-  let lastError: any = null;
-
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      return await callOpenRouter(prompt, apiKey, model, expectJson, signal, options);
-    } catch (err: any) {
-      // If the request was aborted, don't retry — just propagate
-      if (err.name === 'AbortError') {
-        throw err;
-      }
-
-      lastError = err;
-      const status = (err as any)?.status;
-      
-      // Network disconnects/CORS failures usually throw TypeError: Failed to fetch without a status code
-      const isNetworkError = err.name === 'TypeError' || (err.message && err.message.toLowerCase().includes('fetch'));
-
-      if ((status && RETRYABLE_STATUSES.has(status)) || isNetworkError) {
-        if (attempt < MAX_RETRIES) {
-          const delay = BASE_DELAY_MS * Math.pow(2, attempt) + Math.random() * 1000;
-          await new Promise(resolve => setTimeout(resolve, delay));
-          continue;
-        }
-      }
-
-      // Non-retryable or retries exhausted
-      break;
-    }
-  }
-
-  throw lastError;
-}
-
 /**
  * AbortError class for typed catching downstream.
  * Components can check `err.name === 'AbortError'` to silently swallow.
@@ -139,10 +98,6 @@ export class AbortError extends Error {
   }
 }
 
-/**
- * Shared utility to handle AI calls with standardized error handling, JSON cleaning,
- * cancellation support, and automatic retry for transient failures.
- */
 export const handleAiCall = async <T>(
   prompt: string,
   expectJson: boolean,
@@ -150,51 +105,71 @@ export const handleAiCall = async <T>(
   signal?: AbortSignal,
   options?: AiCallOptions
 ): Promise<T> => {
-  try {
-    const config = getOpenRouterConfig();
+  const config = getOpenRouterConfig();
 
-    if (!config) {
-      throw new Error("OpenRouter settings (API Key and Model) are required. Please configure them in the Agent API Settings.");
-    }
-
-    const responseText = await callOpenRouterWithRetry(
-      prompt,
-      config.apiKey,
-      config.model,
-      expectJson,
-      signal,
-      options
-    );
-
-    if (expectJson) {
-      // Robust JSON extraction: Strip markdown code blocks or extract JSON structure via regex
-      let cleanedText = responseText.trim();
-      
-      // Remove leading/trailing markdown fences if present
-      cleanedText = cleanedText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-
-      // If text still contains non-JSON markdown wrapper, extract first JSON object or array
-      const jsonMatch = cleanedText.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
-      if (jsonMatch) {
-        cleanedText = jsonMatch[0];
-      }
-
-      try {
-        return JSON.parse(cleanedText) as T;
-      } catch (parseErr) {
-        console.error("Failed to parse JSON response:", cleanedText, parseErr);
-        throw new Error("AI response was not in a valid JSON format. Raw output: " + responseText.slice(0, 200));
-      }
-    }
-
-    return responseText as unknown as T;
-  } catch (error: any) {
-    // If it's an abort, rethrow as typed AbortError
-    if (error.name === 'AbortError') {
-      throw new AbortError();
-    }
-
-    console.error(`Error ${errorContext}:`, error);
-    throw new Error(error.message || "Failed to communicate with the API.");
+  if (!config) {
+    throw new Error("OpenRouter settings (API Key and Model) are required. Please configure them in the Agent API Settings.");
   }
+
+  let lastError: any = null;
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const responseText = await callOpenRouter(
+        prompt,
+        config.apiKey,
+        config.model,
+        expectJson,
+        signal,
+        options
+      );
+
+      if (expectJson) {
+        // Robust JSON extraction: Strip markdown code blocks or extract JSON structure via regex
+        let cleanedText = responseText.trim();
+        
+        // Remove leading/trailing markdown fences if present
+        cleanedText = cleanedText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
+        // If text still contains non-JSON markdown wrapper, extract first JSON object or array
+        const jsonMatch = cleanedText.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+        if (jsonMatch) {
+          cleanedText = jsonMatch[0];
+        }
+
+        try {
+          return JSON.parse(cleanedText) as T;
+        } catch (parseErr) {
+          const errorStr = responseText.slice(0, 200);
+          const error = new Error(`AI response was not in a valid JSON format. Raw output: ${errorStr}`);
+          (error as any).status = 502; // Treat malformed JSON as a Bad Gateway to trigger retry
+          throw error;
+        }
+      }
+
+      return responseText as unknown as T;
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        throw new AbortError(); // Custom abort error for components to swallow
+      }
+
+      lastError = err;
+      const status = (err as any)?.status;
+      
+      const isNetworkError = err.name === 'TypeError' || (err.message && err.message.toLowerCase().includes('fetch'));
+
+      if ((status && RETRYABLE_STATUSES.has(status)) || isNetworkError) {
+        if (attempt < MAX_RETRIES) {
+          const delay = BASE_DELAY_MS * Math.pow(2, attempt) + Math.random() * 1000;
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+      }
+
+      break;
+    }
+  }
+
+  console.error(`Error ${errorContext}:`, lastError);
+  throw new Error(lastError?.message || "Failed to communicate with the API.");
 };
