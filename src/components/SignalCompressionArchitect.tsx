@@ -15,7 +15,7 @@ import LibraryItem from './LibraryItem';
 import { StarredPinnedBar } from './StarredPinnedBar';
 import { getDeepSearchText } from '../utils/search';
 
-const MAX_CHARS = 50000;
+const MAX_CHARS = 25000;
 
 const SignalCompressionArchitect: React.FC = () => {
     const [config, setConfig] = useState<CompressionConfig>({ messyInput: '' });
@@ -257,6 +257,7 @@ const SignalCompressionArchitect: React.FC = () => {
                             onChange={(e) => setConfig({ messyInput: e.target.value })}
                             placeholder="Paste the context, messy thoughts, or structured signals you want to compress..."
                             className="w-full px-4 py-3 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar"
+                            maxLength={MAX_CHARS}
                         />
                         <div className={`mt-2 text-right text-xs font-semibold ${charCountColor}`}>
                             {charCount.toLocaleString()} / {MAX_CHARS.toLocaleString()}

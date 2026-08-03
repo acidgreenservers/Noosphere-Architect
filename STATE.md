@@ -35,7 +35,7 @@ Git Hygiene Mandate: Maintain clean commit history and semantic release tags. Su
 5. GitHub Actions CI Testing: Integrated `npm test` step into `.github/workflows/deploy.yml` to automatically run all 24 unit tests before building for production.
 
 **Next Topological Move:**
-6. Sidebar Navigation Refactor: Re-organized the UI to support a 3-level hierarchy (Category → Tool Set → Items) where needed, and simplified the "SIGNAL" category to contain two clear options: "Signal Center" (housing Extractor and Compressor tabs) and "MindSeeds" (housing the 4 MindSeed & SeedArchitect tabs). This keeps navigation direct and streamlined. 
+6. Sidebar Navigation Refactor: Re-organized the UI to support a 3-level hierarchy (Category → Tool Set → Items) where needed, and simplified the "SIGNAL" category to contain two clear options: "Signal Center" (housing Extractor and Compressor tabs) and "MindSeeds" (housing the 4 MindSeed & SeedArchitect tabs). This keeps navigation direct and streamlined. Enforced a uniform 25,000 character limit with real-time counters across both Signal Extractor and Compressor textareas to align their input constraints. 
 
 **Next Topological Move:**
 - Await user validation of the Signal Center and MindSeeds layout refactor, and prepare to commit these changes to maintain clean git hygiene.

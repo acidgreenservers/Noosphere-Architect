@@ -25,6 +25,8 @@ interface SignalExtractorProps {
 
 type Tab = 'extractor' | 'compression';
 
+const MAX_CHARS = 25000;
+
 const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTab = 'extractor', initialConfig, onClearInitialConfig }) => {
     const [activeTab, setActiveTab] = useState<Tab>(initialTab);
     const [config, setConfig] = useState<SignalConfig>({ messyPrompt: '' });
@@ -36,6 +38,10 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
     const abortControllerRef = useRef<AbortController | null>(null);
 
     const [savedSignals, setSavedSignals] = useState<SavedSignal[]>([]);
+    const charCount = config.messyPrompt.length;
+    const isNearLimit = charCount > MAX_CHARS * 0.9;
+    const charCountColor = charCount > MAX_CHARS ? 'text-red-600' : isNearLimit ? 'text-orange-500' : 'text-slate-400';
+    
     const [searchTerm, setSearchText] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
     const [draftStatus, setDraftStatus] = useState<'unloaded' | 'loaded' | 'none'>('unloaded');
@@ -329,7 +335,11 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
                             placeholder="Paste your messy thoughts, rough notes, or disorganized instructions here..."
                             className="w-full px-4 py-3 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar"
                             required
+                            maxLength={MAX_CHARS}
                         />
+                        <div className={`mt-2 text-right text-xs font-semibold ${charCountColor}`}>
+                            {charCount.toLocaleString()} / {MAX_CHARS.toLocaleString()}
+                        </div>
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-slate-200/60 dark:border-slate-800/50">
