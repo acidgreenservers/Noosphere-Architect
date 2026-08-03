@@ -24,4 +24,8 @@ test-results
 *.sln
 *.sw?
 
-.temp/
+# AI Tools
+
+.agents/
+
+.clinerules/

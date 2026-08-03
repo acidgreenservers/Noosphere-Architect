@@ -17,7 +17,6 @@ import Toast from './Toast';
 import { StarredPinnedBar } from './StarredPinnedBar';
 import { UnifiedItem } from '../types';
 import { getDeepSearchText } from '../utils/search';
-import PipelineIndicator from './PipelineIndicator';
 
 type Tab = 'architect' | 'roadmap' | 'agentJob';
 
@@ -407,8 +406,6 @@ const ProjectArchitect: React.FC<ProjectArchitectProps> = ({ initialConfig, onCl
   return (
     <div className="max-w-4xl mx-auto animate-fade-in">
       <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
-
-      <PipelineIndicator currentView="project-architect" />
 
       <div className="flex justify-between items-center mb-10">
         <div>

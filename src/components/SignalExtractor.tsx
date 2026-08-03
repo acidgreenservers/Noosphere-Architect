@@ -16,7 +16,6 @@ import { UnifiedItem } from '../types';
 import SeedArchitect from './SeedArchitect';
 import SignalCompressionArchitect from './SignalCompressionArchitect';
 import { getDeepSearchText } from '../utils/search';
-import PipelineIndicator from './PipelineIndicator';
 
 interface SignalExtractorProps {
     onTransfer: (config: PromptConfig) => void;
@@ -272,8 +271,6 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
     return (
         <div className="max-w-4xl mx-auto animate-fade-in">
             <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
-
-            <PipelineIndicator currentView="signal-extractor" />
 
             <div className="flex justify-between items-center mb-10">
                 <div>

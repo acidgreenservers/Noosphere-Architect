@@ -16,7 +16,6 @@ import Toast from './Toast';
 import { StarredPinnedBar } from './StarredPinnedBar';
 import { UnifiedItem } from '../types';
 import { getDeepSearchText } from '../utils/search';
-import PipelineIndicator from './PipelineIndicator';
 
 const AGENT_TEMPLATES = [
     {
@@ -364,8 +363,6 @@ const AgentArchitect: React.FC<AgentArchitectProps> = ({ initialConfig, onClearI
   return (
     <div className="max-w-4xl mx-auto animate-fade-in">
       <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
-
-      <PipelineIndicator currentView="agent-architect" />
 
       <div className="flex justify-between items-center mb-10">
           <div>
