@@ -7,6 +7,8 @@ This path gets you from **clone → running app** in 90 seconds.
 * **Node.js** >= 20.x
 * **OpenRouter API Key** (for generation)
 
+> 💡 **Stack Note:** Noosphere-Architect is a 100% client-side React Single Page Application (SPA). Python or Docker/Compose environments are **not** required to run or develop this project.
+
 ## 1) Clone & Enter
 
 ```bash

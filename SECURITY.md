@@ -42,6 +42,11 @@ the application supports encryption at rest:
 - **No PII:** The application does not collect or transmit personally
   identifiable information (PII) beyond what is required by the OpenRouter API.
 
+### Supply Chain & Package Integrity
+
+- **Version Pinning:** Explicit versions of known, clean packages are pinned in `package.json` to defend against supply chain attacks.
+- **Freshness Gate:** Packages and dependencies must adhere to strict security auditing and undergo verification prior to deployment.
+
 ## Hardening Checklist
 
 - [x] Input validation for AI services
