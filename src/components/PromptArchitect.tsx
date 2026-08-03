@@ -404,27 +404,7 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                 </div>
             </div>
 
-            {/* Tabs */}
-            <div className="mb-10">
-                <nav className="flex gap-2" aria-label="Prompt Type Tabs" role="tablist">
-                    <button
-                        role="tab"
-                        aria-selected={activeTab === 'standard'}
-                        onClick={() => { setActiveTab('standard'); setDraftStatus('unloaded'); }}
-                        className={`whitespace-nowrap py-2.5 px-5 rounded-xl font-semibold text-xs tracking-wider uppercase transition-all duration-200 cursor-pointer ${activeTab === 'standard' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/50'}`}
-                    >
-                        Standard Prompt
-                    </button>
-                    <button
-                        role="tab"
-                        aria-selected={activeTab === 'system'}
-                        onClick={() => { setActiveTab('system'); setDraftStatus('unloaded'); }}
-                        className={`whitespace-nowrap py-2.5 px-5 rounded-xl font-semibold text-xs tracking-wider uppercase transition-all duration-200 cursor-pointer ${activeTab === 'system' ? 'bg-purple-600 text-white shadow-md shadow-purple-600/10' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/50'}`}
-                    >
-                        Skill Architect
-                    </button>
-                </nav>
-            </div>
+
 
             {/* Split Pane Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-12">
