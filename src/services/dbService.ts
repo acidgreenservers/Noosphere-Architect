@@ -2,7 +2,7 @@ import { SavedAgent, SavedPrompt, AgentConfig, PromptConfig, SavedProject, Proje
 import { encryptData, decryptData } from '../utils/encryption';
 
 const DB_NAME = 'NoosphereArchitectDB';
-const DB_VERSION = 18;
+const DB_VERSION = 19;
 const AGENT_STORE = 'savedAgents';
 const PROMPT_STORE = 'savedPrompts'; // Legacy, keeping for migration or reference
 const STANDARD_PROMPT_STORE = 'standardPrompts';
@@ -306,6 +306,49 @@ export const initDB = (): Promise<IDBDatabase> => {
                         db.createObjectStore(USER_PREFERENCES_STORE, { keyPath: 'id' });
                     }
                     console.log("Migration to v18 complete: User Preferences store initialized.");
+                },
+                19: (db, tx) => {
+                    console.log("Running Migration v19: Stamping existing records with sourceTool");
+                    // Explicit semantic tagging for all existing records
+                    const storeToTypeMap: Record<string, UnifiedItem['type']> = {
+                        [AGENT_STORE]: 'agent',
+                        [PROMPT_STORE]: 'legacy-prompt',
+                        [STANDARD_PROMPT_STORE]: 'prompt-standard',
+                        [SYSTEM_PROMPT_STORE]: 'prompt-system',
+                        [PROJECT_STORE]: 'project',
+                        [COGNISEED_STORE]: 'mindseed',
+                        [LINGUASEED_STORE]: 'mindseed',
+                        [ARCHSEED_STORE]: 'mindseed',
+                        [SIGNAL_STORE]: 'signal',
+                        [SYNTHESIS_STORE]: 'synthesis',
+                        [ROADMAP_STORE]: 'roadmap',
+                        [AGENT_JOB_STORE]: 'agentJob',
+                        [SEED_STORE]: 'seed-architect',
+                        [COMPRESSED_SIGNAL_STORE]: 'compressed-signal'
+                    };
+
+                    Object.entries(storeToTypeMap).forEach(([storeName, toolType]) => {
+                        if (db.objectStoreNames.contains(storeName)) {
+                            const store = tx.objectStore(storeName);
+                            const request = store.openCursor();
+                            request.onsuccess = (event: any) => {
+                                const cursor = event.target.result;
+                                if (cursor) {
+                                    const data = cursor.value;
+                                    let updated = false;
+                                    if (!data.sourceTool) {
+                                        data.sourceTool = toolType;
+                                        updated = true;
+                                    }
+                                    if (updated) {
+                                        cursor.update(data);
+                                    }
+                                    cursor.continue();
+                                }
+                            };
+                        }
+                    });
+                    console.log("Migration to v19 complete: sourceTool explicitly assigned.");
                 }
             };
 
@@ -573,6 +616,7 @@ export const saveDraft = async (draft: { id: number, config: AgentConfig }): Pro
 
 // Synthesis Functions
 export const addSynthesis = async (synthesis: SavedSynthesis): Promise<number> => {
+    synthesis.sourceTool = 'synthesis';
     const store = await getStore(SYNTHESIS_STORE, 'readwrite');
     return new Promise((resolve, reject) => {
         const request = store.add(encryptSynthesis(synthesis));
@@ -692,6 +736,7 @@ const getPromptStoreName = (type: PromptType) => {
 };
 
 export const addTypedPrompt = async (type: PromptType, prompt: SavedPrompt): Promise<number> => {
+    prompt.sourceTool = type === 'standard' ? 'prompt-standard' : 'prompt-system';
     const storeName = getPromptStoreName(type);
     const store = await getStore(storeName, 'readwrite');
     return new Promise((resolve, reject) => {
@@ -785,6 +830,7 @@ const getMindSeedStoreName = (type: MindSeedType) => {
 };
 
 export const addMindSeed = async (mindSeed: SavedMindSeed): Promise<number> => {
+    mindSeed.sourceTool = 'mindseed';
     const storeName = getMindSeedStoreName(mindSeed.config.type);
     const store = await getStore(storeName, 'readwrite');
     return new Promise((resolve, reject) => {
@@ -1042,6 +1088,7 @@ export const clearSignalDraft = async (id: number): Promise<void> => {
 
 // Agent Functions
 export const addAgent = async (agent: SavedAgent): Promise<number> => {
+    agent.sourceTool = 'agent';
     const store = await getStore(AGENT_STORE, 'readwrite');
     return new Promise((resolve, reject) => {
         const request = store.add(encryptAgent(agent));
@@ -1057,6 +1104,7 @@ export const addAgent = async (agent: SavedAgent): Promise<number> => {
 
 // Signal Functions
 export const addSignal = async (signal: SavedSignal): Promise<number> => {
+    signal.sourceTool = 'signal';
     const store = await getStore(SIGNAL_STORE, 'readwrite');
     return new Promise((resolve, reject) => {
         const request = store.add(encryptSignal(signal));
@@ -1161,6 +1209,7 @@ export const clearAllAgents = async (): Promise<void> => {
 
 // Prompt Functions
 export const addPrompt = async (prompt: SavedPrompt): Promise<number> => {
+    prompt.sourceTool = 'legacy-prompt';
     const store = await getStore(PROMPT_STORE, 'readwrite');
     return new Promise((resolve, reject) => {
         const request = store.add(encryptPrompt(prompt));
@@ -1220,6 +1269,7 @@ export const clearAllPrompts = async (): Promise<void> => {
 
 // Project Functions
 export const addProject = async (project: SavedProject): Promise<number> => {
+    project.sourceTool = 'project';
     const store = await getStore(PROJECT_STORE, 'readwrite');
     return new Promise((resolve, reject) => {
         const request = store.add(encryptProject(project));
@@ -1279,6 +1329,7 @@ export const clearAllProjects = async (): Promise<void> => {
 
 // Compressed Signal Functions
 export const addCompressedSignal = async (signal: SavedCompressedSignal): Promise<number> => {
+    signal.sourceTool = 'compressed-signal';
     const store = await getStore(COMPRESSED_SIGNAL_STORE, 'readwrite');
     return new Promise((resolve, reject) => {
         const request = store.add(encryptCompressedSignal(signal));
@@ -1369,6 +1420,7 @@ export const clearCompressedSignalDraft = async (id: number): Promise<void> => {
 
 // Roadmap Functions
 export const addRoadmap = async (roadmap: SavedRoadmap): Promise<number> => {
+    roadmap.sourceTool = 'roadmap';
     const store = await getStore(ROADMAP_STORE, 'readwrite');
     return new Promise((resolve, reject) => {
         const request = store.add(encryptRoadmap(roadmap));
@@ -1464,6 +1516,7 @@ export const clearRoadmapDraft = async (id: number): Promise<void> => {
 
 // Agent Job Functions
 export const addAgentJob = async (job: SavedAgentJob): Promise<number> => {
+    job.sourceTool = 'agentJob';
     const store = await getStore(AGENT_JOB_STORE, 'readwrite');
     return new Promise((resolve, reject) => {
         const request = store.add(encryptAgentJob(job));
@@ -1523,6 +1576,7 @@ export const clearAllAgentJobs = async (): Promise<void> => {
 
 // Seed Architect Functions
 export const addSeed = async (seed: SavedSeed): Promise<number> => {
+    seed.sourceTool = 'seed-architect';
     const store = await getStore(SEED_STORE, 'readwrite');
     return new Promise((resolve, reject) => {
         const request = store.add(encryptSeed(seed));
@@ -1644,17 +1698,20 @@ export const clearSeedDraft = async (id: number): Promise<void> => {
 
 // ── Unified Library Operations ──────────────────────────────────────────────
 
-const mapToUnified = (item: any, type: UnifiedItem['type']): UnifiedItem => ({
-    id: `${type}-${item.id}`,
-    name: item.name || (item.result?.seed) || 'Untitled',
-    type,
-    original: item,
-    createdAt: item.createdAt,
-    isStarred: !!item.isStarred,
-    isPinned: !!item.isPinned,
-    isArchived: !!item.isArchived,
-    category: item.category || ''
-});
+const mapToUnified = (item: any, defaultType: UnifiedItem['type']): UnifiedItem => {
+    const type = item.sourceTool || defaultType;
+    return {
+        id: `${type}-${item.id}`,
+        name: item.name || (item.result?.seed) || 'Untitled',
+        type,
+        original: item,
+        createdAt: item.createdAt,
+        isStarred: !!item.isStarred,
+        isPinned: !!item.isPinned,
+        isArchived: !!item.isArchived,
+        category: item.category || ''
+    };
+};
 
 export const getAllUnifiedItems = async (): Promise<UnifiedItem[]> => {
     const [
