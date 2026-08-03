@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { GeneratedFiles } from '../types';
 import { sanitizeFilename } from '../utils/security';
+import { fallbackCopyTextToClipboard } from '../utils/clipboard';
 
 interface GeneratedFilesDisplayProps {
   files: GeneratedFiles;
@@ -22,7 +23,7 @@ const FileContent: React.FC<{ content: string }> = ({ content }) => (
 
 const GeneratedFilesDisplay: React.FC<GeneratedFilesDisplayProps> = ({ files, onSave, agentName }) => {
   const [activeTab, setActiveTab] = useState<Tab>('agentFile');
-  const [copyAllText, setCopyAllText] = useState('Copy All');
+  const [isCopied, setIsCopied] = useState(false);
   const [exportAllText, setExportAllText] = useState('Export All');
 
   const tabs: { id: Tab; label: string; icon: string }[] = [
@@ -32,7 +33,7 @@ const GeneratedFilesDisplay: React.FC<GeneratedFilesDisplayProps> = ({ files, on
     { id: 'skillFile', label: 'SKILL.md', icon: 'auto_awesome' },
   ];
 
-  const handleCopyAll = () => {
+  const handleCopyAll = async () => {
     const allContent = `
 --- FILE: agent-persona.md ---
 
@@ -50,9 +51,9 @@ ${files.constraintsFile}
 
 ${files.skillFile}
     `.trim();
-    navigator.clipboard.writeText(allContent);
-    setCopyAllText('Copied!');
-    setTimeout(() => setCopyAllText('Copy All'), 2000);
+    await fallbackCopyTextToClipboard(allContent);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
   };
 
   const handleExportAll = () => {
@@ -87,8 +88,8 @@ ${files.skillFile}
                 <p className="text-xs text-slate-500 mt-1">Crystallized architectural assets based on your configuration.</p>
             </div>
             <div className="flex items-center space-x-3">
-                <button onClick={handleCopyAll} className="flex items-center px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900/60 transition-all duration-250 cursor-pointer" title="Copy all files">
-                    <span className="material-icons text-base mr-2">collections</span>{copyAllText}
+                <button onClick={handleCopyAll} className={`flex items-center px-4 py-2 border rounded-xl text-sm font-medium transition-all duration-250 cursor-pointer ${isCopied ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20' : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900/60'}`} title="Copy all files">
+                    <span className="material-icons text-base mr-2">{isCopied ? 'check' : 'collections'}</span>{isCopied ? 'Copied' : 'Copy All'}
                 </button>
                 <button onClick={handleExportAll} className="flex items-center px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900/60 transition-all duration-250 cursor-pointer" title="Export all files">
                     <span className="material-icons text-base mr-2">{exportAllText === 'Exported!' ? 'check_circle' : 'download'}</span>{exportAllText}

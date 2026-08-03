@@ -698,10 +698,11 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                         else handleUpdateMetadata(previewPrompt, metadata);
                     }
                 }}
-                onCopy={() => {
+                onCopy={async () => {
                     const text = previewPrompt?.prompt || (previewPrompt?.files ? Object.values(previewPrompt.files).join('\n\n---\n\n') : '');
-                    navigator.clipboard.writeText(text);
-                    setSuccessMessage('Copied to clipboard!');
+                    const success = await fallbackCopyTextToClipboard(text);
+                    if (success) setSuccessMessage('Copied to clipboard!');
+                    else setSuccessMessage('Failed to copy to clipboard.');
                 }}
                 onExport={() => {
                     if (previewPrompt?.prompt) handleExportLegacyMd(previewPrompt.prompt, previewPrompt.name);

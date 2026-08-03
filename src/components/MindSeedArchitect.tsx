@@ -8,6 +8,7 @@ import * as db from '../services/dbService';
 import { sanitizeFilename } from '../utils/security';
 import LoadingSpinner from './LoadingSpinner';
 import Toast from './Toast';
+import { fallbackCopyTextToClipboard } from '../utils/clipboard';
 import Modal from './Modal';
 import PreviewModal from './PreviewModal';
 import LibraryItem from './LibraryItem';
@@ -23,6 +24,7 @@ const MindSeedArchitect: React.FC = () => {
   const [activeTab, setActiveTab] = useState<MindSeedType | 'seed-architect'>('cogni');
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const abortControllerRef = useRef<AbortController | null>(null);
   const [result, setResult] = useState<GeneratedMindSeed | null>(null);
@@ -235,11 +237,12 @@ const MindSeedArchitect: React.FC = () => {
 
   const handleCopy = async (seed: GeneratedMindSeed, type: MindSeedType) => {
     const markdown = formatAsMarkdown(seed, type);
-    try {
-      await navigator.clipboard.writeText(markdown);
-      setToast({ message: "Markdown copied to clipboard!", type: 'success' });
-    } catch (err) {
-      setToast({ message: "Failed to copy to clipboard", type: 'error' });
+    const success = await fallbackCopyTextToClipboard(markdown);
+    if (success) {
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+    } else {
+        setToast({ message: "Failed to copy to clipboard", type: 'error' });
     }
   };
 
@@ -373,10 +376,10 @@ const MindSeedArchitect: React.FC = () => {
               <div className="flex flex-wrap items-center gap-3">
                 <button
                     onClick={() => handleCopy(result, activeTab)}
-                    className="flex items-center px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900/60 transition cursor-pointer"
+                    className={`flex items-center px-4 py-2 border rounded-xl text-sm font-semibold transition cursor-pointer ${isCopied ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20' : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900/60'}`}
                     title="Copy to Clipboard"
                 >
-                    <span className="material-icons text-base mr-2">content_copy</span> Copy
+                    <span className="material-icons text-base mr-2">{isCopied ? 'check' : 'content_copy'}</span> {isCopied ? 'Copied' : 'Copy'}
                 </button>
                 <button
                     onClick={() => handleExport(result, activeTab)}

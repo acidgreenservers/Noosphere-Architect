@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -7,6 +6,7 @@ import { generateCompressedSignal } from '../services/ai/compressionService';
 import { AbortError } from '../services/ai/openRouter';
 import * as db from '../services/dbService';
 import { sanitizeFilename } from '../utils/security';
+import { fallbackCopyTextToClipboard } from '../utils/clipboard';
 import LoadingSpinner from './LoadingSpinner';
 import Toast from './Toast';
 import Modal from './Modal';
@@ -22,6 +22,7 @@ const SignalCompressionArchitect: React.FC = () => {
     const [config, setConfig] = useState<CompressionConfig>({ messyInput: '' });
     const [result, setResult] = useState<CompressedSignal | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [isCopied, setIsCopied] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState('');
     const [error, setError] = useState<string | null>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
@@ -210,9 +211,14 @@ const SignalCompressionArchitect: React.FC = () => {
         setPendingDraft(null);
     };
 
-    const handleCopy = (text: string) => {
-        navigator.clipboard.writeText(text);
-        setSuccessMessage('Signal copied to clipboard!');
+    const handleCopy = async (text: string) => {
+        const success = await fallbackCopyTextToClipboard(text);
+        if (success) {
+            setIsCopied(true);
+            setTimeout(() => setIsCopied(false), 2000);
+        } else {
+            setSuccessMessage('Failed to copy to clipboard.');
+        }
     };
 
     const handleExport = (name: string, text: string) => {
@@ -290,8 +296,8 @@ const SignalCompressionArchitect: React.FC = () => {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-6 mb-4 border-b border-slate-200/60 dark:border-slate-800/50 gap-4">
                         <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200">Compressed Context</h3>
                         <div className="flex flex-wrap items-center gap-3">
-                           <button onClick={() => handleCopy(result.compressedText)} className="flex items-center px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900/60 transition cursor-pointer" title="Copy to clipboard">
-                                <span className="material-icons text-base mr-2">content_copy</span>Copy
+                           <button onClick={() => handleCopy(result.compressedText)} className={`flex items-center px-4 py-2 border rounded-xl text-sm font-semibold transition cursor-pointer ${isCopied ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20' : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900/60'}`} title="Copy to clipboard">
+                                <span className="material-icons text-base mr-2">{isCopied ? 'check' : 'content_copy'}</span>{isCopied ? 'Copied' : 'Copy'}
                             </button>
                            <button onClick={() => handleExport('compressed-signal', result.compressedText)} className="flex items-center px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900/60 transition cursor-pointer" title="Export signal">
                                 <span className="material-icons text-base mr-2">download</span>Export

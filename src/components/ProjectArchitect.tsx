@@ -18,6 +18,7 @@ import { StarredPinnedBar } from './StarredPinnedBar';
 import { UnifiedItem } from '../types';
 import { getDeepSearchText } from '../utils/search';
 import { useArchive } from '../context/ArchiveContext';
+import { fallbackCopyTextToClipboard } from '../utils/clipboard';
 
 type Tab = 'architect' | 'roadmap' | 'agentJob';
 
@@ -676,10 +677,10 @@ const ProjectArchitect: React.FC<ProjectArchitectProps> = ({ initialConfig, onCl
         } : undefined}
         metadata={previewProject || undefined}
         onUpdateMetadata={(metadata) => previewProject && handleUpdateMetadata(previewProject, metadata)}
-        onCopy={() => {
+        onCopy={async () => {
             if (previewProject) {
                 const allContent = Object.entries(previewProject.files).map(([name, content]) => `### ${name}\n\n${content}`).join('\n\n');
-                navigator.clipboard.writeText(allContent);
+                await fallbackCopyTextToClipboard(allContent);
                 setSuccessMessage('All files copied to clipboard!');
             }
         }}

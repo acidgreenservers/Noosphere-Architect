@@ -13,6 +13,7 @@ import { StarredPinnedBar } from './StarredPinnedBar';
 import { UnifiedItem } from '../types';
 import { getDeepSearchText } from '../utils/search';
 import { useArchive } from '../context/ArchiveContext';
+import { fallbackCopyTextToClipboard } from '../utils/clipboard';
 
 const MAX_CHARS = 20000;
 
@@ -521,10 +522,10 @@ const SeedArchitect: React.FC = () => {
         } : undefined}
         metadata={previewSeed || undefined}
         onUpdateMetadata={(m) => previewSeed && handleUpdateMetadata(previewSeed, m)}
-        onCopy={() => {
+        onCopy={async () => {
           if (!previewSeed) return;
           const text = `# Verification: ${previewSeed.result.status}\n\n${previewSeed.result.explanation}`;
-          navigator.clipboard.writeText(text);
+          await fallbackCopyTextToClipboard(text);
         }}
         onExport={() => {}}
       />

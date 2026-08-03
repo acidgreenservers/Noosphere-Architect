@@ -13,6 +13,7 @@ import BatchExportPopover from './BatchExportPopover';
 import SynthesisWorkspace from './SynthesisWorkspace';
 import Modal from './Modal';
 import Toast from './Toast';
+import { fallbackCopyTextToClipboard } from '../utils/clipboard';
 import { getPreviewContent, getExportFilename, buildExport, triggerDownload } from '../utils/export';
 import { getDeepSearchText } from '../utils/search';
 
@@ -588,10 +589,10 @@ const ArchitectureOrganization: React.FC = () => {
                         });
                         if (meta.category !== previewItem.category) handleUpdateCategory(previewItem, meta.category || '');
                     }}
-                    onCopy={() => {
+                    onCopy={async () => {
                         const content = getPreviewContent(previewItem);
                         const text = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
-                        navigator.clipboard.writeText(text);
+                        await fallbackCopyTextToClipboard(text);
                     }}
                     onExport={() => setExportItem(previewItem)}
                     onDelete={() => handleDelete(previewItem)}

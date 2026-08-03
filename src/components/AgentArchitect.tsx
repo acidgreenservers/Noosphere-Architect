@@ -7,6 +7,7 @@ import { AbortError } from '../services/ai/openRouter';
 import * as db from '../services/dbService';
 import JSZip from 'jszip';
 import { sanitizeFilename } from '../utils/security';
+import { fallbackCopyTextToClipboard } from '../utils/clipboard';
 import LoadingSpinner from './LoadingSpinner';
 import Modal from './Modal';
 import PreviewModal from './PreviewModal';
@@ -51,6 +52,7 @@ const AgentArchitect: React.FC<AgentArchitectProps> = ({ initialConfig, onClearI
   const [generatedPrompt, setGeneratedPrompt] = useState<GeneratedPrompt | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [isCopied, setIsCopied] = useState(false);
   const [loadedAgentName, setLoadedAgentName] = useState<string | undefined>(undefined);
   const [loadingMessage, setLoadingMessage] = useState('');
   const loadingIntervalRef = useRef<number | null>(null);
@@ -433,8 +435,8 @@ const AgentArchitect: React.FC<AgentArchitectProps> = ({ initialConfig, onClearI
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-slate-200/60 dark:border-slate-800/50 gap-4">
                   <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Generated Agent Prompt</h3>
                   <div className="flex items-center space-x-2">
-                    <button onClick={() => { navigator.clipboard.writeText(generatedPrompt.prompt); setSuccessMessage('Prompt copied!'); }} className="px-3 py-1.5 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold flex items-center hover:bg-slate-100 dark:hover:bg-slate-900/50 transition duration-200 cursor-pointer">
-                      <span className="material-icons text-sm mr-1.5">content_copy</span>Copy
+                    <button onClick={async () => { await fallbackCopyTextToClipboard(generatedPrompt.prompt); setIsCopied(true); setTimeout(() => setIsCopied(false), 2000); }} className={`px-3 py-1.5 border rounded-xl text-xs font-semibold flex items-center transition duration-200 cursor-pointer ${isCopied ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20' : 'border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-900/50'}`}>
+                      <span className="material-icons text-sm mr-1.5">{isCopied ? 'check' : 'content_copy'}</span>{isCopied ? 'Copied' : 'Copy'}
                     </button>
                     <button onClick={() => handleExportPrompt(generatedPrompt.prompt, loadedAgentName)} className="px-3 py-1.5 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold flex items-center hover:bg-slate-100 dark:hover:bg-slate-900/50 transition duration-200 cursor-pointer">
                       <span className="material-icons text-sm mr-1.5">download</span>Export
@@ -577,10 +579,11 @@ const AgentArchitect: React.FC<AgentArchitectProps> = ({ initialConfig, onClearI
           } : undefined)}
           metadata={previewAgent || undefined}
           onUpdateMetadata={(metadata) => previewAgent && handleUpdateMetadata(previewAgent, metadata)}
-          onCopy={() => {
+          onCopy={async () => {
               const text = previewAgent?.prompt || (previewAgent?.files ? Object.values(previewAgent.files).join('\n\n---\n\n') : '');
-              navigator.clipboard.writeText(text);
-              setSuccessMessage('Copied to clipboard!');
+              const success = await fallbackCopyTextToClipboard(text);
+              if (success) setSuccessMessage('Copied to clipboard!');
+              else setSuccessMessage('Failed to copy to clipboard.');
           }}
           onExport={() => {
               if (previewAgent?.prompt) handleExportPrompt(previewAgent.prompt, previewAgent.name);

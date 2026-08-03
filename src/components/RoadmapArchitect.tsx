@@ -7,6 +7,7 @@ import { RoadmapConfig, SavedRoadmap } from '../types';
 import { UnifiedItem } from '../types';
 import * as db from '../services/dbService';
 import { sanitizeFilename } from '../utils/security';
+import { fallbackCopyTextToClipboard } from '../utils/clipboard';
 import LoadingSpinner from './LoadingSpinner';
 import Modal from './Modal';
 import PreviewModal from './PreviewModal';
@@ -22,6 +23,7 @@ const RoadmapArchitect: React.FC = () => {
   const [config, setConfig] = useState<RoadmapConfig>({ rawText: '' });
   const [generatedTask, setGeneratedTask] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadingMessage, setLoadingMessage] = useState('');
   const loadingIntervalRef = useRef<number | null>(null);
@@ -298,9 +300,14 @@ const RoadmapArchitect: React.FC = () => {
     setPendingDraft(null);
   };
 
-  const handleCopy = (task: string) => {
-    navigator.clipboard.writeText(task);
-    setSuccessMessage('Copied to clipboard!');
+  const handleCopy = async (task: string) => {
+    const success = await fallbackCopyTextToClipboard(task);
+    if (success) {
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+    } else {
+        setSuccessMessage('Failed to copy to clipboard!');
+    }
   };
 
   const handleExport = (name: string, task: string) => {
@@ -525,8 +532,8 @@ const RoadmapArchitect: React.FC = () => {
           <div className="flex flex-col md:flex-row justify-between items-center pb-4 border-b border-slate-100 dark:border-slate-800/80 mb-6 gap-4">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Generated Roadmap Task</h3>
             <div className="flex flex-wrap items-center justify-center md:justify-end gap-3">
-              <button onClick={() => handleCopy(generatedTask)} className="flex items-center px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900 transition cursor-pointer" title="Copy to clipboard">
-                <span className="material-icons text-sm mr-2">content_copy</span>Copy
+              <button onClick={() => handleCopy(generatedTask)} className={`flex items-center px-4 py-2 border rounded-xl text-xs font-semibold transition cursor-pointer ${isCopied ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20' : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900'}`} title="Copy to clipboard">
+                <span className="material-icons text-sm mr-1.5">{isCopied ? 'check' : 'content_copy'}</span>{isCopied ? 'Copied' : 'Copy'}
               </button>
               <button
                 onClick={() => { handleExport(saveName, generatedTask); setSuccessMessage('Roadmap task exported successfully!'); }}
@@ -679,10 +686,9 @@ const RoadmapArchitect: React.FC = () => {
         content={previewRoadmap?.generatedTask || ''}
         metadata={previewRoadmap || undefined}
         onUpdateMetadata={(metadata) => previewRoadmap && handleUpdateMetadata(previewRoadmap, metadata)}
-        onCopy={() => {
+        onCopy={async () => {
           if (previewRoadmap) {
-            navigator.clipboard.writeText(previewRoadmap.generatedTask);
-            setSuccessMessage('Copied to clipboard!');
+            await fallbackCopyTextToClipboard(previewRoadmap.generatedTask);
           }
         }}
         onExport={() => {

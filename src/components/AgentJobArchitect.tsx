@@ -6,6 +6,7 @@ import { AbortError } from '../services/ai/openRouter';
 import { AgentJobConfig, GeneratedAgentJobFile, SavedAgentJob } from '../types';
 import { UnifiedItem } from '../types';
 import * as db from '../services/dbService';
+import { fallbackCopyTextToClipboard } from '../utils/clipboard';
 import { sanitizeFilename } from '../utils/security';
 import { getDeepSearchText } from '../utils/search';
 import LoadingSpinner from './LoadingSpinner';
@@ -50,6 +51,7 @@ const AgentJobArchitect: React.FC = () => {
   });
   const [generatedFile, setGeneratedFile] = useState<GeneratedAgentJobFile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadingMessage, setLoadingMessage] = useState('');
   const loadingIntervalRef = useRef<number | null>(null);
@@ -255,9 +257,12 @@ const AgentJobArchitect: React.FC = () => {
     setSuccessMessage('AGENTS.md exported!');
   };
 
-  const handleCopy = (job: SavedAgentJob) => {
-    navigator.clipboard.writeText(job.files.agentsFile);
-    setSuccessMessage('Copied to clipboard!');
+  const handleCopy = async (job: SavedAgentJob) => {
+    if (!job?.files?.agentsFile) return;
+    const success = await fallbackCopyTextToClipboard(job.files.agentsFile);
+    if (!success) {
+        setSuccessMessage('Failed to copy to clipboard.');
+    }
   };
 
   const handleLoadSaved = (job: SavedAgentJob) => {
@@ -488,11 +493,11 @@ const AgentJobArchitect: React.FC = () => {
             </div>
             <div className="flex items-center space-x-3">
               <button
-                onClick={() => { navigator.clipboard.writeText(generatedFile.agentsFile); setSuccessMessage('Copied to clipboard!'); }}
-                className="flex items-center px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900/60 transition cursor-pointer"
+                onClick={async () => { await fallbackCopyTextToClipboard(generatedFile.agentsFile); setIsCopied(true); setTimeout(() => setIsCopied(false), 2000); }}
+                className={`flex items-center px-4 py-2 border rounded-xl text-xs font-medium transition cursor-pointer ${isCopied ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20' : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900/60'}`}
               >
-                <span className="material-icons text-base mr-2">content_copy</span>
-                Copy
+                <span className="material-icons text-base mr-2">{isCopied ? 'check' : 'content_copy'}</span>
+                {isCopied ? 'Copied' : 'Copy'}
               </button>
               <button
                 onClick={() => { setIsSaveModalOpen(true); setSaveName(generatedFile.agentsFile.slice(0, 40) || ''); }}
