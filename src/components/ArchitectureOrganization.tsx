@@ -452,8 +452,24 @@ const ArchitectureOrganization: React.FC = () => {
                         </div>
                     )}
                             
-                            <div className="text-sm text-gray-500 dark:text-gray-400">
-                                {filteredAndSortedItems.length} item{filteredAndSortedItems.length !== 1 ? 's' : ''} found
+                            <div className="flex items-center justify-between gap-4 text-sm text-gray-500 dark:text-gray-400">
+                                <div>{filteredAndSortedItems.length} item{filteredAndSortedItems.length !== 1 ? 's' : ''} found</div>
+                                <div className="flex items-center gap-3 text-xs font-bold text-gray-500 dark:text-gray-400">
+                                    <button 
+                                        onClick={() => setSelectedIds(new Set(filteredAndSortedItems.map(item => String(item.id))))}
+                                        className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                                    >
+                                        Select All
+                                    </button>
+                                    <span className="text-gray-300 dark:text-gray-700">|</span>
+                                    <button 
+                                        onClick={() => setSelectedIds(new Set())}
+                                        className={`transition-colors ${selectedIds.size === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:text-blue-600 dark:hover:text-blue-400'}`}
+                                        disabled={selectedIds.size === 0}
+                                    >
+                                        Deselect All
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 gap-4" : "flex flex-col gap-1"}>
