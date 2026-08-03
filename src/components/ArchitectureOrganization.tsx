@@ -68,8 +68,6 @@ const ArchitectureOrganization: React.FC = () => {
     const [editName, setEditName] = useState('');
     const [bulkCategoryInput, setBulkCategoryInput] = useState('');
     const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
-    const [expandedSection, setExpandedSection] = useState<string | null>('Views');
-    
     const loadAllData = useCallback(async () => {
         const unified = await db.getAllUnifiedItems();
         setItems(unified);
@@ -80,36 +78,6 @@ const ArchitectureOrganization: React.FC = () => {
     }, [loadAllData]);
 
     const allCategories = Array.from(new Set(items.map(i => i.category).filter(c => c && c.trim()))).sort();
-
-    const sidebarSections = [
-        {
-            label: 'Views',
-            items: [
-                { id: 'all', label: 'All Items', icon: 'inventory_2' },
-                { id: 'starred', label: 'Starred', icon: 'star' },
-                { id: 'pinned', label: 'Pinned', icon: 'push_pin' },
-                { id: 'archived', label: 'Archived', icon: 'archive' },
-            ] as { id: string; label: string; icon: string }[]
-        },
-        {
-            label: 'Filter by Type',
-            items: [
-                { id: 'all_types', label: 'All Types', icon: 'category' },
-                ...Object.entries(TYPE_LABELS).map(([typeId, label]) => ({
-                    id: typeId,
-                    label,
-                    icon: TYPE_ICONS[typeId as UnifiedItem['type']]
-                }))
-            ] as { id: string; label: string; icon: string }[]
-        }
-    ];
-
-    if (allCategories.length > 0) {
-        sidebarSections.push({
-            label: 'Categories',
-            items: allCategories.map(cat => ({ id: cat, label: cat, icon: 'folder' }))
-        });
-    }
 
     const handleToggleMetadata = async (item: UnifiedItem, field: keyof LibraryMetadata) => {
         const newValue = !item[field as keyof UnifiedItem];
@@ -296,40 +264,6 @@ const ArchitectureOrganization: React.FC = () => {
         });
 
 
-    const renderSidebarButton = (id: string, label: string, icon: string) => {
-        const isTypeFilter = Object.keys(TYPE_LABELS).includes(id) || id === 'all_types';
-        const isActive = isTypeFilter ? activeTypeFilter === id : activeCategory === id;
-        const count = sidebarCount(id);
-
-        return (
-            <button
-                key={id}
-                onClick={() => {
-                    if (isTypeFilter) {
-                        setActiveTypeFilter(id);
-                    } else {
-                        setActiveCategory(id);
-                    }
-                }}
-                className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all ${
-                    isActive
-                    ? 'bg-blue-600 text-white shadow-md font-bold'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-                }`}
-            >
-                <span className="flex items-center gap-2">
-                    <span className={`material-icons text-lg ${isActive ? 'text-white' : 'text-gray-400'}`}>{icon}</span>
-                    <span>{label}</span>
-                </span>
-                {count > 0 && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${isActive ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}>
-                        {count}
-                    </span>
-                )}
-            </button>
-        );
-    };
-
     const cycleSortDirection = () => {
         setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
     };
@@ -341,10 +275,6 @@ const ArchitectureOrganization: React.FC = () => {
             setSortField(field);
             setSortDirection('desc');
         }
-    };
-
-    const toggleSection = (sectionLabel: string) => {
-        setExpandedSection(prev => prev === sectionLabel ? null : sectionLabel);
     };
 
     // ── Render ──────────────────────────────────────────────────────
@@ -415,141 +345,112 @@ const ArchitectureOrganization: React.FC = () => {
                 </div>
             </div>
 
-            {/* ── All Items Section ── */}
-            <div className="mb-6">
-                <div className="flex flex-col lg:flex-row gap-8 flex-1 min-h-0">
+            {/* ── Filter Ribbon ── */}
+            <div className="mb-8 flex flex-col md:flex-row items-start md:items-center gap-4">
+                {/* View Pills */}
+                <div className="flex bg-gray-100 dark:bg-gray-800/50 rounded-xl p-1 shadow-inner overflow-x-auto custom-scrollbar">
+                    {['all', 'starred', 'pinned', 'archived'].map(view => (
+                        <button
+                            key={view}
+                            onClick={() => setActiveCategory(view)}
+                            className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${activeCategory === view ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
+                        >
+                            <span className="capitalize">{view === 'all' ? 'All Items' : view}</span>
+                        </button>
+                    ))}
+                </div>
 
-                    {/* Sidebar */}
-                    <aside className="w-full lg:w-64 space-y-3 lg:sticky lg:top-0 lg:self-start lg:max-h-screen overflow-y-auto">
-                        {sidebarSections.map(section => {
-                            const isExpanded = expandedSection === section.label;
-                            return (
-                                <div key={section.label} className="bg-gray-50 dark:bg-gray-800/30 rounded-xl border border-gray-100 dark:border-gray-700/50 overflow-hidden">
-                                    <button
-                                        onClick={() => toggleSection(section.label)}
-                                        className="w-full flex items-center justify-between px-4 py-3 text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors"
-                                    >
-                                        <span>{section.label}</span>
-                                        <span className={`material-icons text-base transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
-                                            expand_more
-                                        </span>
-                                    </button>
-                                    <div className={`transition-all duration-300 overflow-hidden ${isExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                                        <div className="px-2 pb-2 space-y-1 pt-1">
-                                            {section.items.map(({ id, label, icon }) => renderSidebarButton(id, label, icon))}
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </aside>
+                <div className="flex flex-wrap items-center gap-3">
+                    {/* Type Filter */}
+                    <div className="relative">
+                        <select
+                            value={activeTypeFilter}
+                            onChange={(e) => setActiveTypeFilter(e.target.value)}
+                            className="appearance-none bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl pl-10 pr-10 py-2 text-sm font-semibold text-gray-700 dark:text-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
+                        >
+                            <option value="all_types">All Types</option>
+                            {Object.entries(TYPE_LABELS).map(([id, label]) => (
+                                <option key={id} value={id}>{label}</option>
+                            ))}
+                        </select>
+                        <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[18px] pointer-events-none">
+                            {activeTypeFilter === 'all_types' ? 'category' : TYPE_ICONS[activeTypeFilter as UnifiedItem['type']]}
+                        </span>
+                        <span className="material-icons absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-[18px] pointer-events-none">expand_more</span>
+                    </div>
 
-                    {/* Main Grid */}
-                    <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
-                        {selectedIds.size > 0 && (
-                            <div className="mb-6 p-4 bg-blue-600 rounded-2xl shadow-lg flex flex-wrap items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
-                                <span className="text-white font-bold ml-2">{selectedIds.size} item{selectedIds.size !== 1 ? 's' : ''} selected</span>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <div className="flex items-center gap-1 bg-white/20 rounded-xl px-3 py-1">
-                                        <span className="material-icons text-white text-sm">folder</span>
-                                        <input
-                                            type="text"
-                                            value={bulkCategoryInput}
-                                            onChange={(e) => setBulkCategoryInput(e.target.value)}
-                                            onKeyDown={(e) => e.key === 'Enter' && handleBulkCategory()}
-                                            placeholder="Assign category..."
-                                            className="w-28 bg-transparent border-none text-white placeholder-white/60 text-sm outline-none"
-                                            list="bulk-category-suggestions"
-                                        />
-                                        <datalist id="bulk-category-suggestions">
-                                            {allCategories.map(cat => (
-                                                <option key={cat} value={cat} />
-                                            ))}
-                                        </datalist>
-                                        <button
-                                            onClick={handleBulkCategory}
-                                            className="ml-1 px-2 py-1 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-lg transition-colors"
-                                            title="Assign Category"
-                                        >
-                                            Go
-                                        </button>
-                                    </div>
-                                    <button
-                                        onClick={() => setBatchExportOpen(true)}
-                                        className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl transition-colors font-bold text-sm"
-                                    >
-                                        <span className="material-icons text-sm">folder_zip</span>
-                                        Batch Export
-                                    </button>
-                                    <button
-                                        onClick={() => setIsSynthesisMode(true)}
-                                        className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl transition-colors font-bold text-sm"
-                                    >
-                                        <span className="material-icons text-sm">auto_fix_high</span>
-                                        Synthesize
-                                    </button>
-                                    <button
-                                        onClick={handleBulkArchive}
-                                        className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl transition-colors font-bold text-sm"
-                                    >
-                                        <span className="material-icons text-sm">archive</span>
-                                        Archive
-                                    </button>
-                                    <button
-                                        onClick={() => setSelectedIds(new Set())}
-                                        className="px-4 py-2 text-white hover:underline text-sm"
-                                    >
-                                        Clear
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                        <div className="mb-4 flex flex-col gap-3 px-1">
-                            {/* Active Filters Bar */}
-                            {(activeTypeFilter !== 'all_types' || activeCategory !== 'all' || searchTerm) && (
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mr-1">Active Filters:</span>
-                                    
-                                    {searchTerm && (
-                                        <div className="flex items-center gap-1.5 px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full text-sm font-medium border border-gray-200 dark:border-gray-700">
-                                            <span className="material-icons text-[14px] text-gray-400">search</span>
-                                            "{searchTerm}"
-                                            <button onClick={() => setSearchTerm('')} className="ml-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none">
-                                                <span className="material-icons text-[14px] block">close</span>
-                                            </button>
-                                        </div>
-                                    )}
+                    {/* Category Filter */}
+                    {allCategories.length > 0 && (
+                        <div className="relative">
+                            <select
+                                value={['all', 'starred', 'pinned', 'archived'].includes(activeCategory) ? 'all_categories' : activeCategory}
+                                onChange={(e) => {
+                                    if (e.target.value === 'all_categories') {
+                                        setActiveCategory('all');
+                                    } else {
+                                        setActiveCategory(e.target.value);
+                                    }
+                                }}
+                                className="appearance-none bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl pl-10 pr-10 py-2 text-sm font-semibold text-gray-700 dark:text-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
+                            >
+                                <option value="all_categories">All Categories</option>
+                                {allCategories.map(cat => (
+                                    <option key={cat} value={cat}>{cat}</option>
+                                ))}
+                            </select>
+                            <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[18px] pointer-events-none">folder</span>
+                            <span className="material-icons absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-[18px] pointer-events-none">expand_more</span>
+                        </div>
+                    )}
+                </div>
+            </div>
 
-                                    {activeTypeFilter !== 'all_types' && (
-                                        <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium border border-blue-100 dark:border-blue-800/50">
-                                            <span className="material-icons text-[14px]">{TYPE_ICONS[activeTypeFilter as UnifiedItem['type']] || 'category'}</span>
-                                            {TYPE_LABELS[activeTypeFilter as UnifiedItem['type']] || activeTypeFilter}
-                                            <button onClick={() => setActiveTypeFilter('all_types')} className="ml-1 text-blue-400 hover:text-blue-600 dark:hover:text-blue-200 focus:outline-none">
-                                                <span className="material-icons text-[14px] block">close</span>
-                                            </button>
-                                        </div>
-                                    )}
-
-                                    {activeCategory !== 'all' && (
-                                        <div className="flex items-center gap-1.5 px-3 py-1 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-sm font-medium border border-purple-100 dark:border-purple-800/50">
-                                            <span className="material-icons text-[14px]">
-                                                {['starred', 'pinned', 'archived'].includes(activeCategory) ? (activeCategory === 'starred' ? 'star' : activeCategory === 'pinned' ? 'push_pin' : 'archive') : 'folder'}
-                                            </span>
-                                            <span className="capitalize">{activeCategory}</span>
-                                            <button onClick={() => setActiveCategory('all')} className="ml-1 text-purple-400 hover:text-purple-600 dark:hover:text-purple-200 focus:outline-none">
-                                                <span className="material-icons text-[14px] block">close</span>
-                                            </button>
-                                        </div>
-                                    )}
-                                    
-                                    <button 
-                                        onClick={() => { setActiveTypeFilter('all_types'); setActiveCategory('all'); setSearchTerm(''); }}
-                                        className="ml-2 text-xs font-bold text-red-500 hover:text-red-700 hover:underline transition-colors"
-                                    >
-                                        Clear All
+            {/* ── Main Grid Area ── */}
+            <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
+                <div className="mb-4 flex flex-col gap-3 px-1">
+                    {/* Active Filters Bar */}
+                    {(activeTypeFilter !== 'all_types' || (!['all', 'starred', 'pinned', 'archived'].includes(activeCategory)) || searchTerm) && (
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mr-1">Active Filters:</span>
+                            
+                            {searchTerm && (
+                                <div className="flex items-center gap-1.5 px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full text-sm font-medium border border-gray-200 dark:border-gray-700 transition-all">
+                                    <span className="material-icons text-[14px] text-gray-400">search</span>
+                                    "{searchTerm}"
+                                    <button onClick={() => setSearchTerm('')} className="ml-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none">
+                                        <span className="material-icons text-[14px] block">close</span>
                                     </button>
                                 </div>
                             )}
+
+                            {activeTypeFilter !== 'all_types' && (
+                                <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium border border-blue-100 dark:border-blue-800/50 transition-all">
+                                    <span className="material-icons text-[14px]">{TYPE_ICONS[activeTypeFilter as UnifiedItem['type']] || 'category'}</span>
+                                    {TYPE_LABELS[activeTypeFilter as UnifiedItem['type']] || activeTypeFilter}
+                                    <button onClick={() => setActiveTypeFilter('all_types')} className="ml-1 text-blue-400 hover:text-blue-600 dark:hover:text-blue-200 focus:outline-none">
+                                        <span className="material-icons text-[14px] block">close</span>
+                                    </button>
+                                </div>
+                            )}
+
+                            {(!['all', 'starred', 'pinned', 'archived'].includes(activeCategory)) && (
+                                <div className="flex items-center gap-1.5 px-3 py-1 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-sm font-medium border border-purple-100 dark:border-purple-800/50 transition-all">
+                                    <span className="material-icons text-[14px]">folder</span>
+                                    <span className="capitalize">{activeCategory}</span>
+                                    <button onClick={() => setActiveCategory('all')} className="ml-1 text-purple-400 hover:text-purple-600 dark:hover:text-purple-200 focus:outline-none">
+                                        <span className="material-icons text-[14px] block">close</span>
+                                    </button>
+                                </div>
+                            )}
+                            
+                            <button 
+                                onClick={() => { setActiveTypeFilter('all_types'); setActiveCategory('all'); setSearchTerm(''); }}
+                                className="ml-2 text-xs font-bold text-red-500 hover:text-red-700 hover:underline transition-colors"
+                            >
+                                Clear All
+                            </button>
+                        </div>
+                    )}
                             
                             <div className="text-sm text-gray-500 dark:text-gray-400">
                                 {filteredAndSortedItems.length} item{filteredAndSortedItems.length !== 1 ? 's' : ''} found
@@ -603,8 +504,46 @@ const ArchitectureOrganization: React.FC = () => {
                             )}
                         </div>
                     </div>
+            {/* ── Floating Bulk Actions ── */}
+            {selectedIds.size > 0 && (
+                <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-fade-in">
+                    <div className="bg-slate-900/95 dark:bg-slate-800/95 backdrop-blur-md border border-slate-700/50 px-4 py-3 rounded-2xl shadow-2xl flex flex-wrap items-center justify-center gap-4 min-w-[max-content]">
+                        <span className="text-white font-bold px-3 py-1 bg-white/10 rounded-lg text-sm">{selectedIds.size} item{selectedIds.size !== 1 ? 's' : ''}</span>
+                        <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1 bg-white/10 hover:bg-white/20 transition-colors rounded-xl px-3 py-1">
+                                <span className="material-icons text-white text-sm">folder</span>
+                                <input
+                                    type="text"
+                                    value={bulkCategoryInput}
+                                    onChange={(e) => setBulkCategoryInput(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleBulkCategory()}
+                                    placeholder="Assign category..."
+                                    className="w-28 bg-transparent border-none text-white placeholder-white/60 text-sm outline-none"
+                                    list="bulk-category-suggestions"
+                                />
+                                <datalist id="bulk-category-suggestions">
+                                    {allCategories.map(cat => (
+                                        <option key={cat} value={cat} />
+                                    ))}
+                                </datalist>
+                                <button onClick={handleBulkCategory} className="ml-1 px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold rounded-lg transition-colors" title="Assign Category">Go</button>
+                            </div>
+                            <button onClick={() => setBatchExportOpen(true)} className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-colors font-bold text-sm">
+                                <span className="material-icons text-sm">folder_zip</span> Export
+                            </button>
+                            <button onClick={() => setIsSynthesisMode(true)} className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-colors font-bold text-sm">
+                                <span className="material-icons text-sm">auto_fix_high</span> Synthesize
+                            </button>
+                            <button onClick={handleBulkArchive} className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-colors font-bold text-sm">
+                                <span className="material-icons text-sm">archive</span> Archive
+                            </button>
+                            <button onClick={() => setSelectedIds(new Set())} className="ml-2 text-white/60 hover:text-white transition-colors">
+                                <span className="material-icons text-xl block">close</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* ── Modals ── */}
             {previewItem && (
