@@ -52,15 +52,10 @@ const SECTIONS: SidebarSection[] = [
     ]
   },
   {
-    title: 'PROMPT & SKILL CENTER',
+    title: 'WORKSHOP',
     items: [
       { view: 'prompt-standard', label: 'Standard Prompt', icon: 'description', colorClass: 'text-indigo-500' },
-      { view: 'prompt-skill', label: 'Skill Bundle', icon: 'extension', colorClass: 'text-purple-500' }
-    ]
-  },
-  {
-    title: 'AGENT FORGE',
-    items: [
+      { view: 'prompt-skill', label: 'Skill Bundle', icon: 'extension', colorClass: 'text-purple-500' },
       { view: 'agent-architect', label: 'Agent Architect', icon: 'smart_toy', colorClass: 'text-pink-500' }
     ]
   },

@@ -33,11 +33,8 @@ Git Hygiene Mandate: Maintain clean commit history and semantic release tags. Su
 3. Archive UX Paradigm: The Archive acts as a true literal repository with `viewMode` toggle. High-density List format implemented with Progressive Disclosure (hover menus) and explicit Active Filter observability.
 4. Signal Compression Architect Resilience: Implemented 45s API fetch timeout, robust JSON payload extraction, key normalization, and safe draft loading.
 5. GitHub Actions CI Testing: Integrated `npm test` step into `.github/workflows/deploy.yml` to automatically run all 24 unit tests before building for production.
+6. Navigation Refactor: Simplified the "SIGNAL" category to "Signal Center" and "MindSeeds" tools, and merged the old "PROMPT & SKILL CENTER" and "AGENT FORGE" categories into a single "WORKSHOP" category containing the "Standard Prompt", "Skill Bundle", and "Agent Architect" tools. Also synchronized character constraints and textarea formats across tools.
 
 **Next Topological Move:**
-6. Sidebar Navigation Refactor: Re-organized the UI to support a 3-level hierarchy (Category → Tool Set → Items) where needed, and simplified the "SIGNAL" category to contain two clear options: "Signal Center" (housing Extractor and Compressor tabs) and "MindSeeds" (housing the 4 MindSeed & SeedArchitect tabs). This keeps navigation direct and streamlined. Enforced a uniform 25,000 character limit with real-time counters across both Signal Extractor and Compressor textareas, and synchronized SeedArchitect to display the matching "Input Spec Context (up to 20,000 characters)" label, character counter constraints, a flat transparent background container, and conformed the textarea to a 64px height with resizable drag handles to seamlessly integrate into the MindSeeds workspace. 
-
-**Next Topological Move:**
-- Await user validation of the Signal Center and MindSeeds layout refactor, and prepare to commit these changes to maintain clean git hygiene.
-
-- Await user guidance on new feature scopes or transition to next domain tool integration. Maintain clean git hygiene and test coverage across new features.
+- Await user validation of the Signal, Workshop and MindSeeds layout refactor, and prepare to commit these changes to maintain clean git hygiene.
+- Await user guidance on new feature scopes or transition to next domain tool integration.
