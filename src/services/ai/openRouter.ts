@@ -37,7 +37,7 @@ export const callOpenRouter = async (
       headers: {
         "Authorization": `Bearer ${apiKey}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": window.location.origin,
+        "HTTP-Referer": (!window.location.origin || window.location.origin === "null" || window.location.origin.includes("localhost") || window.location.origin.includes("file://")) ? "https://noosphere-architect.local" : window.location.origin,
         "X-Title": "Noosphere Architect",
       },
       body: JSON.stringify({
@@ -55,7 +55,13 @@ export const callOpenRouter = async (
     }
 
     const data = await response.json();
-    return data.choices[0]?.message?.content || "";
+    if (!data || !data.choices || !Array.isArray(data.choices) || data.choices.length === 0 || !data.choices[0]?.message) {
+      const errorStr = JSON.stringify(data).slice(0, 150);
+      const error = new Error(`Invalid response format from OpenRouter: ${errorStr}`);
+      (error as any).status = 502; // Treat malformed payload as a Bad Gateway to trigger retry
+      throw error;
+    }
+    return data.choices[0].message.content || "";
   } finally {
     clearTimeout(timeoutId);
   }
@@ -88,8 +94,11 @@ async function callOpenRouterWithRetry(
 
       lastError = err;
       const status = (err as any)?.status;
+      
+      // Network disconnects/CORS failures usually throw TypeError: Failed to fetch without a status code
+      const isNetworkError = err.name === 'TypeError' || (err.message && err.message.toLowerCase().includes('fetch'));
 
-      if (status && RETRYABLE_STATUSES.has(status)) {
+      if ((status && RETRYABLE_STATUSES.has(status)) || isNetworkError) {
         if (attempt < MAX_RETRIES) {
           const delay = BASE_DELAY_MS * Math.pow(2, attempt) + Math.random() * 1000;
           await new Promise(resolve => setTimeout(resolve, delay));
