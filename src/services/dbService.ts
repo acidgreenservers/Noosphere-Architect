@@ -1700,8 +1700,12 @@ export const clearSeedDraft = async (id: number): Promise<void> => {
 
 const mapToUnified = (item: any, defaultType: UnifiedItem['type']): UnifiedItem => {
     const type = item.sourceTool || defaultType;
+    let idStr = `${type}-${item.id}`;
+    if (type === 'mindseed' && item.config?.type) {
+        idStr = `mindseed-${item.config.type}-${item.id}`;
+    }
     return {
-        id: `${type}-${item.id}`,
+        id: idStr,
         name: item.name || (item.result?.seed) || 'Untitled',
         type,
         original: item,
