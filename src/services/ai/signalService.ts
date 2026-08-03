@@ -3,7 +3,7 @@ import { SignalConfig, ExtractedSignal } from '../../types';
 import { handleAiCall } from './openRouter';
 import { getCustomContext } from '../dbService';
 
-const createSignalExtractorMetaPrompt = (config: SignalConfig, customContext?: string): string => {
+const createSignalExtractorMetaPrompt = (customContext?: string): string => {
   const contextPrefix = customContext ? `**CUSTOM SYSTEM CONTEXT:**\n${customContext}\n\n---\n\n` : "";
   const basePrompt = `---
 Grounding: Base all pattern inference attractors in the current context. Bind your inference attractors to the purpose of the text, search for its meaning. Surface its topology and infer patterns rooted in the seed of the text.
@@ -13,7 +13,7 @@ Territory: Map the full shape of the text, feel its texture, search for the inva
 
 You are an expert Signal Extractor. Your task is to take a "messy prompt" (raw thoughts, disorganized instructions, or poorly formatted ideas) and extract the core signal.
 
-Your goal is NOT to make a perfect final prompt, but to extract and amplify the hidden or poorly laid out signal into a coherent, actionable systemic prompt that an agent can follow.
+Your goal is to extract and amplify the hidden or poorly laid out signal into a coherent, actionable prompt while preserving the original author's voice and perspective.
 
 **Output Constraints:**
 - Text ONLY.
@@ -22,19 +22,21 @@ Your goal is NOT to make a perfect final prompt, but to extract and amplify the 
 - MAXIMUM of 1000 characters for the total output.
 - The output MUST be a JSON object with two keys: "promptSignal" and "signalConstraints".
 
+**Invariant: Perspective Parity**
+- If the input is in the first person ("I want..."), your extraction MUST remain in the first person ("I want...").
+- If the input is a direct command ("Do this"), your extraction MUST remain a direct command.
+- NEVER adopt a third-person observer voice (e.g., NEVER write "The agent should...").
+
+**Invariant: Tone Preservation**
+- Clarify the logic and structure without altering the perspective or sterilizing the voice of the original text.
+
 **Instructions for "promptSignal":**
 - Extract the primary goal and task from the messy input.
-- Reorganize it into coherent, detailed prose.
-- Make it actionable for an AI agent.
+- Reorganize it into coherent, detailed prose matching the original perspective.
 
 **Instructions for "signalConstraints":**
 - Extract any specific rules, limitations, steps, or constraints from the messy input.
 - List them clearly using bullet points.
-
-**User's Messy Prompt:**
----
-${config.messyPrompt}
----
 
 Generate ONLY the raw JSON object with "promptSignal" and "signalConstraints" keys.
 `;
@@ -62,9 +64,16 @@ export const extractSignal = async (config: SignalConfig, signal?: AbortSignal):
   }
 
   const customContext = await getCustomContext('signalContext');
-  const prompt = createSignalExtractorMetaPrompt(config, customContext);
-  const raw = await handleAiCall<ExtractedSignal>(prompt, true, "extracting signal", signal, {
-    validator: validateExtractedSignal
-  });
+  const metaPrompt = createSignalExtractorMetaPrompt(customContext);
+  const raw = await handleAiCall<ExtractedSignal>(
+    config.messyPrompt, // Pass the raw text purely as the user prompt
+    true, 
+    "extracting signal", 
+    signal, 
+    {
+      systemPrompt: metaPrompt, // Pass the instructions purely as the system prompt
+      validator: validateExtractedSignal
+    }
+  );
   return raw;
 };
