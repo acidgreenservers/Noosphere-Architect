@@ -251,7 +251,7 @@ const SeedArchitect: React.FC = () => {
             <textarea
               value={config.promptText}
               onChange={(e) => setConfig({ ...config, promptText: e.target.value })}
-              className="w-full px-4 py-3 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-blue-500/40 outline-none transition-all h-32 resize-none font-mono text-sm custom-scrollbar"
+              className="w-full h-64 p-4 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar"
               placeholder="Paste the prompt you want to stress-test for semantic stability..."
               maxLength={MAX_CHARS}
             />
