@@ -238,8 +238,14 @@ const SignalCompressionArchitect: React.FC = () => {
         <div className="space-y-8 animate-fade-in">
             <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
 
-            <div className="bg-transparent">
+            <div className="bg-transparent mb-12">
                 <div className="space-y-6">
+                    <div className="border-b border-slate-200/60 dark:border-slate-800/50 pb-4 mb-6">
+                        <h2 className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                            Input Signal Context
+                        </h2>
+                    </div>
+
                     <div>
                         <label htmlFor="messyInput" className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
                             Input Context <span className="text-red-500 ml-1">*</span>
