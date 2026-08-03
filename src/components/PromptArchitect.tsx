@@ -18,6 +18,7 @@ import GeneratedFilesDisplay from './GeneratedFilesDisplay';
 import { StarredPinnedBar } from './StarredPinnedBar';
 import { UnifiedItem } from '../types';
 import { getDeepSearchText } from '../utils/search';
+import { useArchive } from '../context/ArchiveContext';
 
 const PROMPT_TEMPLATES = [
     {
@@ -69,8 +70,20 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
     const abortControllerRef = useRef<AbortController | null>(null);
 
 
-    const [savedPrompts, setSavedPrompts] = useState<SavedPrompt[]>([]);
-    const [legacyPrompts, setLegacyPrompts] = useState<SavedPrompt[]>([]);
+    const { unifiedItems, updateItemMetadata, deleteItem: removeContextItem, loadArchive } = useArchive();
+
+    const savedPrompts = React.useMemo(() => {
+        const typeFilter = activeTab === 'standard' ? 'prompt-standard' : 'prompt-system';
+        return unifiedItems
+            .filter(i => i.type === typeFilter)
+            .map(i => i.original as SavedPrompt);
+    }, [unifiedItems, activeTab]);
+
+    const legacyPrompts = React.useMemo(() => {
+        return unifiedItems
+            .filter(i => i.type === 'legacy-prompt')
+            .map(i => i.original as SavedPrompt);
+    }, [unifiedItems]);
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
     const [searchTerm, setSearchText] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
@@ -90,14 +103,7 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
     });
 
 
-    const loadSavedPrompts = useCallback(async () => {
-        const [typedPrompts, allLegacyPrompts] = await Promise.all([
-            db.getAllTypedPrompts(activeTab),
-            db.getAllPrompts()
-        ]);
-        setSavedPrompts(typedPrompts);
-        setLegacyPrompts(allLegacyPrompts);
-    }, [activeTab]);
+
 
     useEffect(() => {
         if (initialTab) {
@@ -112,7 +118,7 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
             return;
         }
 
-        loadSavedPrompts();
+
         const loadDraft = async () => {
             if (checkingDraftRef.current[activeTab]) return;
             checkingDraftRef.current[activeTab] = true;
@@ -129,7 +135,7 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
             }
         };
         loadDraft();
-    }, [loadSavedPrompts, activeTab, initialConfig, onClearInitialConfig]);
+    }, [activeTab, initialConfig, onClearInitialConfig]);
 
     useEffect(() => {
         if (draftStatus === 'unloaded') return;
@@ -249,29 +255,27 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
             setSuccessMessage('Updated successfully!');
         }
 
-        loadSavedPrompts();
+        await loadArchive();
         setModalState(null);
     };
 
     const handleUpdateMetadata = async (prompt: SavedPrompt, metadata: any) => {
-        const updated = { ...prompt, ...metadata };
-        await db.updateTypedPrompt(activeTab, updated);
-        setSavedPrompts(prev => prev.map(p => p.id === prompt.id ? updated : p));
-        if (previewPrompt?.id === prompt.id) setPreviewPrompt(updated);
+        const unified: UnifiedItem = promptToUnified(prompt, false);
+        await updateItemMetadata(unified, metadata);
+        if (previewPrompt?.id === prompt.id) setPreviewPrompt({ ...prompt, ...metadata });
     };
 
     const handleLegacyUpdateMetadata = async (prompt: SavedPrompt, metadata: any) => {
-        const updated = { ...prompt, ...metadata };
-        await db.updatePrompt(updated);
-        setLegacyPrompts(prev => prev.map(p => p.id === prompt.id ? updated : p));
-        if (previewPrompt?.id === prompt.id) setPreviewPrompt(updated);
+        const unified: UnifiedItem = promptToUnified(prompt, true);
+        await updateItemMetadata(unified, metadata);
+        if (previewPrompt?.id === prompt.id) setPreviewPrompt({ ...prompt, ...metadata });
     };
     
     const handleDelete = async () => {
         if (!previewPrompt || !previewPrompt.id) return;
         try {
-            await db.deleteTypedPrompt(activeTab, previewPrompt.id);
-            setSavedPrompts(prevPrompts => prevPrompts.filter(p => p.id !== previewPrompt.id));
+            const unified: UnifiedItem = promptToUnified(previewPrompt, false);
+            await removeContextItem(unified);
             setSuccessMessage('Deleted successfully!');
             setPreviewPrompt(null);
             setIsDeleteConfirmOpen(false);
@@ -282,8 +286,10 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
 
     const handleLegacyDelete = async (id: number) => {
         try {
-            await db.deletePrompt(id);
-            setLegacyPrompts(prev => prev.filter(p => p.id !== id));
+            const prompt = legacyPrompts.find(p => p.id === id);
+            if (!prompt) return;
+            const unified: UnifiedItem = promptToUnified(prompt, true);
+            await removeContextItem(unified);
             setSuccessMessage('Deleted successfully!');
             setPreviewPrompt(null);
             setIsDeleteConfirmOpen(false);
@@ -295,7 +301,7 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
     const handleClearAll = async () => {
         try {
             await db.clearAllTypedPrompts(activeTab);
-            setSavedPrompts([]);
+            await loadArchive();
             setSuccessMessage('Cleared successfully.');
             setIsClearAllConfirmOpen(false);
         } catch (err) {

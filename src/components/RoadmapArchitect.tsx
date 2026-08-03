@@ -14,6 +14,7 @@ import LibraryItem from './LibraryItem';
 import Toast from './Toast';
 import { StarredPinnedBar } from './StarredPinnedBar';
 import { getDeepSearchText } from '../utils/search';
+import { useArchive } from '../context/ArchiveContext';
 
 const MAX_CHARS = 20000;
 
@@ -26,7 +27,8 @@ const RoadmapArchitect: React.FC = () => {
   const loadingIntervalRef = useRef<number | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const [savedRoadmaps, setSavedRoadmaps] = useState<SavedRoadmap[]>([]);
+  const { unifiedItems, updateItemMetadata, deleteItem: removeContextItem, loadArchive } = useArchive();
+  const savedRoadmaps = React.useMemo(() => unifiedItems.filter(i => i.type === 'roadmap').map(i => i.original as SavedRoadmap), [unifiedItems]);
   const [searchTerm, setSearchTerm] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [draftStatus, setDraftStatus] = useState<'unloaded' | 'loaded' | 'none'>('unloaded');
@@ -46,13 +48,7 @@ const RoadmapArchitect: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [saveName, setSaveName] = useState('');
 
-  const loadSavedRoadmaps = useCallback(async () => {
-    const roadmaps = await db.getAllRoadmaps();
-    setSavedRoadmaps(roadmaps);
-  }, []);
 
-  useEffect(() => {
-    loadSavedRoadmaps();
     const loadDraft = async () => {
       if (isCheckingDraft.current) return;
       isCheckingDraft.current = true;
@@ -73,7 +69,7 @@ const RoadmapArchitect: React.FC = () => {
       }
     };
     loadDraft();
-  }, [loadSavedRoadmaps]);
+  }, []);
 
   useEffect(() => {
     if (draftStatus === 'unloaded') return;
@@ -233,16 +229,15 @@ const RoadmapArchitect: React.FC = () => {
 
     await db.addRoadmap(newRoadmap);
     setSuccessMessage('Roadmap entry saved successfully!');
-    loadSavedRoadmaps();
+    await loadArchive();
     setIsSaveModalOpen(false);
     setSaveName('');
   };
 
   const handleUpdateMetadata = async (roadmap: SavedRoadmap, metadata: any) => {
-    const updated = { ...roadmap, ...metadata };
-    await db.updateRoadmap(updated);
-    setSavedRoadmaps(prev => prev.map(r => r.id === roadmap.id ? updated : r));
-    if (previewRoadmap?.id === roadmap.id) setPreviewRoadmap(updated);
+    const unified: UnifiedItem = roadmapToUnified(roadmap);
+    await updateItemMetadata(unified, metadata);
+    if (previewRoadmap?.id === roadmap.id) setPreviewRoadmap({ ...roadmap, ...metadata });
   };
 
   const roadmapToUnified = (roadmap: SavedRoadmap): UnifiedItem => ({
@@ -259,7 +254,7 @@ const RoadmapArchitect: React.FC = () => {
 
   const handleClearAll = async () => {
     await db.clearAllRoadmaps();
-    loadSavedRoadmaps();
+    await loadArchive();
     setSuccessMessage('All roadmap entries cleared.');
     setIsClearAllConfirmOpen(false);
   };
@@ -273,8 +268,10 @@ const RoadmapArchitect: React.FC = () => {
 
   const confirmDelete = async () => {
     if (deleteTarget === null) return;
-    await db.deleteRoadmap(deleteTarget);
-    setSavedRoadmaps(prev => prev.filter(r => r.id !== deleteTarget));
+    const roadmap = savedRoadmaps.find(r => r.id === deleteTarget);
+    if (!roadmap) return;
+    const unified: UnifiedItem = roadmapToUnified(roadmap);
+    await removeContextItem(unified);
     setSuccessMessage('Roadmap entry deleted successfully!');
     setIsDeleteConfirmOpen(false);
     setDeleteTarget(null);

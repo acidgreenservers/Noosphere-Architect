@@ -12,6 +12,7 @@ import Toast from './Toast';
 import { StarredPinnedBar } from './StarredPinnedBar';
 import { UnifiedItem } from '../types';
 import { getDeepSearchText } from '../utils/search';
+import { useArchive } from '../context/ArchiveContext';
 
 const MAX_CHARS = 20000;
 
@@ -34,7 +35,8 @@ const SeedArchitect: React.FC = () => {
   const [loadingMessage, setLoadingMessage] = useState('');
 
   const abortControllerRef = useRef<AbortController | null>(null);
-  const [savedSeeds, setSavedSeeds] = useState<SavedSeed[]>([]);
+  const { unifiedItems, updateItemMetadata, deleteItem: removeContextItem, loadArchive } = useArchive();
+  const savedSeeds = React.useMemo(() => unifiedItems.filter(i => i.type === 'seed-architect').map(i => i.original as SavedSeed), [unifiedItems]);
   const charCount = config.promptText.length;
   const isNearLimit = charCount > MAX_CHARS * 0.9;
   const charCountColor = charCount > MAX_CHARS ? 'text-red-600' : isNearLimit ? 'text-orange-500' : 'text-slate-400';
@@ -53,13 +55,7 @@ const SeedArchitect: React.FC = () => {
   const [pendingDraft, setPendingDraft] = useState<SeedConfig | null>(null);
   const isCheckingDraft = useRef(false);
 
-  const loadSavedSeeds = useCallback(async () => {
-    const seeds = await db.getAllSeeds();
-    setSavedSeeds(seeds);
-  }, []);
 
-  useEffect(() => {
-    loadSavedSeeds();
     const loadDraft = async () => {
       if (isCheckingDraft.current) return;
       isCheckingDraft.current = true;
@@ -75,7 +71,7 @@ const SeedArchitect: React.FC = () => {
     return () => {
       db.clearSeedTempResponses();
     };
-  }, [loadSavedSeeds]);
+  }, []);
 
   useEffect(() => {
     if (draftStatus === 'unloaded') return;
@@ -177,7 +173,7 @@ const SeedArchitect: React.FC = () => {
     await db.clearSeedTempResponses();
     await db.clearSeedDraft(1);
     setSuccessMessage('Seed analysis saved successfully!');
-    loadSavedSeeds();
+    await loadArchive();
     setResult(null);
     setConfig({ promptText: '', n: 5 });
   };
@@ -189,8 +185,10 @@ const SeedArchitect: React.FC = () => {
 
   const confirmDelete = async () => {
     if (deleteTarget === null) return;
-    await db.deleteSeed(deleteTarget);
-    setSavedSeeds(prev => prev.filter(s => s.id !== deleteTarget));
+    const seed = savedSeeds.find(s => s.id === deleteTarget);
+    if (!seed) return;
+    const unified: UnifiedItem = seedToUnified(seed);
+    await removeContextItem(unified);
     setSuccessMessage('Seed analysis deleted.');
     setIsDeleteConfirmOpen(false);
     setDeleteTarget(null);
@@ -198,10 +196,9 @@ const SeedArchitect: React.FC = () => {
   };
 
   const handleUpdateMetadata = async (seed: SavedSeed, metadata: any) => {
-    const updated = { ...seed, ...metadata };
-    await db.updateSeed(updated);
-    setSavedSeeds(prev => prev.map(s => s.id === seed.id ? updated : s));
-    if (previewSeed?.id === seed.id) setPreviewSeed(updated);
+    const unified: UnifiedItem = seedToUnified(seed);
+    await updateItemMetadata(unified, metadata);
+    if (previewSeed?.id === seed.id) setPreviewSeed({ ...seed, ...metadata });
   };
 
   const handleAcceptDraft = () => {

@@ -15,6 +15,7 @@ import { StarredPinnedBar } from './StarredPinnedBar';
 import { UnifiedItem } from '../types';
 import SignalCompressionArchitect from './SignalCompressionArchitect';
 import { getDeepSearchText } from '../utils/search';
+import { useArchive } from '../context/ArchiveContext';
 
 interface SignalExtractorProps {
     onTransfer: (config: PromptConfig) => void;
@@ -37,7 +38,8 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
     const loadingIntervalRef = useRef<number | null>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
 
-    const [savedSignals, setSavedSignals] = useState<SavedSignal[]>([]);
+    const { unifiedItems, updateItemMetadata, deleteItem: removeContextItem, loadArchive } = useArchive();
+    const savedSignals = React.useMemo(() => unifiedItems.filter(i => i.type === 'signal').map(i => i.original as SavedSignal), [unifiedItems]);
     const charCount = config.messyPrompt.length;
     const isNearLimit = charCount > MAX_CHARS * 0.9;
     const charCountColor = charCount > MAX_CHARS ? 'text-red-600' : isNearLimit ? 'text-orange-500' : 'text-slate-400';
@@ -60,10 +62,7 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
     const [previewSignal, setPreviewSignal] = useState<SavedSignal | null>(null);
     const [saveName, setSaveName] = useState('');
 
-    const loadSavedSignals = useCallback(async () => {
-        const signals = await db.getAllSignals();
-        setSavedSignals(signals);
-    }, []);
+
 
     useEffect(() => {
         if (initialConfig) {
@@ -72,7 +71,7 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
             return;
         }
 
-        loadSavedSignals();
+
         const loadDraft = async () => {
             if (isCheckingDraft.current) return;
             isCheckingDraft.current = true;
@@ -85,7 +84,7 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
             }
         };
         loadDraft();
-    }, [loadSavedSignals, initialConfig, onClearInitialConfig]);
+    }, [initialConfig, onClearInitialConfig]);
 
     useEffect(() => {
         if (draftStatus === 'unloaded') return;
@@ -170,16 +169,15 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
 
         await db.addSignal(newSignal);
         setSuccessMessage('Signal saved successfully!');
-        loadSavedSignals();
+        await loadArchive();
         setIsSaveModalOpen(false);
         setSaveName('');
     };
 
     const handleUpdateMetadata = async (signal: SavedSignal, metadata: any) => {
-        const updated = { ...signal, ...metadata };
-        await db.updateSignal(updated);
-        setSavedSignals(prev => prev.map(s => s.id === signal.id ? updated : s));
-        if (previewSignal?.id === signal.id) setPreviewSignal(updated);
+        const unified: UnifiedItem = signalToUnified(signal);
+        await updateItemMetadata(unified, metadata);
+        if (previewSignal?.id === signal.id) setPreviewSignal({ ...signal, ...metadata });
     };
 
     const signalToUnified = (signal: SavedSignal): UnifiedItem => ({
@@ -203,8 +201,10 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
 
     const confirmDelete = async () => {
         if (deleteTarget === null) return;
-        await db.deleteSignal(deleteTarget);
-        setSavedSignals(prev => prev.filter(s => s.id !== deleteTarget));
+        const signal = savedSignals.find(s => s.id === deleteTarget);
+        if (!signal) return;
+        const unified: UnifiedItem = signalToUnified(signal);
+        await removeContextItem(unified);
         setSuccessMessage('Signal deleted successfully!');
         setIsDeleteConfirmOpen(false);
         setDeleteTarget(null);
@@ -213,7 +213,7 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
 
     const handleClearAll = async () => {
         await db.clearAllSignals();
-        loadSavedSignals();
+        await loadArchive();
         setSuccessMessage('All signals cleared.');
         setIsClearAllConfirmOpen(false);
     };

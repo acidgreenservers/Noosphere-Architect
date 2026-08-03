@@ -14,6 +14,7 @@ import LibraryItem from './LibraryItem';
 import Toast from './Toast';
 import { StarredPinnedBar } from './StarredPinnedBar';
 import { UnifiedItem } from '../types';
+import { useArchive } from '../context/ArchiveContext';
 import { getDeepSearchText } from '../utils/search';
 
 const AGENT_TEMPLATES = [
@@ -55,7 +56,8 @@ const AgentArchitect: React.FC<AgentArchitectProps> = ({ initialConfig, onClearI
   const loadingIntervalRef = useRef<number | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const [savedAgents, setSavedAgents] = useState<SavedAgent[]>([]);
+  const { unifiedItems, updateItemMetadata, deleteItem: removeContextItem, loadArchive } = useArchive();
+  const savedAgents = React.useMemo(() => unifiedItems.filter(i => i.type === 'agent').map(i => i.original as SavedAgent), [unifiedItems]);
   const [searchTerm, setSearchText] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [draftStatus, setDraftStatus] = useState<'unloaded' | 'loaded' | 'none'>('unloaded');
@@ -73,19 +75,12 @@ const AgentArchitect: React.FC<AgentArchitectProps> = ({ initialConfig, onClearI
     allItemsSection: true
   });
 
-  const loadSavedAgents = useCallback(async () => {
-    const agents = await db.getAllAgents();
-    setSavedAgents(agents);
-  }, []);
-
-  useEffect(() => {
     if (initialConfig) {
       setAgentConfig(initialConfig);
       if (onClearInitialConfig) onClearInitialConfig();
       return;
     }
 
-    loadSavedAgents();
     const loadDraft = async () => {
         if (isCheckingDraft.current) return;
         isCheckingDraft.current = true;
@@ -98,7 +93,7 @@ const AgentArchitect: React.FC<AgentArchitectProps> = ({ initialConfig, onClearI
         }
     };
     loadDraft();
-  }, [loadSavedAgents, initialConfig, onClearInitialConfig]);
+  }, [initialConfig, onClearInitialConfig]);
 
   const [pendingDraft, setPendingDraft] = useState<AgentConfig | null>(null);
 
@@ -206,15 +201,15 @@ const AgentArchitect: React.FC<AgentArchitectProps> = ({ initialConfig, onClearI
         setSuccessMessage('Agent updated successfully!');
     }
     
-    loadSavedAgents();
+    await loadArchive();
     setModalState(null);
   };
 
   const handleDelete = async () => {
     if (!previewAgent || !previewAgent.id) return;
     try {
-        await db.deleteAgent(previewAgent.id);
-        setSavedAgents(prevAgents => prevAgents.filter(agent => agent.id !== previewAgent.id));
+        const unified = agentToUnified(previewAgent);
+        await removeContextItem(unified);
         setSuccessMessage('Agent deleted successfully!');
         setPreviewAgent(null);
         setIsDeleteConfirmOpen(false);
@@ -226,7 +221,7 @@ const AgentArchitect: React.FC<AgentArchitectProps> = ({ initialConfig, onClearI
   const handleClearAll = async () => {
     try {
         await db.clearAllAgents();
-        setSavedAgents([]);
+        await loadArchive();
         setSuccessMessage('All agents have been deleted.');
         setIsClearAllConfirmOpen(false);
     } catch (err) {
@@ -327,14 +322,6 @@ const AgentArchitect: React.FC<AgentArchitectProps> = ({ initialConfig, onClearI
       window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  const handleUpdateMetadata = async (agent: SavedAgent, metadata: any) => {
-    const updated = { ...agent, ...metadata };
-    await db.updateAgent(updated);
-    setSavedAgents(prev => prev.map(a => a.id === agent.id ? updated : a));
-    loadSavedAgents();
-    if (previewAgent?.id === agent.id) setPreviewAgent(updated);
-  };
-
   const agentToUnified = (agent: SavedAgent): UnifiedItem => ({
     id: `agent-${agent.id}`,
     name: agent.name,
@@ -346,6 +333,12 @@ const AgentArchitect: React.FC<AgentArchitectProps> = ({ initialConfig, onClearI
     isArchived: agent.isArchived || false,
     category: agent.category || ''
   });
+
+  const handleUpdateMetadata = async (agent: SavedAgent, metadata: any) => {
+    const unified = agentToUnified(agent);
+    await updateItemMetadata(unified, metadata);
+    if (previewAgent?.id === agent.id) setPreviewAgent({ ...agent, ...metadata });
+  };
 
   const unifiedAgents = savedAgents.map(agentToUnified);
 

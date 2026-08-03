@@ -17,6 +17,7 @@ import Toast from './Toast';
 import { StarredPinnedBar } from './StarredPinnedBar';
 import { UnifiedItem } from '../types';
 import { getDeepSearchText } from '../utils/search';
+import { useArchive } from '../context/ArchiveContext';
 
 type Tab = 'architect' | 'roadmap' | 'agentJob';
 
@@ -51,7 +52,8 @@ const ProjectArchitect: React.FC<ProjectArchitectProps> = ({ initialConfig, onCl
   ]);
   const [overallProgress, setOverallProgress] = useState(0);
 
-  const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
+  const { unifiedItems, updateItemMetadata, deleteItem: removeContextItem, loadArchive } = useArchive();
+  const savedProjects = React.useMemo(() => unifiedItems.filter(i => i.type === 'project').map(i => i.original as SavedProject), [unifiedItems]);
   const [searchTerm, setSearchText] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [draftStatus, setDraftStatus] = useState<'unloaded' | 'loaded' | 'none'>('unloaded');
@@ -70,10 +72,6 @@ const ProjectArchitect: React.FC<ProjectArchitectProps> = ({ initialConfig, onCl
     allItemsSection: true
   });
 
-  const loadSavedProjects = useCallback(async () => {
-    const projects = await db.getAllProjects();
-    setSavedProjects(projects);
-  }, []);
 
   useEffect(() => {
     if (initialTab) {
@@ -91,7 +89,7 @@ const ProjectArchitect: React.FC<ProjectArchitectProps> = ({ initialConfig, onCl
       return;
     }
 
-    loadSavedProjects();
+
     const loadDraft = async () => {
       if (isCheckingDraft.current) return;
       isCheckingDraft.current = true;
@@ -104,7 +102,7 @@ const ProjectArchitect: React.FC<ProjectArchitectProps> = ({ initialConfig, onCl
       }
     };
     loadDraft();
-  }, [loadSavedProjects, initialConfig, onClearInitialConfig]);
+  }, [initialConfig, onClearInitialConfig]);
 
   useEffect(() => {
     if (draftStatus === 'unloaded') return;
@@ -284,7 +282,7 @@ const ProjectArchitect: React.FC<ProjectArchitectProps> = ({ initialConfig, onCl
       setSuccessMessage('Project updated successfully!');
     }
     
-    loadSavedProjects();
+    await loadArchive();
     setModalState(null);
   };
 
@@ -296,8 +294,22 @@ const ProjectArchitect: React.FC<ProjectArchitectProps> = ({ initialConfig, onCl
   const confirmDelete = async () => {
     if (deleteTarget === null) return;
     try {
-      await db.deleteProject(deleteTarget);
-      setSavedProjects(prev => prev.filter(p => p.id !== deleteTarget));
+      const project = savedProjects.find(p => p.id === deleteTarget);
+      if (!project) return;
+      
+      const unified: UnifiedItem = {
+        id: `project-${project.id}`,
+        name: project.name,
+        type: 'project',
+        original: project,
+        createdAt: project.createdAt,
+        isStarred: project.isStarred || false,
+        isPinned: project.isPinned || false,
+        isArchived: project.isArchived || false,
+        category: project.category || ''
+      };
+      
+      await removeContextItem(unified);
       setSuccessMessage('Project deleted successfully!');
       setIsDeleteConfirmOpen(false);
       setDeleteTarget(null);
@@ -310,7 +322,7 @@ const ProjectArchitect: React.FC<ProjectArchitectProps> = ({ initialConfig, onCl
   const handleClearAll = async () => {
     try {
       await db.clearAllProjects();
-      setSavedProjects([]);
+      await loadArchive();
       setSuccessMessage('All projects have been deleted.');
       setIsClearAllConfirmOpen(false);
     } catch (err) {
@@ -370,10 +382,19 @@ const ProjectArchitect: React.FC<ProjectArchitectProps> = ({ initialConfig, onCl
   };
 
   const handleUpdateMetadata = async (project: SavedProject, metadata: any) => {
-    const updated = { ...project, ...metadata };
-    await db.updateProject(updated);
-    setSavedProjects(prev => prev.map(p => p.id === project.id ? updated : p));
-    if (previewProject?.id === project.id) setPreviewProject(updated);
+    const unified: UnifiedItem = {
+      id: `project-${project.id}`,
+      name: project.name,
+      type: 'project',
+      original: project,
+      createdAt: project.createdAt,
+      isStarred: project.isStarred || false,
+      isPinned: project.isPinned || false,
+      isArchived: project.isArchived || false,
+      category: project.category || ''
+    };
+    await updateItemMetadata(unified, metadata);
+    if (previewProject?.id === project.id) setPreviewProject({ ...project, ...metadata });
   };
 
   const handleAcceptDraft = () => {

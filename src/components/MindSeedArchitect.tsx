@@ -14,6 +14,7 @@ import LibraryItem from './LibraryItem';
 import { StarredPinnedBar } from './StarredPinnedBar';
 import { UnifiedItem } from '../types';
 import { getDeepSearchText } from '../utils/search';
+import { useArchive } from '../context/ArchiveContext';
 import SeedArchitect from './SeedArchitect';
 
 const MAX_CHARS = 20000;
@@ -25,7 +26,13 @@ const MindSeedArchitect: React.FC = () => {
   const [loadingMessage, setLoadingMessage] = useState('');
   const abortControllerRef = useRef<AbortController | null>(null);
   const [result, setResult] = useState<GeneratedMindSeed | null>(null);
-  const [savedSeeds, setSavedSeeds] = useState<SavedMindSeed[]>([]);
+  const { unifiedItems, updateItemMetadata, deleteItem: removeContextItem, loadArchive } = useArchive();
+  const savedSeeds = React.useMemo(() => {
+    if (activeTab === 'seed-architect') return [];
+    return unifiedItems
+        .filter(i => i.type === 'mindseed' && (i.original as SavedMindSeed).type === activeTab)
+        .map(i => i.original as SavedMindSeed);
+  }, [unifiedItems, activeTab]);
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -40,25 +47,8 @@ const MindSeedArchitect: React.FC = () => {
   });
 
   useEffect(() => {
-    if (activeTab !== 'seed-architect') {
-      loadSavedSeeds();
-    }
-  }, [activeTab]);
-
-  useEffect(() => {
     loadDraft();
   }, []);
-
-  const loadSavedSeeds = async () => {
-    try {
-      if (activeTab !== 'seed-architect') {
-        const seeds = await db.getAllMindSeeds(activeTab);
-        setSavedSeeds(seeds);
-      }
-    } catch (error) {
-      console.error("Failed to load seeds", error);
-    }
-  };
 
   const loadDraft = async () => {
     try {
@@ -145,9 +135,9 @@ const MindSeedArchitect: React.FC = () => {
     };
 
     try {
-      await db.addMindSeed(newSeed);
-      await loadSavedSeeds();
-      setToast({ message: "MindSeed saved to library!", type: 'success' });
+      await db.addMindSeed(activeTab, newSeed);
+      await loadArchive();
+      setToast({ message: "Seed saved to library!", type: 'success' });
     } catch (error) {
       setToast({ message: "Failed to save MindSeed", type: 'error' });
     }
@@ -160,9 +150,24 @@ const MindSeedArchitect: React.FC = () => {
   const confirmDelete = async () => {
     if (seedToDelete === null) return;
     try {
-      await db.deleteMindSeed(seedToDelete, activeTab);
-      await loadSavedSeeds();
-      setToast({ message: "MindSeed deleted.", type: 'success' });
+      const seed = savedSeeds.find(s => s.id === seedToDelete);
+      if (!seed) return;
+      
+      const unified: UnifiedItem = {
+          id: `mindseed-${seed.id}`,
+          name: seed.result.seed || 'Untitled MindSeed',
+          type: 'mindseed',
+          original: seed,
+          createdAt: seed.createdAt,
+          isStarred: seed.isStarred || false,
+          isPinned: seed.isPinned || false,
+          isArchived: seed.isArchived || false,
+          category: seed.category || ''
+      };
+      
+      await removeContextItem(unified);
+      setToast({ message: "Seed deleted", type: 'success' });
+      setPreviewSeed(null);
     } catch (error) {
       setToast({ message: "Failed to delete MindSeed", type: 'error' });
     } finally {
@@ -171,10 +176,19 @@ const MindSeedArchitect: React.FC = () => {
   };
 
   const handleUpdateMetadata = async (seed: SavedMindSeed, metadata: any) => {
-    const updated = { ...seed, ...metadata };
-    await db.updateMindSeed(updated);
-    setSavedSeeds(prev => prev.map(s => s.id === seed.id ? updated : s));
-    if (previewSeed?.id === seed.id) setPreviewSeed(updated);
+    const unified: UnifiedItem = {
+        id: `mindseed-${seed.id}`,
+        name: seed.result.seed || 'Untitled MindSeed',
+        type: 'mindseed',
+        original: seed,
+        createdAt: seed.createdAt,
+        isStarred: seed.isStarred || false,
+        isPinned: seed.isPinned || false,
+        isArchived: seed.isArchived || false,
+        category: seed.category || ''
+    };
+    await updateItemMetadata(unified, metadata);
+    if (previewSeed?.id === seed.id) setPreviewSeed({ ...seed, ...metadata });
   };
 
   const seedToUnified = (seed: SavedMindSeed): UnifiedItem => ({
@@ -198,9 +212,13 @@ const MindSeedArchitect: React.FC = () => {
   };
 
   const handleClearAll = async () => {
-    await db.clearAllMindSeeds(activeTab);
-    await loadSavedSeeds();
-    setToast({ message: 'All seeds cleared.', type: 'success' });
+    try {
+      await db.clearMindSeeds(activeTab);
+      await loadArchive();
+      setToast({ message: "All seeds cleared", type: 'success' });
+    } catch (error) {
+        setToast({ message: "Failed to clear seeds", type: 'error' });
+    }
     setIsClearAllConfirmOpen(false);
   };
 

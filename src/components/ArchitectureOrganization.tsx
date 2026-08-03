@@ -4,6 +4,7 @@ import {
     LibraryMetadata, UnifiedItem, ExportFormat
 } from '../types';
 import * as db from '../services/dbService';
+import { useArchive } from '../context/ArchiveContext';
 import LibraryItem from './LibraryItem';
 import LibraryListItem from './LibraryListItem';
 import PreviewModal from './PreviewModal';
@@ -49,7 +50,7 @@ const TYPE_ICONS: Record<UnifiedItem['type'], string> = {
 };
 
 const ArchitectureOrganization: React.FC = () => {
-    const [items, setItems] = useState<UnifiedItem[]>([]);
+    const { unifiedItems: items, updateItemMetadata, deleteItem: removeContextItem, loadArchive } = useArchive();
     const [searchTerm, setSearchTerm] = useState('');
     const [activeCategory, setActiveCategory] = useState<string>('all');
     const [activeTypeFilter, setActiveTypeFilter] = useState<string>('all_types');
@@ -68,14 +69,6 @@ const ArchitectureOrganization: React.FC = () => {
     const [editName, setEditName] = useState('');
     const [bulkCategoryInput, setBulkCategoryInput] = useState('');
     const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
-    const loadAllData = useCallback(async () => {
-        const unified = await db.getAllUnifiedItems();
-        setItems(unified);
-    }, []);
-
-    useEffect(() => {
-        loadAllData();
-    }, [loadAllData]);
 
     // Global categories for autocomplete in batch actions
     const allCategories = Array.from(new Set(items.map(i => i.category).filter(c => c && c.trim()))).sort();
@@ -94,14 +87,12 @@ const ArchitectureOrganization: React.FC = () => {
 
     const handleToggleMetadata = async (item: UnifiedItem, field: keyof LibraryMetadata) => {
         const newValue = !item[field as keyof UnifiedItem];
-        await db.updateUnifiedItemMetadata(item, { [field]: newValue });
-        setItems(prev => prev.map(i => i.id === item.id ? { ...i, [field]: newValue, original: { ...i.original, [field]: newValue } } : i));
+        await updateItemMetadata(item, { [field]: newValue });
         if (previewItem?.id === item.id) setPreviewItem({ ...item, [field]: newValue, original: { ...item.original, [field]: newValue } });
     };
 
     const handleUpdateCategory = async (item: UnifiedItem, category: string) => {
-        await db.updateUnifiedItemMetadata(item, { category });
-        setItems(prev => prev.map(i => i.id === item.id ? { ...i, category, original: { ...i.original, category } } : i));
+        await updateItemMetadata(item, { category });
         if (previewItem?.id === item.id) setPreviewItem({ ...item, category, original: { ...item.original, category } });
     };
 
@@ -160,7 +151,8 @@ const ArchitectureOrganization: React.FC = () => {
             case 'seed-architect': await db.updateSeed(updatedOriginal); break;
         }
 
-        setItems(prev => prev.map(i => i.id === editItem.id ? { ...i, name: editName, original: updatedOriginal } : i));
+        // Reload archive to ensure global context has latest core content data
+        await loadArchive();
         setEditItem(null);
         setToast({ message: 'Item updated', type: 'success' });
     };
@@ -172,8 +164,7 @@ const ArchitectureOrganization: React.FC = () => {
 
     const confirmDelete = async () => {
         if (!deleteTarget) return;
-        await db.deleteUnifiedItem(deleteTarget);
-        setItems(prev => prev.filter(i => i.id !== deleteTarget.id));
+        await removeContextItem(deleteTarget);
         setToast({ message: 'Item deleted', type: 'success' });
         setPreviewItem(null);
         setIsDeleteConfirmOpen(false);
@@ -229,8 +220,7 @@ const ArchitectureOrganization: React.FC = () => {
         }
         const selectedItems = items.filter(i => selectedIds.has(String(i.id)));
         for (const item of selectedItems) {
-            await db.updateUnifiedItemMetadata(item, { category: bulkCategoryInput.trim() });
-            setItems(prev => prev.map(i => i.id === item.id ? { ...i, category: bulkCategoryInput.trim(), original: { ...i.original, category: bulkCategoryInput.trim() } } : i));
+            await updateItemMetadata(item, { category: bulkCategoryInput.trim() });
         }
         setBulkCategoryInput('');
         setSelectedIds(new Set());
@@ -635,7 +625,7 @@ const ArchitectureOrganization: React.FC = () => {
                 <SynthesisWorkspace
                     sourceItems={items.filter(i => selectedIds.has(String(i.id))).map(i => i.original)}
                     onClose={() => { setIsSynthesisMode(false); setSelectedIds(new Set()); }}
-                    onSaveSuccess={() => loadAllData()}
+                    onSaveSuccess={() => loadArchive()}
                 />
             )}
 

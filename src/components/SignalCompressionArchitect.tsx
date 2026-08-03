@@ -14,6 +14,7 @@ import PreviewModal from './PreviewModal';
 import LibraryItem from './LibraryItem';
 import { StarredPinnedBar } from './StarredPinnedBar';
 import { getDeepSearchText } from '../utils/search';
+import { useArchive } from '../context/ArchiveContext';
 
 const MAX_CHARS = 25000;
 
@@ -26,7 +27,8 @@ const SignalCompressionArchitect: React.FC = () => {
     const abortControllerRef = useRef<AbortController | null>(null);
     const loadingIntervalRef = useRef<number | null>(null);
 
-    const [savedSignals, setSavedSignals] = useState<SavedCompressedSignal[]>([]);
+    const { unifiedItems, updateItemMetadata, deleteItem: removeContextItem, loadArchive } = useArchive();
+    const savedSignals = React.useMemo(() => unifiedItems.filter(i => i.type === 'compressed-signal').map(i => i.original as SavedCompressedSignal), [unifiedItems]);
     const [searchTerm, setSearchText] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
     const [draftStatus, setDraftStatus] = useState<'unloaded' | 'loaded' | 'none'>('unloaded');
@@ -46,10 +48,7 @@ const SignalCompressionArchitect: React.FC = () => {
         allItemsSection: true
     });
 
-    const loadSavedSignals = useCallback(async () => {
-        const signals = await db.getAllCompressedSignals();
-        setSavedSignals(signals);
-    }, []);
+
 
     useEffect(() => {
         loadSavedSignals();
@@ -70,7 +69,7 @@ const SignalCompressionArchitect: React.FC = () => {
             }
         };
         loadDraft();
-    }, [loadSavedSignals]);
+    }, []);
 
     useEffect(() => {
         if (draftStatus === 'unloaded') return;
@@ -144,16 +143,15 @@ const SignalCompressionArchitect: React.FC = () => {
 
         await db.addCompressedSignal(newSignal);
         setSuccessMessage('Compressed signal saved successfully!');
-        loadSavedSignals();
+        await loadArchive();
         setIsSaveModalOpen(false);
         setSaveName('');
     };
 
     const handleUpdateMetadata = async (signal: SavedCompressedSignal, metadata: any) => {
-        const updated = { ...signal, ...metadata };
-        await db.updateCompressedSignal(updated);
-        setSavedSignals(prev => prev.map(s => s.id === signal.id ? updated : s));
-        if (previewSignal?.id === signal.id) setPreviewSignal(updated);
+        const unified: UnifiedItem = signalToUnified(signal);
+        await updateItemMetadata(unified, metadata);
+        if (previewSignal?.id === signal.id) setPreviewSignal({ ...signal, ...metadata });
     };
 
     const signalToUnified = (signal: SavedCompressedSignal): UnifiedItem => ({
@@ -177,8 +175,10 @@ const SignalCompressionArchitect: React.FC = () => {
 
     const confirmDelete = async () => {
         if (deleteTarget === null) return;
-        await db.deleteCompressedSignal(deleteTarget);
-        setSavedSignals(prev => prev.filter(s => s.id !== deleteTarget));
+        const signal = savedSignals.find(s => s.id === deleteTarget);
+        if (!signal) return;
+        const unified: UnifiedItem = signalToUnified(signal);
+        await removeContextItem(unified);
         setSuccessMessage('Signal deleted successfully!');
         setIsDeleteConfirmOpen(false);
         setDeleteTarget(null);
@@ -187,7 +187,7 @@ const SignalCompressionArchitect: React.FC = () => {
 
     const handleClearAll = async () => {
         await db.clearAllCompressedSignals();
-        loadSavedSignals();
+        await loadArchive();
         setSuccessMessage('All compressed signals cleared.');
         setIsClearAllConfirmOpen(false);
     };

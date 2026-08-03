@@ -1,8 +1,8 @@
-
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
+import { ArchiveProvider } from './context/ArchiveContext';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -12,6 +12,8 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <App />
+    <ArchiveProvider>
+      <App />
+    </ArchiveProvider>
   </React.StrictMode>
 );

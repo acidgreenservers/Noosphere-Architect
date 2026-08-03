@@ -14,6 +14,7 @@ import PreviewModal from './PreviewModal';
 import LibraryItem from './LibraryItem';
 import Toast from './Toast';
 import { StarredPinnedBar } from './StarredPinnedBar';
+import { useArchive } from '../context/ArchiveContext';
 
 const Tooltip: React.FC<{ text: string }> = ({ text }) => (
   <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-max max-w-xs p-3 bg-slate-900 text-white text-[11px] font-semibold rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
@@ -54,7 +55,8 @@ const AgentJobArchitect: React.FC = () => {
   const loadingIntervalRef = useRef<number | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const [savedAgentJobs, setSavedAgentJobs] = useState<SavedAgentJob[]>([]);
+  const { unifiedItems, updateItemMetadata, deleteItem: removeContextItem, loadArchive } = useArchive();
+  const savedAgentJobs = React.useMemo(() => unifiedItems.filter(i => i.type === 'agentJob').map(i => i.original as SavedAgentJob), [unifiedItems]);
   const [searchTerm, setSearchTerm] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [draftStatus, setDraftStatus] = useState<'unloaded' | 'loaded' | 'none'>('unloaded');
@@ -73,13 +75,7 @@ const AgentJobArchitect: React.FC = () => {
   const [isClearAllConfirmOpen, setIsClearAllConfirmOpen] = useState(false);
   const [saveName, setSaveName] = useState('');
 
-  const loadSavedAgentJobs = useCallback(async () => {
-    const jobs = await db.getAllAgentJobs();
-    setSavedAgentJobs(jobs);
-  }, []);
 
-  useEffect(() => {
-    loadSavedAgentJobs();
     const loadDraft = async () => {
       if (isCheckingDraft.current) return;
       isCheckingDraft.current = true;
@@ -91,7 +87,7 @@ const AgentJobArchitect: React.FC = () => {
       }
     };
     loadDraft();
-  }, [loadSavedAgentJobs]);
+  }, []);
 
   useEffect(() => {
     if (draftStatus === 'unloaded') return;
@@ -187,14 +183,23 @@ const AgentJobArchitect: React.FC = () => {
     setSuccessMessage('Agent job description saved!');
     setIsSaveModalOpen(false);
     setSaveName('');
-    loadSavedAgentJobs();
+    await loadArchive();
   };
 
   const handleUpdateMetadata = async (job: SavedAgentJob, metadata: any) => {
-    const updated = { ...job, ...metadata };
-    await db.updateAgentJob(updated);
-    setSavedAgentJobs(prev => prev.map(p => p.id === job.id ? updated : p));
-    if (previewJob?.id === job.id) setPreviewJob(updated);
+    const unified: UnifiedItem = {
+      id: `agentJob-${job.id}`,
+      name: job.name,
+      type: 'agentJob',
+      original: job,
+      createdAt: job.createdAt,
+      isStarred: job.isStarred || false,
+      isPinned: job.isPinned || false,
+      isArchived: job.isArchived || false,
+      category: job.category || ''
+    };
+    await updateItemMetadata(unified, metadata);
+    if (previewJob?.id === job.id) setPreviewJob({ ...job, ...metadata });
   };
 
   const promptDelete = (id: number) => {
@@ -204,8 +209,22 @@ const AgentJobArchitect: React.FC = () => {
 
   const handleDelete = async () => {
     if (deleteTarget === null) return;
-    await db.deleteAgentJob(deleteTarget);
-    setSavedAgentJobs(prev => prev.filter(j => j.id !== deleteTarget));
+    const job = savedAgentJobs.find(j => j.id === deleteTarget);
+    if (!job) return;
+    
+    const unified: UnifiedItem = {
+      id: `agentJob-${job.id}`,
+      name: job.name,
+      type: 'agentJob',
+      original: job,
+      createdAt: job.createdAt,
+      isStarred: job.isStarred || false,
+      isPinned: job.isPinned || false,
+      isArchived: job.isArchived || false,
+      category: job.category || ''
+    };
+    
+    await removeContextItem(unified);
     setSuccessMessage('Agent job deleted.');
     setIsDeleteConfirmOpen(false);
     setDeleteTarget(null);
@@ -213,7 +232,8 @@ const AgentJobArchitect: React.FC = () => {
 
   const handleClearAll = async () => {
     await db.clearAllAgentJobs();
-    setSavedAgentJobs([]);
+    await db.clearAllAgentJobs();
+    await loadArchive();
     setSuccessMessage('All agent jobs cleared.');
     setIsClearAllConfirmOpen(false);
   };
