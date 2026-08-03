@@ -302,7 +302,7 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
                         onClick={() => setActiveTab('compression')}
                         className={`whitespace-nowrap py-2.5 px-5 rounded-xl font-semibold text-xs tracking-wider uppercase transition-all duration-200 cursor-pointer ${activeTab === 'compression' ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/10' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/50'}`}
                     >
-                        Compression
+                        Signal Compressor
                     </button>
                 </nav>
             </div>
