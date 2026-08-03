@@ -490,7 +490,7 @@ const ArchitectureOrganization: React.FC = () => {
                                             createdAt={item.createdAt}
                                             metadata={item}
                                             icon={TYPE_ICONS[item.type]}
-                                            typeLabel={item.type.replace('prompt-', '')}
+                                            typeLabel={TYPE_LABELS[item.type]}
                                             onPreview={() => setPreviewItem(item)}
                                             onDelete={() => handleDelete(item)}
                                             onToggleStar={() => handleToggleMetadata(item, 'isStarred')}
@@ -507,7 +507,7 @@ const ArchitectureOrganization: React.FC = () => {
                                             createdAt={item.createdAt}
                                             metadata={item}
                                             icon={TYPE_ICONS[item.type]}
-                                            typeLabel={item.type.replace('prompt-', '')}
+                                            typeLabel={TYPE_LABELS[item.type]}
                                             onPreview={() => setPreviewItem(item)}
                                             onDelete={() => handleDelete(item)}
                                             onToggleStar={() => handleToggleMetadata(item, 'isStarred')}

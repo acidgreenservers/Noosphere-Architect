@@ -30,7 +30,7 @@ const MindSeedArchitect: React.FC = () => {
   const savedSeeds = React.useMemo(() => {
     if (activeTab === 'seed-architect') return [];
     return unifiedItems
-        .filter(i => i.type === 'mindseed' && (i.original as SavedMindSeed).type === activeTab)
+        .filter(i => i.type === 'mindseed' && (i.original as SavedMindSeed).config?.type === activeTab)
         .map(i => i.original as SavedMindSeed);
   }, [unifiedItems, activeTab]);
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
@@ -135,7 +135,7 @@ const MindSeedArchitect: React.FC = () => {
     };
 
     try {
-      await db.addMindSeed(activeTab, newSeed);
+      await db.addMindSeed(newSeed);
       await loadArchive();
       setToast({ message: "Seed saved to library!", type: 'success' });
     } catch (error) {
@@ -213,7 +213,7 @@ const MindSeedArchitect: React.FC = () => {
 
   const handleClearAll = async () => {
     try {
-      await db.clearMindSeeds(activeTab);
+      await db.clearAllMindSeeds(activeTab);
       await loadArchive();
       setToast({ message: "All seeds cleared", type: 'success' });
     } catch (error) {
