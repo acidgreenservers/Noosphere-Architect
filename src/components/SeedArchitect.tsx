@@ -13,6 +13,8 @@ import { StarredPinnedBar } from './StarredPinnedBar';
 import { UnifiedItem } from '../types';
 import { getDeepSearchText } from '../utils/search';
 
+const MAX_CHARS = 20000;
+
 const SeedArchitect: React.FC = () => {
   const [config, setConfig] = useState<SeedConfig>({
     promptText: '',
@@ -33,6 +35,10 @@ const SeedArchitect: React.FC = () => {
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const [savedSeeds, setSavedSeeds] = useState<SavedSeed[]>([]);
+  const charCount = config.promptText.length;
+  const isNearLimit = charCount > MAX_CHARS * 0.9;
+  const charCountColor = charCount > MAX_CHARS ? 'text-red-600' : isNearLimit ? 'text-orange-500' : 'text-slate-400';
+
   const [searchTerm, setSearchText] = useState('');
   const [previewSeed, setPreviewSeed] = useState<SavedSeed | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
@@ -239,15 +245,19 @@ const SeedArchitect: React.FC = () => {
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8 border border-gray-100 dark:border-gray-700">
         <div className="space-y-6">
           <div>
-            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
-              Input Prompt to Evaluate
+            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">
+              Input Spec Context (up to 20,000 characters)
             </label>
             <textarea
               value={config.promptText}
               onChange={(e) => setConfig({ ...config, promptText: e.target.value })}
               className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all h-32 resize-none font-mono text-sm"
               placeholder="Paste the prompt you want to stress-test for semantic stability..."
+              maxLength={MAX_CHARS}
             />
+            <div className={`mt-2 text-right text-xs font-semibold ${charCountColor}`}>
+              {charCount.toLocaleString()} / {MAX_CHARS.toLocaleString()}
+            </div>
           </div>
 
           <div className="flex flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-6">
