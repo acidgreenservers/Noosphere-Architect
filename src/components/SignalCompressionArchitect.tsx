@@ -51,7 +51,6 @@ const SignalCompressionArchitect: React.FC = () => {
 
 
     useEffect(() => {
-        loadSavedSignals();
         const loadDraft = async () => {
             if (isCheckingDraft.current) return;
             isCheckingDraft.current = true;

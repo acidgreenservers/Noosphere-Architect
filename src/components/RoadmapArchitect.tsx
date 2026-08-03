@@ -49,6 +49,7 @@ const RoadmapArchitect: React.FC = () => {
   const [saveName, setSaveName] = useState('');
 
 
+  useEffect(() => {
     const loadDraft = async () => {
       if (isCheckingDraft.current) return;
       isCheckingDraft.current = true;

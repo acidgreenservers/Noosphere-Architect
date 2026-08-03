@@ -56,6 +56,7 @@ const SeedArchitect: React.FC = () => {
   const isCheckingDraft = useRef(false);
 
 
+  useEffect(() => {
     const loadDraft = async () => {
       if (isCheckingDraft.current) return;
       isCheckingDraft.current = true;

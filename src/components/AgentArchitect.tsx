@@ -75,6 +75,7 @@ const AgentArchitect: React.FC<AgentArchitectProps> = ({ initialConfig, onClearI
     allItemsSection: true
   });
 
+  useEffect(() => {
     if (initialConfig) {
       setAgentConfig(initialConfig);
       if (onClearInitialConfig) onClearInitialConfig();

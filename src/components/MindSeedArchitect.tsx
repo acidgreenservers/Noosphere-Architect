@@ -46,10 +46,6 @@ const MindSeedArchitect: React.FC = () => {
     allItemsSection: true
   });
 
-  useEffect(() => {
-    loadDraft();
-  }, []);
-
   const loadDraft = async () => {
     try {
       const draft = await db.getMindSeedDraft(1);
@@ -61,6 +57,10 @@ const MindSeedArchitect: React.FC = () => {
       console.error("Failed to load draft", error);
     }
   };
+
+  useEffect(() => {
+    loadDraft();
+  }, []);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newText = e.target.value;
