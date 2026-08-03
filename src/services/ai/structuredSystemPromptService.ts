@@ -128,6 +128,8 @@ export const generateStructuredSystemPrompt = async (config: PromptConfig, signa
 
   const customContext = await getCustomContext('systemPromptContext');
   const metaPrompt = createSystemPromptMetaPrompt(config, customContext);
-  const raw = await handleAiCall<unknown>(metaPrompt, true, "generating system prompt", signal);
-  return validateGeneratedPrompt(raw);
+  const raw = await handleAiCall<GeneratedPrompt>(metaPrompt, true, "generating system prompt", signal, {
+    validator: validateGeneratedPrompt
+  });
+  return raw;
 };

@@ -59,6 +59,8 @@ export const generateAgentPersona = async (config: AgentConfig, signal?: AbortSi
 
   const customContext = await getCustomContext('agentContext');
   const metaPrompt = createAgentPersonaMetaPrompt(config, customContext);
-  const raw = await handleAiCall<unknown>(metaPrompt, true, "generating agent persona", signal);
-  return validateGeneratedPrompt(raw);
+  const raw = await handleAiCall<GeneratedPrompt>(metaPrompt, true, "generating agent persona", signal, {
+    validator: validateGeneratedPrompt
+  });
+  return raw;
 };

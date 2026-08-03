@@ -18,6 +18,7 @@ export const getOpenRouterConfig = () => {
 export interface AiCallOptions {
   systemPrompt?: string;
   maxTokens?: number;
+  validator?: (parsedData: any) => void;
 }
 
 /**
@@ -138,10 +139,14 @@ export const handleAiCall = async <T>(
         }
 
         try {
-          return JSON.parse(cleanedText) as T;
-        } catch (parseErr) {
+          const parsed = JSON.parse(cleanedText);
+          if (options?.validator) {
+            options.validator(parsed); // Throws if invalid
+          }
+          return parsed as T;
+        } catch (parseErr: any) {
           const errorStr = responseText.slice(0, 200);
-          const error = new Error(`AI response was not in a valid JSON format. Raw output: ${errorStr}`);
+          const error = new Error(`AI response was not valid. ${parseErr.message || ''}. Raw: ${errorStr}`);
           (error as any).status = 502; // Treat malformed JSON as a Bad Gateway to trigger retry
           throw error;
         }

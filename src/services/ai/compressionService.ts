@@ -56,6 +56,8 @@ function validateCompressedSignal(raw: unknown): CompressedSignal {
 export const generateCompressedSignal = async (config: CompressionConfig, signal?: AbortSignal): Promise<CompressedSignal> => {
   const customContext = await getCustomContext('compressedSignalContext');
   const prompt = createCompressionMetaPrompt(config, customContext);
-  const raw = await handleAiCall<unknown>(prompt, true, "compressing signal", signal);
-  return validateCompressedSignal(raw);
+  const raw = await handleAiCall<CompressedSignal>(prompt, true, "compressing signal", signal, {
+    validator: validateCompressedSignal
+  });
+  return raw;
 };

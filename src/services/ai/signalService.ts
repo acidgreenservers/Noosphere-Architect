@@ -63,6 +63,8 @@ export const extractSignal = async (config: SignalConfig, signal?: AbortSignal):
 
   const customContext = await getCustomContext('signalContext');
   const prompt = createSignalExtractorMetaPrompt(config, customContext);
-  const raw = await handleAiCall<unknown>(prompt, true, "extracting signal", signal);
-  return validateExtractedSignal(raw);
+  const raw = await handleAiCall<ExtractedSignal>(prompt, true, "extracting signal", signal, {
+    validator: validateExtractedSignal
+  });
+  return raw;
 };
