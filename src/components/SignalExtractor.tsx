@@ -6,6 +6,7 @@ import { AbortError } from '../services/ai/openRouter';
 import { SignalConfig, ExtractedSignal, SavedSignal, PromptConfig } from '../types';
 import * as db from '../services/dbService';
 import { sanitizeFilename } from '../utils/security';
+import { fallbackCopyTextToClipboard } from '../utils/clipboard';
 import LoadingSpinner from './LoadingSpinner';
 import Modal from './Modal';
 import PreviewModal from './PreviewModal';
@@ -46,8 +47,9 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
     
     const [searchTerm, setSearchText] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
-    const [draftStatus, setDraftStatus] = useState<'unloaded' | 'loaded' | 'none'>('unloaded');
+    const [draftStatus, setDraftStatus] = useState<'checking' | 'loaded' | 'none' | 'unloaded'>('unloaded');
     const [pendingDraft, setPendingDraft] = useState<SignalConfig | null>(null);
+    const [isCopied, setIsCopied] = useState(false);
     const isCheckingDraft = useRef(false);
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
         starredSection: true,
@@ -248,11 +250,14 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
         });
     };
 
-    const handleCopySignal = (originalPrompt: string, signal: string, constraints: string) => {
-        const quotedOriginal = originalPrompt.split('\n').map(line => `> ${line}`).join('\n');
-        const textToCopy = `## User Prompt\n\n${quotedOriginal}\n>\n>\n\n## Prompt Signal\n\n${signal}\n\n## Signal Constraints\n\n${constraints}`;
-        navigator.clipboard.writeText(textToCopy);
-        setSuccessMessage('Signal copied to clipboard!');
+    const handleCopySignal = async (originalPrompt: string, signal: string, constraints: string) => {
+        const safeOriginal = originalPrompt || '';
+        const quotedOriginal = safeOriginal.split('\n').map(line => `> ${line}`).join('\n');
+        const textToCopy = `## User Prompt\n\n${quotedOriginal}\n>\n>\n\n## Prompt Signal\n\n${signal || ''}\n\n## Signal Constraints\n\n${constraints || ''}`;
+        
+        await fallbackCopyTextToClipboard(textToCopy);
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
     };
 
     const handleExportSignal = (name: string, originalPrompt: string, signal: string, constraints: string) => {
@@ -368,8 +373,8 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
                             <p className="text-xs text-slate-500 mt-1">{totalChars} / 1000 characters utilized.</p>
                         </div>
                         <div className="flex flex-wrap items-center gap-3">
-                           <button onClick={() => handleCopySignal(config.messyPrompt, result.promptSignal, result.signalConstraints)} className="flex items-center px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900/60 transition cursor-pointer" title="Copy to clipboard">
-                                <span className="material-icons text-base mr-2">content_copy</span>Copy
+                           <button onClick={() => handleCopySignal(config.messyPrompt, result.promptSignal, result.signalConstraints)} className={`flex items-center px-4 py-2 border rounded-xl text-sm font-semibold transition cursor-pointer ${isCopied ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20' : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900/60'}`} title="Copy to clipboard">
+                                <span className="material-icons text-base mr-2">{isCopied ? 'check' : 'content_copy'}</span>{isCopied ? 'Copied' : 'Copy'}
                             </button>
                            <button onClick={() => { handleExportSignal(saveName, config.messyPrompt, result.promptSignal, result.signalConstraints); setSuccessMessage('Signal exported successfully!'); }} className="flex items-center px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900/60 transition cursor-pointer" title="Export signal">
                                 <span className="material-icons text-base mr-2">download</span>Export

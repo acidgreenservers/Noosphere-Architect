@@ -9,6 +9,7 @@ import { PromptConfig, SavedPrompt, PromptType, GeneratedPrompt, AgentConfig, Ge
 import * as db from '../services/dbService';
 import JSZip from 'jszip';
 import { sanitizeFilename } from '../utils/security';
+import { fallbackCopyTextToClipboard } from '../utils/clipboard';
 import LoadingSpinner from './LoadingSpinner';
 import Modal from './Modal';
 import PreviewModal from './PreviewModal';
@@ -87,8 +88,9 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
     const [searchTerm, setSearchText] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
-    const [draftStatus, setDraftStatus] = useState<'unloaded' | 'loaded' | 'none'>('unloaded');
-    const [pendingDraft, setPendingDraft] = useState<{ type: PromptType; config: PromptConfig | AgentConfig } | null>(null);
+    const [draftStatus, setDraftStatus] = useState<'checking' | 'loaded' | 'none' | 'unloaded'>('unloaded');
+    const [pendingDraft, setPendingDraft] = useState<{type: PromptType, config: PromptConfig | AgentConfig} | null>(null);
+    const [isCopied, setIsCopied] = useState(false);
     const checkingDraftRef = useRef<Record<PromptType, boolean>>({ standard: false, system: false });
 
     const [modalState, setModalState] = useState<{ mode: 'save' | 'edit'; prompt?: SavedPrompt } | null>(null);
@@ -496,7 +498,14 @@ const PromptArchitect: React.FC<PromptArchitectProps> = ({ initialConfig, onClea
                                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-slate-200/60 dark:border-slate-800/50 gap-4">
                                     <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Generated Prompt</h3>
                                     <div className="flex items-center space-x-2">
-                                       <button onClick={() => { navigator.clipboard.writeText(generatedPrompt.prompt); setSuccessMessage('Copied!'); }} className="px-3 py-1.5 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold flex items-center hover:bg-slate-100 dark:hover:bg-slate-900/50 transition cursor-pointer"><span className="material-icons text-sm mr-1.5">content_copy</span>Copy</button>
+                                       <button onClick={async () => { 
+                                           const text = `## Signal Analysis\n\n${generatedPrompt.signal || ''}\n\n## Generated Prompt\n\n${generatedPrompt.prompt || ''}`;
+                                           await fallbackCopyTextToClipboard(text); 
+                                           setIsCopied(true);
+                                           setTimeout(() => setIsCopied(false), 2000);
+                                       }} className={`px-3 py-1.5 border rounded-xl text-xs font-semibold flex items-center transition cursor-pointer ${isCopied ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20' : 'border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-900/50'}`}>
+                                           <span className="material-icons text-sm mr-1.5">{isCopied ? 'check' : 'content_copy'}</span>{isCopied ? 'Copied' : 'Copy'}
+                                       </button>
                                        <button onClick={handleOpenSaveModal} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center shadow-md shadow-blue-600/10 transition cursor-pointer"><span className="material-icons text-sm mr-1.5">save</span>Save</button>
                                     </div>
                                 </div>
