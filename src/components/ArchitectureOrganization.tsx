@@ -77,7 +77,20 @@ const ArchitectureOrganization: React.FC = () => {
         loadAllData();
     }, [loadAllData]);
 
+    // Global categories for autocomplete in batch actions
     const allCategories = Array.from(new Set(items.map(i => i.category).filter(c => c && c.trim()))).sort();
+
+    // Contextual categories for the Filter Ribbon (only shows categories valid for current type/view)
+    const visibleCategories = Array.from(new Set(items.filter(item => {
+        if (activeTypeFilter !== 'all_types' && item.type !== activeTypeFilter) return false;
+        
+        const isItemArchived = item.isArchived === true || String(item.isArchived) === 'true';
+        if (activeCategory === 'archived' && !isItemArchived) return false;
+        if (activeCategory === 'starred' && !item.isStarred) return false;
+        if (activeCategory === 'pinned' && !item.isPinned) return false;
+        
+        return true;
+    }).map(i => i.category).filter(c => c && c.trim()))).sort();
 
     const handleToggleMetadata = async (item: UnifiedItem, field: keyof LibraryMetadata) => {
         const newValue = !item[field as keyof UnifiedItem];
@@ -365,7 +378,13 @@ const ArchitectureOrganization: React.FC = () => {
                     <div className="relative">
                         <select
                             value={activeTypeFilter}
-                            onChange={(e) => setActiveTypeFilter(e.target.value)}
+                            onChange={(e) => {
+                                setActiveTypeFilter(e.target.value);
+                                // If they were viewing a custom category, reset it so they don't get trapped in an empty state
+                                if (!['all', 'starred', 'pinned', 'archived'].includes(activeCategory)) {
+                                    setActiveCategory('all');
+                                }
+                            }}
                             className="appearance-none bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl pl-10 pr-10 py-2 text-sm font-semibold text-gray-700 dark:text-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
                         >
                             <option value="all_types">All Types</option>
@@ -380,7 +399,7 @@ const ArchitectureOrganization: React.FC = () => {
                     </div>
 
                     {/* Category Filter */}
-                    {allCategories.length > 0 && (
+                    {visibleCategories.length > 0 && (
                         <div className="relative">
                             <select
                                 value={['all', 'starred', 'pinned', 'archived'].includes(activeCategory) ? 'all_categories' : activeCategory}
@@ -391,10 +410,10 @@ const ArchitectureOrganization: React.FC = () => {
                                         setActiveCategory(e.target.value);
                                     }
                                 }}
-                                className="appearance-none bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl pl-10 pr-10 py-2 text-sm font-semibold text-gray-700 dark:text-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
+                                className="appearance-none bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl pl-10 pr-10 py-2 text-sm font-semibold text-gray-700 dark:text-gray-300 shadow-sm focus:ring-2 focus:ring-purple-500 outline-none cursor-pointer"
                             >
                                 <option value="all_categories">All Categories</option>
-                                {allCategories.map(cat => (
+                                {visibleCategories.map(cat => (
                                     <option key={cat} value={cat}>{cat}</option>
                                 ))}
                             </select>
