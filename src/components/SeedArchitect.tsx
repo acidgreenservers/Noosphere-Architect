@@ -242,7 +242,7 @@ const SeedArchitect: React.FC = () => {
     <div className="space-y-8">
       <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
 
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8 border border-gray-100 dark:border-gray-700">
+      <div className="bg-transparent">
         <div className="space-y-6">
           <div>
             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">
@@ -251,7 +251,7 @@ const SeedArchitect: React.FC = () => {
             <textarea
               value={config.promptText}
               onChange={(e) => setConfig({ ...config, promptText: e.target.value })}
-              className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all h-32 resize-none font-mono text-sm"
+              className="w-full px-4 py-3 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-blue-500/40 outline-none transition-all h-32 resize-none font-mono text-sm custom-scrollbar"
               placeholder="Paste the prompt you want to stress-test for semantic stability..."
               maxLength={MAX_CHARS}
             />
