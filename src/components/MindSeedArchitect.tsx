@@ -14,11 +14,12 @@ import LibraryItem from './LibraryItem';
 import { StarredPinnedBar } from './StarredPinnedBar';
 import { UnifiedItem } from '../types';
 import { getDeepSearchText } from '../utils/search';
+import SeedArchitect from './SeedArchitect';
 
 const MAX_CHARS = 20000;
 
 const MindSeedArchitect: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<MindSeedType>('cogni');
+  const [activeTab, setActiveTab] = useState<MindSeedType | 'seed-architect'>('cogni');
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
@@ -39,7 +40,9 @@ const MindSeedArchitect: React.FC = () => {
   });
 
   useEffect(() => {
-    loadSavedSeeds();
+    if (activeTab !== 'seed-architect') {
+      loadSavedSeeds();
+    }
   }, [activeTab]);
 
   useEffect(() => {
@@ -48,8 +51,10 @@ const MindSeedArchitect: React.FC = () => {
 
   const loadSavedSeeds = async () => {
     try {
-      const seeds = await db.getAllMindSeeds(activeTab);
-      setSavedSeeds(seeds);
+      if (activeTab !== 'seed-architect') {
+        const seeds = await db.getAllMindSeeds(activeTab);
+        setSavedSeeds(seeds);
+      }
     } catch (error) {
       console.error("Failed to load seeds", error);
     }
@@ -238,16 +243,18 @@ const MindSeedArchitect: React.FC = () => {
   const isNearLimit = charCount > MAX_CHARS * 0.9;
   const charCountColor = charCount > MAX_CHARS ? 'text-red-600' : isNearLimit ? 'text-orange-500' : 'text-slate-400';
 
-  const getTabColor = (tab: MindSeedType) => {
+  const getTabColor = (tab: MindSeedType | 'seed-architect') => {
     if (activeTab !== tab) return 'text-slate-400 border-transparent hover:text-slate-600';
     switch (tab) {
         case 'cogni': return 'bg-orange-600 text-white shadow-md shadow-orange-600/10';
         case 'lingua': return 'bg-emerald-600 text-white shadow-md shadow-emerald-600/10';
         case 'arch': return 'bg-purple-600 text-white shadow-md shadow-purple-600/10';
+        case 'seed-architect': return 'bg-violet-600 text-white shadow-md shadow-violet-600/10';
     }
   };
 
   const getButtonColorClass = () => {
+    if (activeTab === 'seed-architect') return '';
     switch (activeTab) {
         case 'cogni': return 'bg-orange-600 hover:bg-orange-500 shadow-orange-600/10';
         case 'lingua': return 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/10';
@@ -284,11 +291,26 @@ const MindSeedArchitect: React.FC = () => {
               {tab}Seed Creator
             </button>
           ))}
+          <button
+              role="tab"
+              aria-selected={activeTab === 'seed-architect'}
+              onClick={() => setActiveTab('seed-architect')}
+              className={`
+                whitespace-nowrap py-2.5 px-5 rounded-xl font-semibold text-xs tracking-wider uppercase transition-all duration-200 cursor-pointer
+                ${getTabColor('seed-architect')}
+              `}
+            >
+              Seed Architect
+          </button>
         </nav>
       </div>
 
       <div className="grid grid-cols-1 gap-8">
-        {/* Input Form */}
+        {activeTab === 'seed-architect' ? (
+          <SeedArchitect />
+        ) : (
+          <>
+            {/* Input Form */}
         <div className="bg-transparent">
           <div className="mb-4">
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
@@ -472,6 +494,8 @@ const MindSeedArchitect: React.FC = () => {
                 ))}
             </div>
           </div>
+        )}
+        </>
         )}
       </div>
 

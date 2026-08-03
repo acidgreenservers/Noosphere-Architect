@@ -14,11 +14,7 @@ Routine is built in workflow.
 - **At session boundary**: Commit final state snapshot and next topological move. Batch related changes into atomic commits using Conventional Commits format. Create release tags when topology phase reaches "ceiling" and user intent indicates release readiness. Propose all commits and tags in prose before execution.
 - **Never**: Update STATE.md without first tracing invariants and calibrating confidence. Never commit without user review of the proposed commit message and diff. Never commit without user testing first.
 - **Propose**: The user to test your changes after you make them.
-<<<<<<< HEAD
-- **Git Hygiene** Keep track of the git hygiene of the repo. Surface when the worktree gets dirty, Surface commit and tag gaps.
-=======
 - **Git Hygiene**: Keep track of the git hygiene of the repo. Surface when the worktree gets dirty, Surface commit and tag gaps.
->>>>>>> origin/scribe/documentation-refresh-v17-3611265511105751589
 
 Git Hygiene Mandate: Maintain clean commit history and semantic release tags. Surface commit/tag proposals to the user in prose before executing. Session completion requires STATE.md synchronization AND clean git state.
 
@@ -39,28 +35,9 @@ Git Hygiene Mandate: Maintain clean commit history and semantic release tags. Su
 5. GitHub Actions CI Testing: Integrated `npm test` step into `.github/workflows/deploy.yml` to automatically run all 24 unit tests before building for production.
 
 **Next Topological Move:**
-<<<<<<< HEAD
-- Execute Phase 1 checklist → user validation gate → propose commit → Phase 2 (ToolLibraryView shell + AgentArchitect pilot).
-
----
-
-## Topology History (2026-07-25)
-
-**Phase:** Refining the Floor / Transitioning to the Walls (UX/Data Orchestration)
-**Verified Intent:** Address Core System Invariants (Safe Exports & Clean Search Contracts)
-**Blast Radius:** `src/utils/export.ts`, `src/components/PromptArchitect.tsx`
-
-**Completed Structural Nodes:**
-
-1. Unified Data Searching: Deep recursion enabled for JSON-structured tool configurations.
-2. Safe DB Async: Hoisted all IndexedDB transaction `await` calls out of raw `Promise` constructors across all 22 CRUD & draft operations, eliminating silent lock/hang vectors.
-3. Archive UX Paradigm: The Archive acts as a true literal repository with `viewMode` toggle. High-density List format implemented with Progressive Disclosure (hover menus) and explicit Active Filter observability.
-4. Signal Compression Architect Resilience: Implemented 45s API fetch timeout, robust JSON payload extraction, key normalization, and safe draft loading.
-5. GitHub Actions CI Testing: Integrated `npm test` step into `.github/workflows/deploy.yml` to automatically run all 24 unit tests before building for production.
-6. Core Invariants Hardened: Refactored `src/utils/export.ts` to utilize unified `sanitizeFilename` for both single and batch exports, securing boundaries. Simplified redundant `.toLowerCase()` calls on search lookups, and enriched JSON export metadata schemas.
+6. Sidebar Navigation Refactor: Re-organized the UI to support a 3-level hierarchy (Category → Tool Set → Items). SeedArchitect was successfully moved out of the Sidebar routes and fully integrated as the 4th tab inside MindSeedArchitect. 
 
 **Next Topological Move:**
-=======
->>>>>>> origin/scribe/documentation-refresh-v17-3611265511105751589
+- Await user validation of the Signal Center and MindSeeds layout refactor, and prepare to commit these changes to maintain clean git hygiene.
 
 - Await user guidance on new feature scopes or transition to next domain tool integration. Maintain clean git hygiene and test coverage across new features.

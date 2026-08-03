@@ -13,18 +13,17 @@ import LibraryItem from './LibraryItem';
 import Toast from './Toast';
 import { StarredPinnedBar } from './StarredPinnedBar';
 import { UnifiedItem } from '../types';
-import SeedArchitect from './SeedArchitect';
 import SignalCompressionArchitect from './SignalCompressionArchitect';
 import { getDeepSearchText } from '../utils/search';
 
 interface SignalExtractorProps {
     onTransfer: (config: PromptConfig) => void;
-    initialTab?: 'extractor' | 'seed' | 'compression';
+    initialTab?: 'extractor' | 'compression';
     initialConfig?: SignalConfig;
     onClearInitialConfig?: () => void;
 }
 
-type Tab = 'extractor' | 'seed' | 'compression';
+type Tab = 'extractor' | 'compression';
 
 const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTab = 'extractor', initialConfig, onClearInitialConfig }) => {
     const [activeTab, setActiveTab] = useState<Tab>(initialTab);
@@ -280,8 +279,6 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
                     <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
                         {activeTab === 'extractor'
                             ? 'Extract and amplify the core signal from messy thoughts or rough notes.'
-                            : activeTab === 'seed'
-                            ? 'Evaluate the semantic stability and language curvature of your prompts.'
                             : 'Compress text signals into a coherent, high-density compaction.'}
                     </p>
                 </div>
@@ -298,14 +295,7 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
                     >
                         Signal Extractor
                     </button>
-                    <button
-                        role="tab"
-                        aria-selected={activeTab === 'seed'}
-                        onClick={() => setActiveTab('seed')}
-                        className={`whitespace-nowrap py-2.5 px-5 rounded-xl font-semibold text-xs tracking-wider uppercase transition-all duration-200 cursor-pointer ${activeTab === 'seed' ? 'bg-purple-600 text-white shadow-md shadow-purple-600/10' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/50'}`}
-                    >
-                        Seed Architect
-                    </button>
+
                     <button
                         role="tab"
                         aria-selected={activeTab === 'compression'}
@@ -474,8 +464,6 @@ const SignalExtractor: React.FC<SignalExtractorProps> = ({ onTransfer, initialTa
             )}
 
                 </>
-            ) : activeTab === 'seed' ? (
-                <SeedArchitect />
             ) : (
                 <SignalCompressionArchitect />
             )}

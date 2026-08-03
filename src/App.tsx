@@ -53,13 +53,7 @@ const App: React.FC = () => {
             initialTab="compression"
           />
         );
-      case 'seed-architect':
-        return (
-          <SignalExtractor
-            onTransfer={handleTransferToPromptArchitect}
-            initialTab="seed"
-          />
-        );
+
       case 'mindseed':
         return <MindSeedArchitect />;
 
@@ -135,7 +129,7 @@ const App: React.FC = () => {
     const viewLabels: Record<string, string> = {
       'signal-extractor': 'Signal Extractor',
       'signal-compression': 'Compression Architect',
-      'seed-architect': 'Seed Architect',
+
       'mindseed': 'MindSeed Architect',
       'prompt-standard': 'Standard Prompt',
       'prompt-skill': 'Skill Bundle',

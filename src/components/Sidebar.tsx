@@ -4,7 +4,7 @@ import { getInitials } from '../services/preferencesService';
 
 export type ActiveView =
   | 'home'
-  | 'signal-extractor' | 'signal-compression' | 'seed-architect' | 'mindseed'
+  | 'signal-extractor' | 'signal-compression' | 'mindseed'
   | 'prompt-standard' | 'prompt-skill'
   | 'agent-architect'
   | 'project-architect' | 'roadmap-architect' | 'agent-job'
@@ -26,9 +26,15 @@ interface SidebarItem {
   colorClass?: string;
 }
 
-interface SidebarSection {
+interface SidebarGroup {
   title: string;
   items: SidebarItem[];
+}
+
+interface SidebarSection {
+  title: string;
+  groups?: SidebarGroup[];
+  items?: SidebarItem[];
 }
 
 const SECTIONS: SidebarSection[] = [
@@ -39,11 +45,9 @@ const SECTIONS: SidebarSection[] = [
     ]
   },
   {
-    title: 'SIGNAL CENTER',
+    title: 'SIGNAL',
     items: [
-      { view: 'signal-extractor', label: 'Signal Extractor', icon: 'unarchive', colorClass: 'text-blue-500' },
-      { view: 'signal-compression', label: 'Compression', icon: 'compress', colorClass: 'text-cyan-500' },
-      { view: 'seed-architect', label: 'Seed Architect', icon: 'auto_awesome', colorClass: 'text-violet-500' },
+      { view: 'signal-extractor', label: 'Signal Center', icon: 'unarchive', colorClass: 'text-blue-500' },
       { view: 'mindseed', label: 'MindSeeds', icon: 'spa', colorClass: 'text-orange-500' }
     ]
   },
@@ -104,34 +108,52 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpenMobile,
   const username = preferences?.username?.trim() || '';
   const initials = getInitials(username);
 
+  const renderNavItem = (item: SidebarItem) => {
+    const isActive = activeView === item.view;
+    return (
+      <button
+        key={item.view}
+        onClick={() => {
+          onNavigate(item.view);
+          onCloseMobile();
+        }}
+        className={`w-full flex items-center space-x-3 px-4 py-2 text-xs font-semibold rounded-xl transition-all duration-200 text-left cursor-pointer focus:outline-none ${isActive
+            ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold'
+            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-900/40'
+          }`}
+      >
+        <span className={`material-icons text-sm ${isActive ? 'text-blue-500' : item.colorClass || 'text-slate-400 dark:text-slate-500'}`}>
+          {item.icon}
+        </span>
+        <span className="truncate">{item.label}</span>
+      </button>
+    );
+  };
+
   const renderNavSection = (section: SidebarSection) => (
     <div key={section.title} className="mb-6">
       <h3 className="px-4 mb-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 tracking-widest uppercase select-none">
         {section.title}
       </h3>
-      <div className="space-y-1">
-        {section.items.map((item) => {
-          const isActive = activeView === item.view;
-          return (
-            <button
-              key={item.view}
-              onClick={() => {
-                onNavigate(item.view);
-                onCloseMobile();
-              }}
-              className={`w-full flex items-center space-x-3 px-4 py-2 text-xs font-semibold rounded-xl transition-all duration-200 text-left cursor-pointer focus:outline-none ${isActive
-                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-900/40'
-                }`}
-            >
-              <span className={`material-icons text-sm ${isActive ? 'text-blue-500' : item.colorClass || 'text-slate-400 dark:text-slate-500'}`}>
-                {item.icon}
-              </span>
-              <span className="truncate">{item.label}</span>
-            </button>
-          );
-        })}
-      </div>
+      
+      {section.groups ? (
+        <div className="space-y-4">
+          {section.groups.map(group => (
+            <div key={group.title}>
+              <h4 className="px-4 mb-1 text-[9px] font-bold text-slate-400/80 dark:text-slate-500/80 tracking-widest uppercase select-none">
+                {group.title}
+              </h4>
+              <div className="space-y-1">
+                {group.items.map(item => renderNavItem(item))}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-1">
+          {section.items?.map(item => renderNavItem(item))}
+        </div>
+      )}
     </div>
   );
 
