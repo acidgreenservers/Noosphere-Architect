@@ -7,7 +7,6 @@ import { AbortError } from '../services/ai/openRouter';
 import * as db from '../services/dbService';
 import JSZip from 'jszip';
 import { sanitizeFilename } from '../utils/security';
-import AgentForm from './AgentForm';
 import LoadingSpinner from './LoadingSpinner';
 import Modal from './Modal';
 import PreviewModal from './PreviewModal';
@@ -361,7 +360,7 @@ const AgentArchitect: React.FC<AgentArchitectProps> = ({ initialConfig, onClearI
   };
 
   return (
-    <div className="max-w-4xl mx-auto animate-fade-in">
+    <div className="max-w-7xl mx-auto animate-fade-in">
       <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
 
       <div className="flex justify-between items-center mb-10">
@@ -371,59 +370,104 @@ const AgentArchitect: React.FC<AgentArchitectProps> = ({ initialConfig, onClearI
           </div>
       </div>
 
-      <div className="bg-transparent mb-12">
-        <AgentForm 
-          agentConfig={agentConfig} 
-          setAgentConfig={setAgentConfig} 
-          onGenerate={handleGenerate}
-          onReset={handleReset}
-          onLoadTemplate={() => setIsTemplateModalOpen(true)}
-          isLoading={isLoading} 
-        />
-      </div>
-
-      {error && (
-        <div className="mt-8 bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 px-5 py-4 rounded-2xl text-sm relative" role="alert">
-          <strong className="font-bold">Error: </strong>
-          <span className="block sm:inline">{error}</span>
-        </div>
-      )}
-
-      {isLoading && <LoadingSpinner message={loadingMessage} />}
-
-      {generatedPrompt && !isLoading && (
-        <div className="mt-12 space-y-10 animate-fade-in">
-             <div className="space-y-4">
-                <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center">
-                    <span className="material-icons text-sm mr-2 text-blue-500">signal_cellular_alt</span>
-                    Signal Analysis
-                </h4>
-                <div className="prose prose-slate prose-sm dark:prose-invert max-w-none text-slate-600 dark:text-slate-400 leading-relaxed bg-slate-50 dark:bg-slate-900/30 p-5 rounded-2xl border border-slate-100 dark:border-slate-800/50">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{generatedPrompt.signal}</ReactMarkdown>
-                </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-12">
+        {/* Left Pane - Form */}
+        <div className="lg:col-span-5 bg-white dark:bg-slate-900/30 p-6 rounded-3xl border border-slate-200/60 dark:border-slate-800/60 shadow-xs space-y-6">
+          <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center pb-4 border-b border-slate-100 dark:border-slate-800/60 gap-4">
+              <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                Define Agent
+              </h3>
+              <button type="button" onClick={() => setIsTemplateModalOpen(true)} className="flex items-center justify-center px-3 py-1.5 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900/50 transition cursor-pointer">
+                <span className="material-icons mr-1.5 text-xs">model_training</span>
+                Template
+              </button>
             </div>
 
             <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-slate-200/60 dark:border-slate-800/50 gap-4">
-                    <h3 className="text-xl font-bold">Generated Agent Prompt</h3>
-                    <div className="flex items-center space-x-3">
-                        <button onClick={() => { navigator.clipboard.writeText(generatedPrompt.prompt); setSuccessMessage('Prompt copied!'); }} className="flex items-center px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-900/50 transition duration-200 cursor-pointer">
-                            <span className="material-icons text-base mr-2">content_copy</span>Copy
-                        </button>
-                        <button onClick={() => handleExportPrompt(generatedPrompt.prompt, loadedAgentName)} className="flex items-center px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-900/50 transition duration-200 cursor-pointer">
-                            <span className="material-icons text-base mr-2">download</span>Export
-                        </button>
-                        <button onClick={handleOpenSaveModal} className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold shadow-md shadow-blue-600/10 transition cursor-pointer">
-                            <span className="material-icons text-base mr-2">save</span>Save
-                        </button>
-                    </div>
-                </div>
-                <div className="prose prose-slate dark:prose-invert max-w-none py-4 px-2">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{generatedPrompt.prompt}</ReactMarkdown>
-                </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Role/Capability <span className="text-red-500">*</span></label>
+                <input type="text" value={agentConfig.role} onChange={(e) => setAgentConfig(prev => ({...prev, role: e.target.value}))} placeholder="e.g., Expert Financial Advisor" className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/40 outline-none transition text-slate-800 dark:text-slate-200" required />
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Scope <span className="text-red-500">*</span></label>
+                <input type="text" value={agentConfig.scope} onChange={(e) => setAgentConfig(prev => ({...prev, scope: e.target.value}))} placeholder="e.g., Personal investment tracking app" className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/40 outline-none transition text-slate-800 dark:text-slate-200" required />
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Goals</label>
+                <textarea rows={5} value={agentConfig.goals} onChange={(e) => setAgentConfig(prev => ({...prev, goals: e.target.value}))} placeholder={"e.g.,\n- Analyze user spending patterns to find savings.\n- Provide weekly financial summaries.\n- Educate users on budgeting best practices."} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar text-slate-800 dark:text-slate-200" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Constraints</label>
+                <textarea rows={5} value={agentConfig.constraints} onChange={(e) => setAgentConfig(prev => ({...prev, constraints: e.target.value}))} placeholder={"e.g.,\n- Do not store any personally identifiable information.\n- Must provide disclaimers for financial advice.\n- The tone should always be encouraging and never judgmental."} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/40 outline-none transition custom-scrollbar text-slate-800 dark:text-slate-200" />
+              </div>
             </div>
+
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800/60">
+              <button type="button" onClick={handleReset} disabled={isLoading} className="px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/60 transition cursor-pointer">Reset</button>
+              <button type="submit" disabled={isLoading || !agentConfig.role.trim() || !agentConfig.scope.trim()} className="flex items-center justify-center px-4 py-2 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 shadow-md shadow-blue-600/10 focus:outline-none disabled:opacity-50 transition cursor-pointer">
+                {isLoading ? 'Architecting...' : 'Generate'}
+              </button>
+            </div>
+          </form>
         </div>
-      )}
+
+        {/* Right Pane - Compiled Output */}
+        <div className="lg:col-span-7 space-y-6 lg:sticky lg:top-20">
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 px-5 py-4 rounded-2xl text-sm relative" role="alert">
+              <strong className="font-bold">Error: </strong>
+              <span className="block sm:inline">{error}</span>
+            </div>
+          )}
+
+          {isLoading && <LoadingSpinner message={loadingMessage} />}
+
+          {generatedPrompt && !isLoading && (
+            <div className="space-y-6 animate-fade-in bg-white dark:bg-slate-900/20 p-6 rounded-3xl border border-slate-200/50 dark:border-slate-800/40 shadow-xs">
+              <div className="space-y-4">
+                <h4 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center">
+                  <span className="material-icons text-sm mr-2 text-blue-500">signal_cellular_alt</span>
+                  Signal Analysis
+                </h4>
+                <div className="prose prose-slate prose-xs dark:prose-invert max-w-none text-slate-600 dark:text-slate-400 leading-relaxed bg-slate-50 dark:bg-slate-900/30 p-4 rounded-2xl border border-slate-100 dark:border-slate-800/50">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{generatedPrompt.signal}</ReactMarkdown>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-slate-200/60 dark:border-slate-800/50 gap-4">
+                  <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Generated Agent Prompt</h3>
+                  <div className="flex items-center space-x-2">
+                    <button onClick={() => { navigator.clipboard.writeText(generatedPrompt.prompt); setSuccessMessage('Prompt copied!'); }} className="px-3 py-1.5 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold flex items-center hover:bg-slate-100 dark:hover:bg-slate-900/50 transition duration-200 cursor-pointer">
+                      <span className="material-icons text-sm mr-1.5">content_copy</span>Copy
+                    </button>
+                    <button onClick={() => handleExportPrompt(generatedPrompt.prompt, loadedAgentName)} className="px-3 py-1.5 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold flex items-center hover:bg-slate-100 dark:hover:bg-slate-900/50 transition duration-200 cursor-pointer">
+                      <span className="material-icons text-sm mr-1.5">download</span>Export
+                    </button>
+                    <button onClick={handleOpenSaveModal} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center shadow-md shadow-blue-600/10 transition cursor-pointer">
+                      <span className="material-icons text-sm mr-1.5">save</span>Save
+                    </button>
+                  </div>
+                </div>
+                <div className="prose prose-slate dark:prose-invert max-w-none py-2 text-xs">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{generatedPrompt.prompt}</ReactMarkdown>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!generatedPrompt && !isLoading && (
+            <div className="py-24 text-center bg-slate-500/5 rounded-3xl border-2 border-dashed border-slate-200/80 dark:border-slate-800/60 flex flex-col items-center justify-center">
+              <span className="material-icons text-4xl text-slate-300 dark:text-slate-700 mb-3 animate-pulse">auto_awesome</span>
+              <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">Awaiting Compilation</h4>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-2 max-w-xs mx-auto leading-relaxed">
+                Define your configurations in the form on the left and click "Generate" to compile a structured prompting substrate.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
       
       {savedAgents.length > 0 && (
         <div className="mt-20 border-t border-slate-200/60 dark:border-slate-800/50 pt-16">
