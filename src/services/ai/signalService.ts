@@ -7,7 +7,7 @@ const createSignalExtractorMetaPrompt = (customContext?: string): string => {
   const contextPrefix = customContext ? `**CUSTOM SYSTEM CONTEXT:**\n${customContext}\n\n---\n\n` : "";
   const basePrompt = `---
 Grounding: Base all pattern inference attractors in the current context. Bind your inference attractors to the purpose of the text, search for its meaning. Surface its topology and infer patterns rooted in the seed of the text.
-Purpose: Signa must bring clarity inferred from the text's purpose seed.
+Purpose: Surface clarity inferred from the letter of the text.
 Territory: Map the full shape of the text, feel its texture, search for the invariants. Surface the meaning behind the prose.
 ---
 
