@@ -53,7 +53,9 @@ const MindSeedArchitect: React.FC = () => {
       const draft = await db.getMindSeedDraft(1);
       if (draft) {
         setText(draft.config.text);
-        setActiveTab(draft.config.type);
+        if (draft.config.type) {
+          setActiveTab(draft.config.type);
+        }
       }
     } catch (error) {
       console.error("Failed to load draft", error);
@@ -72,7 +74,9 @@ const MindSeedArchitect: React.FC = () => {
         return;
     }
     setText(newText);
-    db.saveMindSeedDraft({ id: 1, config: { type: activeTab, text: newText } });
+    if (activeTab !== 'seed-architect') {
+      db.saveMindSeedDraft({ id: 1, config: { type: activeTab, text: newText } });
+    }
   };
 
   const handleGenerate = async () => {
@@ -97,6 +101,7 @@ const MindSeedArchitect: React.FC = () => {
     }, 2000);
 
     try {
+      if (activeTab === 'seed-architect') return;
       const config: MindSeedConfig = { type: activeTab, text };
       const generatedResult = await generateMindSeed(config, controller.signal);
       if (!controller.signal.aborted) {
@@ -122,7 +127,7 @@ const MindSeedArchitect: React.FC = () => {
   }, []);
 
   const handleSave = async () => {
-    if (!result) return;
+    if (!result || activeTab === 'seed-architect') return;
 
     const name = result.seed.slice(0, 30) + (result.seed.length > 30 ? '...' : '');
     const newSeed: SavedMindSeed = {
@@ -214,6 +219,7 @@ const MindSeedArchitect: React.FC = () => {
   };
 
   const handleClearAll = async () => {
+    if (activeTab === 'seed-architect') return;
     try {
       await db.clearAllMindSeeds(activeTab);
       await loadArchive();

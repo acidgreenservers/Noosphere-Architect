@@ -36,5 +36,6 @@ Git Hygiene Mandate: Maintain clean commit history and semantic release tags. Su
 6. Navigation Refactor: Simplified the "SIGNAL" category to "Signal Center" and "MindSeeds" tools, and merged the old "PROMPT & SKILL CENTER" and "AGENT FORGE" categories into a single "WORKSHOP" category containing the "Standard Prompt", "Skill Bundle", and "Agent Architect" tools. Decoupled the Standard Prompt and Skill Bundle tools from internal tabs within PromptArchitect.tsx, making each its own workspace screen navigated exclusively via the sidebar. Also aligned AgentArchitect.tsx to use the same split-pane layout grid, form input cards, and styling as the Workshop tools, while removing the redundant AgentForm.tsx component entirely. Synchronized character constraints and textarea formats across tools.
 
 **Next Topological Move:**
+
 - Await user validation of the Signal, Workshop and MindSeeds layout refactor, and prepare to commit these changes to maintain clean git hygiene.
 - Await user guidance on new feature scopes or transition to next domain tool integration.
