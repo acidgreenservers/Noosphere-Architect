@@ -35,6 +35,7 @@ export interface LibraryMetadata {
   isStarred?: boolean;
   isPinned?: boolean;
   isArchived?: boolean;
+  sourceTool?: string;
 }
 
 export interface SavedAgent extends LibraryMetadata {
