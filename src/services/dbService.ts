@@ -1392,7 +1392,12 @@ export const saveCompressedSignalDraft = async (draft: { id: number, config: Com
     return new Promise((resolve, reject) => {
         const encryptedDraft = { ...draft, config: encryptField(draft.config) };
         const request = store.put(encryptedDraft);
-        request.onsuccess = () => resolve(request.result as number);
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error("Verification failed after compressed signal draft write."));
+        };
         request.onerror = () => reject(request.error);
     });
 };
@@ -1670,7 +1675,12 @@ export const saveSeedDraft = async (draft: { id: number, config: SeedConfig }): 
     return new Promise((resolve, reject) => {
         const encryptedDraft = { ...draft, config: encryptField(draft.config) };
         const request = store.put(encryptedDraft);
-        request.onsuccess = () => resolve(request.result as number);
+        request.onsuccess = () => {
+            const id = request.result as number;
+            const getReq = store.get(id);
+            getReq.onsuccess = () => resolve(id);
+            getReq.onerror = () => reject(new Error("Verification failed after seed draft write."));
+        };
         request.onerror = () => reject(request.error);
     });
 };

@@ -9,6 +9,8 @@ import {
     saveSignalDraft, getSignalDraft,
     saveRoadmapDraft, getRoadmapDraft,
     saveAgentJobDraft, getAgentJobDraft,
+    saveCompressedSignalDraft, getCompressedSignalDraft,
+    saveSeedDraft, getSeedDraft,
     initDB
 } from '../../src/services/dbService';
 
@@ -78,5 +80,21 @@ describe('Atomic Write Verification', () => {
         expect(id).toBe(1);
         const retrieved = await getAgentJobDraft(1);
         expect(retrieved?.config.jobTitle).toBe('Scribe');
+    });
+
+    it('should verify compressed signal draft write with atomic read-back', async () => {
+        const draft = { id: 1, config: { messyInput: 'Compressed intent signal' } };
+        const id = await saveCompressedSignalDraft(draft);
+        expect(id).toBe(1);
+        const retrieved = await getCompressedSignalDraft(1);
+        expect(retrieved?.config.messyInput).toBe('Compressed intent signal');
+    });
+
+    it('should verify seed architect draft write with atomic read-back', async () => {
+        const draft = { id: 1, config: { promptText: 'Systemic Seed Concept', n: 3 } };
+        const id = await saveSeedDraft(draft);
+        expect(id).toBe(1);
+        const retrieved = await getSeedDraft(1);
+        expect(retrieved?.config.promptText).toBe('Systemic Seed Concept');
     });
 });
