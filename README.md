@@ -1,6 +1,7 @@
 # Noosphere-Architect <small>— Prompting Across Substrates</small> 📘
 
 [![Deploy to GitHub Pages](https://github.com/acidgreenservers/Noosphere-Architect/actions/workflows/deploy.yml/badge.svg)](https://github.com/acidgreenservers/Noosphere-Architect/actions/workflows/deploy.yml)
+[![Pull Request CI](https://github.com/acidgreenservers/Noosphere-Architect/actions/workflows/ci.yml/badge.svg)](https://github.com/acidgreenservers/Noosphere-Architect/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 ![Node Version](https://img.shields.io/badge/node-%3E%3D20.x-green)
 ![Vite](https://img.shields.io/badge/Vite-6.x-646CFF?logo=vite)
