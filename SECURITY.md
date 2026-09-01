@@ -27,8 +27,8 @@ specific model/budget limits.
 
 ### Data at Rest
 
-The application uses **IndexedDB** for local persistence. To protect your data,
-the application supports encryption at rest:
+The application uses **IndexedDB (v19)** for local persistence. To protect your data,
+the application supports encryption at rest across all architectural stores (including user preferences, compressed signals, and seed drafts):
 
 - Use `VITE_ENCRYPTION_KEY` in your `.env` file to provide a secret key.
 - This key is used to obfuscate data before it is written to the browser's

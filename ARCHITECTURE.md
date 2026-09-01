@@ -34,7 +34,7 @@
 
           +-----------------------------------------------------------+
           |                      Persistence Layer                    |
-          |           (IndexedDB v17 + Metadata Unification)          |
+          |           (IndexedDB v19 + Metadata Unification)          |
           +-----------------------------+-----------------------------+
                                         |
               +-------------------------+-------------------------+
@@ -44,6 +44,7 @@
       [Saved Signals]           [Saved Projects]          [Saved Seeds]
       [Saved Agent Jobs]        [Saved Synthesis]         [Temporary Seeds]
       [Compressed Signals]      [Seed Architects]         [Draft Stores]
+      [User Preferences]
 ```
 
 ## Data Flow (AI Generation)
@@ -66,8 +67,8 @@
 * **Modular AI Services:** Each tool has a dedicated service in
   `src/services/ai/` to maintain clean boundaries.
 * **IndexedDB Migration Registry:** `dbService.ts` implements a versioned
-  migration system (currently v17) to ensure data integrity as the schema
-  evolves. Specifically, the schema transitions handle legacy metadata unification (v11), roadmap tracking (v13), employer handbook agent jobs (v15), compressed signal / seed architecture (v16), and seed drafts (v17).
+  migration system (currently v19) to ensure data integrity as the schema
+  evolves. Specifically, the schema transitions handle legacy metadata unification (v11), roadmap tracking (v13), employer handbook agent jobs (v15), compressed signal / seed architecture (v16), seed drafts (v17), user preferences store (v18), and explicit sourceTool record stamping (v19).
 * **Code Splitting:** `React.lazy` is used in `App.tsx` for all major tool
   components to keep the initial bundle size minimal.
 * **Metadata Unification:** All architectural assets share a common metadata
